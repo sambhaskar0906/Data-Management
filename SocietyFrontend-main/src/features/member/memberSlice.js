@@ -98,6 +98,21 @@ export const addGuarantor = createAsyncThunk(
 );
 
 /* ===========================================================
+   ✅ FETCH GUARANTOR RELATIONS BY MEMBER (search by name or number)
+   =========================================================== */
+export const fetchGuarantorRelations = createAsyncThunk(
+    "members/fetchGuarantorRelations",
+    async (searchQuery, { rejectWithValue }) => {
+        try {
+            const response = await axios.get(`/members/guarantor-relations?search=${searchQuery}`);
+            return response.data; // contains { member, myGuarantors, forWhomIAmGuarantor }
+        } catch (error) {
+            return rejectWithValue(error.response?.data || error.message);
+        }
+    }
+);
+
+/* ===========================================================
    ✅ SLICE SETUP
    =========================================================== */
 const memberSlice = createSlice({
@@ -107,6 +122,12 @@ const memberSlice = createSlice({
         selectedMember: null,
         loading: false,
         error: null,
+        guarantorRelations: {
+            member: null,
+            myGuarantors: [],
+            forWhomIAmGuarantor: [],
+        },
+
         successMessage: null,
         // Operation-specific loading flags
         operationLoading: {
@@ -138,6 +159,13 @@ const memberSlice = createSlice({
         },
         clearSuccessMessage: (state) => {
             state.successMessage = null;
+        },
+        clearGuarantorRelations: (state) => {
+            state.guarantorRelations = {
+                member: null,
+                myGuarantors: [],
+                forWhomIAmGuarantor: [],
+            };
         },
     },
     extraReducers: (builder) => {
@@ -258,7 +286,21 @@ const memberSlice = createSlice({
             .addCase(addGuarantor.rejected, (state, action) => {
                 state.operationLoading.guarantor = false;
                 state.error = action.payload?.message || "Failed to add guarantor.";
+            })
+            /* ======================== FETCH GUARANTOR RELATIONS ======================== */
+            .addCase(fetchGuarantorRelations.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(fetchGuarantorRelations.fulfilled, (state, action) => {
+                state.loading = false;
+                state.guarantorRelations = action.payload;
+            })
+            .addCase(fetchGuarantorRelations.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
             });
+
     },
 });
 
@@ -267,6 +309,7 @@ export const {
     clearSelectedMember,
     clearError,
     clearSuccessMessage,
+    clearGuarantorRelations,
 } = memberSlice.actions;
 
 export default memberSlice.reducer;

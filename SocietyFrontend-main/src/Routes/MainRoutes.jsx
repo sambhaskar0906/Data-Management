@@ -9,6 +9,7 @@ import MemberDetails from '../pages/MamberReport/MemberDetails';
 import MemberPDF from '../components/MemberPDF';
 import GuarantorPage from '../pages/Guarantor/Guarantor';
 import MemberDetailsPage from '../pages/MemberDetail';
+import GuarantorList from '../pages/GuarantorList/GuarantorList.jsx'
 
 const MainRoutes = () => {
   return (
@@ -23,6 +24,7 @@ const MainRoutes = () => {
         <Route path="/member-pdf/:id" element={<MemberPDF />} />
         <Route path="/guarantor" element={<GuarantorPage />} />
         <Route path="/memberdetail" element={<MemberDetailsPage />} />
+        <Route path="/guarantorList" element={<GuarantorList />} />
       </Route>
     </Routes>
   )

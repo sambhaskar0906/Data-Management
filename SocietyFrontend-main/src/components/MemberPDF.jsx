@@ -17,7 +17,6 @@ import {
 import {
     ArrowBack,
     Download,
-    Person,
     CheckCircle,
     Error as ErrorIcon,
     PictureAsPdf
@@ -76,7 +75,6 @@ const FIELD_MAP = {
     "guaranteeDetails.otherSociety": "Other Society Guarantees",
     "guaranteeDetails.whetherMemberHasGivenGuaranteeInOurSociety": "Guarantee Given in Our Society",
     "guaranteeDetails.ourSociety": "Our Society Guarantees",
-    "loanDetails": "Loan Details",
 };
 
 const getValueByPath = (obj, path) => {
@@ -131,52 +129,77 @@ const MemberPDF = () => {
                 downloadButton.style.display = 'none';
             }
 
-            // Optimize for single page A4
+            // Use better PDF generation approach
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+
+            // Calculate content dimensions
             const canvas = await html2canvas(element, {
-                scale: 1.8, // Reduced scale for single page
+                scale: 2, // Higher scale for better quality
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#ffffff',
                 scrollX: 0,
                 scrollY: 0,
-                windowWidth: element.scrollWidth,
-                windowHeight: element.scrollHeight,
                 width: element.scrollWidth,
-                height: element.scrollHeight
+                height: element.scrollHeight,
+                windowWidth: element.scrollWidth,
+                windowHeight: element.scrollHeight
             });
+
+            const imgData = canvas.toDataURL('image/png', 1.0);
+
+            // Calculate image dimensions to fit page width with margins
+            const margin = 10; // 10mm margin on all sides
+            const contentWidth = pageWidth - (2 * margin);
+            const imgWidth = contentWidth;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            // Add content to PDF with proper page breaking
+            let heightLeft = imgHeight;
+            let position = margin;
+            let pageNumber = 1;
+
+            // First page
+            pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+            heightLeft -= (pageHeight - (2 * margin));
+
+            // Add page numbers
+            pdf.setFontSize(10);
+            pdf.setTextColor(100);
+            pdf.text(
+                `Page ${pageNumber}`,
+                pageWidth / 2,
+                pageHeight - 5,
+                { align: 'center' }
+            );
+
+            // Additional pages if needed
+            while (heightLeft > 0) {
+                position = -heightLeft + margin;
+                pdf.addPage();
+                pageNumber++;
+
+                pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+
+                // Add page number
+                pdf.setFontSize(10);
+                pdf.setTextColor(100);
+                pdf.text(
+                    `Page ${pageNumber}`,
+                    pageWidth / 2,
+                    pageHeight - 5,
+                    { align: 'center' }
+                );
+
+                heightLeft -= (pageHeight - (2 * margin));
+            }
 
             // Show download button again
             if (downloadButton) {
                 downloadButton.style.display = 'block';
             }
-
-            const imgData = canvas.toDataURL('image/png', 0.9);
-
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-
-            // Calculate dimensions to fit one page with proper margins
-            const margin = 10; // 10mm margins on all sides
-            const contentWidth = pageWidth - (2 * margin);
-            const imgWidth = contentWidth;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-            // Scale down if content is too tall for one page
-            let finalWidth = imgWidth;
-            let finalHeight = imgHeight;
-
-            if (imgHeight > (pageHeight - (2 * margin))) {
-                const scale = (pageHeight - (2 * margin)) / imgHeight;
-                finalWidth = imgWidth * scale;
-                finalHeight = imgHeight * scale;
-            }
-
-            // Center the content on page
-            const x = (pageWidth - finalWidth) / 2;
-            const y = (pageHeight - finalHeight) / 2;
-
-            pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
 
             const memberName = selectedMember?.personalDetails?.nameOfMember || 'member';
             const membershipNo = selectedMember?.personalDetails?.membershipNumber || 'unknown';
@@ -184,6 +207,11 @@ const MemberPDF = () => {
             pdf.save(`${memberName}_${membershipNo}_${viewType}.pdf`);
         } catch (error) {
             console.error('Error generating PDF:', error);
+            // Show download button again in case of error
+            const downloadButton = element.querySelector('#download-button');
+            if (downloadButton) {
+                downloadButton.style.display = 'block';
+            }
         }
     };
 
@@ -216,23 +244,73 @@ const MemberPDF = () => {
         };
     };
 
-    const formatValue = (value) => {
+    const formatValue = (value, fieldKey) => {
         if (isMissing(value)) return { text: "MISSING", status: "error" };
+
+        // Handle object values properly
+        if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+            // Special handling for guarantee objects
+            if (fieldKey.includes('guaranteeDetails')) {
+                if (fieldKey.includes('ourSociety') || fieldKey.includes('otherSociety')) {
+                    const guarantees = Object.values(value).filter(val =>
+                        val && typeof val === 'object' && val.memberName
+                    );
+                    if (guarantees.length === 0) return { text: "No guarantees", status: "info" };
+
+                    const formatted = guarantees.map(g =>
+                        `${g.memberName || 'Unknown'} (${g.amount || 'N/A'})`
+                    ).join(", ");
+                    return { text: formatted, status: "success" };
+                }
+            }
+
+            // General object handling
+            const entries = Object.entries(value);
+            if (entries.length === 0) return { text: "Not Provided", status: "info" };
+
+            const formatted = Object.entries(value)
+                .map(([k, v]) => {
+                    if (v && typeof v === 'object') {
+                        return `${k}: ${JSON.stringify(v)}`;
+                    }
+                    return `${k}: ${v || 'Not Provided'}`;
+                })
+                .join(", ");
+            return { text: formatted, status: "success" };
+        }
+
         if (Array.isArray(value)) {
+            if (value.length === 0) return { text: "None", status: "info" };
+
+            // Handle array of objects (like loan details)
+            if (value[0] && typeof value[0] === 'object') {
+                const formatted = value.map(item => {
+                    if (item.loanType) {
+                        return `${item.loanType} (₹${item.amount || '0'})`;
+                    }
+                    return JSON.stringify(item);
+                }).join(", ");
+                return { text: formatted, status: "success" };
+            }
+
             return {
                 text: value.length > 0 ? value.join(", ") : "None",
                 status: value.length > 0 ? "success" : "info"
             };
         }
-        if (typeof value === "object" && value !== null) {
-            const entries = Object.entries(value);
-            if (entries.length === 0) return { text: "Not Provided", status: "info" };
-            const formatted = Object.entries(value)
-                .map(([k, v]) => `${k}: ${v || 'Not Provided'}`)
-                .join(", ");
-            return { text: formatted, status: "success" };
-        }
+
         if (typeof value === "boolean") return { text: value ? "Yes" : "No", status: "success" };
+
+        // Format date strings
+        if (typeof value === "string" && value.includes('T') && !isNaN(Date.parse(value))) {
+            try {
+                const date = new Date(value);
+                return { text: date.toLocaleDateString('en-IN'), status: "success" };
+            } catch (e) {
+                return { text: value, status: "success" };
+            }
+        }
+
         return { text: value || "Not Provided", status: value ? "success" : "info" };
     };
 
@@ -353,42 +431,30 @@ const MemberPDF = () => {
                 </Button>
             </Box>
 
-            {/* PDF Content - Optimized for Single Page A4 */}
+            {/* PDF Content - Fixed for proper PDF generation */}
             <Paper
                 ref={pdfRef}
                 sx={{
                     p: 3,
                     backgroundColor: '#ffffff',
                     boxShadow: 2,
-                    border: `3px solid ${viewTypeColor}`,
-                    borderRadius: '12px',
+                    border: `2px solid ${viewTypeColor}`,
+                    borderRadius: '8px',
                     maxWidth: '100%',
                     overflow: 'hidden',
-                    // Ensure proper A4 dimensions with borders
                     width: '100%',
                     minHeight: 'auto',
                     margin: '0 auto',
                     boxSizing: 'border-box',
-                    position: 'relative',
-                    '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        border: `2px solid ${viewTypeColor}30`,
-                        borderRadius: '8px',
-                        pointerEvents: 'none'
-                    }
+                    position: 'relative'
                 }}
             >
-                {/* Compact Header */}
+                {/* Header */}
                 <Box sx={{
                     background: `linear-gradient(135deg, ${viewTypeColor} 0%, #000000 100%)`,
                     color: 'white',
                     p: 3,
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     mb: 3,
                     textAlign: 'center',
                     border: `2px solid ${viewTypeColor}`
@@ -398,15 +464,13 @@ const MemberPDF = () => {
                         <Typography variant="h4" sx={{
                             fontWeight: 'bold',
                             ml: 1,
-                            textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-                            fontSize: { xs: '1.25rem', md: '1.5rem' }
+                            textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
                         }}>
                             {viewType.toUpperCase()} REPORT
                         </Typography>
                     </Box>
                     <Typography variant="h6" sx={{
                         opacity: 0.9,
-                        fontSize: { xs: '1rem', md: '1.1rem' },
                         mb: 0.5
                     }}>
                         {personalDetails.nameOfMember || 'Unknown Member'}
@@ -416,7 +480,7 @@ const MemberPDF = () => {
                     </Typography>
                 </Box>
 
-                {/* Compact Stats */}
+                {/* Stats */}
                 <Grid container spacing={2} sx={{ mb: 3 }}>
                     <Grid size={{ xs: 12, md: 4 }}>
                         <CompactStatCard
@@ -441,7 +505,7 @@ const MemberPDF = () => {
                     </Grid>
                 </Grid>
 
-                {/* Compact Fields Display */}
+                {/* Fields Display */}
                 {filteredFields.length === 0 ? (
                     <Box sx={{
                         textAlign: 'center',
@@ -470,12 +534,9 @@ const MemberPDF = () => {
                         <Typography variant="h5" gutterBottom sx={{
                             color: viewTypeColor,
                             fontWeight: 'bold',
-                            borderBottom: `3px solid ${viewTypeColor}`,
+                            borderBottom: `2px solid ${viewTypeColor}`,
                             pb: 1,
-                            mb: 2,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1
+                            mb: 2
                         }}>
                             📋 Document Fields ({filteredFields.length})
                         </Typography>
@@ -483,7 +544,7 @@ const MemberPDF = () => {
                         <Grid container spacing={2}>
                             {filteredFields.map((fieldKey) => {
                                 const value = getValueByPath(selectedMember, fieldKey);
-                                const formatted = formatValue(value);
+                                const formatted = formatValue(value, fieldKey);
                                 const isImageField = fieldKey.includes('Photo') || fieldKey.includes('Size');
 
                                 return (
@@ -502,18 +563,15 @@ const MemberPDF = () => {
                     </Box>
                 )}
 
-                {/* Compact Loan Details */}
+                {/* Loan Details */}
                 {viewType !== 'missing' && loanDetails && loanDetails.length > 0 && (
                     <Box sx={{ mb: 3 }}>
                         <Typography variant="h5" gutterBottom sx={{
                             color: '#00897b',
                             fontWeight: 'bold',
-                            borderBottom: '3px solid #00897b',
+                            borderBottom: '2px solid #00897b',
                             pb: 1,
-                            mb: 2,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1
+                            mb: 2
                         }}>
                             💰 Loan Details ({loanDetails.length})
                         </Typography>
@@ -524,10 +582,9 @@ const MemberPDF = () => {
                                         border: '2px solid #00897b',
                                         backgroundColor: '#e0f2f1',
                                         p: 2,
-                                        borderRadius: '8px',
-                                        boxShadow: '0 2px 8px rgba(0,137,123,0.2)'
+                                        borderRadius: '6px'
                                     }}>
-                                        <CardContent sx={{ p: '12px !important' }}>
+                                        <CardContent>
                                             <Typography variant="subtitle1" sx={{
                                                 color: '#00695c',
                                                 fontWeight: 'bold',
@@ -546,26 +603,19 @@ const MemberPDF = () => {
                     </Box>
                 )}
 
-                {/* Compact Footer */}
+                {/* Footer */}
                 <Box sx={{
                     pt: 2,
-                    borderTop: `3px solid ${viewTypeColor}`,
+                    borderTop: `2px solid ${viewTypeColor}`,
                     textAlign: 'center',
                     backgroundColor: '#f8f9fa',
                     p: 2,
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     mt: 3
                 }}>
                     <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'medium' }}>
                         Member Management System | {viewType.toUpperCase()} Report |
-                        Generated on {new Date().toLocaleDateString('en-IN', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                        })} at {new Date().toLocaleTimeString('en-IN', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        })}
+                        Generated on {new Date().toLocaleDateString('en-IN')} at {new Date().toLocaleTimeString('en-IN')}
                     </Typography>
                 </Box>
             </Paper>
@@ -580,13 +630,7 @@ const CompactStatCard = ({ title, value, color }) => (
         p: 2,
         backgroundColor: `${color}15`,
         border: `2px solid ${color}`,
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-        transition: 'all 0.3s ease',
-        '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: '0 6px 16px rgba(0,0,0,0.15)'
-        }
+        borderRadius: '6px'
     }}>
         <Typography variant="h4" sx={{
             color,
@@ -600,8 +644,7 @@ const CompactStatCard = ({ title, value, color }) => (
             color,
             fontWeight: 'bold',
             lineHeight: 1,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
+            textTransform: 'uppercase'
         }}>
             {title}
         </Typography>
@@ -640,11 +683,10 @@ const CompactFieldCard = ({ fieldName, value, status, isImageField }) => {
     return (
         <Card sx={{
             p: 1.5,
-            border: `2px solid ${getStatusColor()}`,
+            border: `1px solid ${getStatusColor()}`,
             backgroundColor: `${getStatusColor()}08`,
-            borderRadius: '6px',
-            mb: 1,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            borderRadius: '4px',
+            mb: 1
         }}>
             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                 <Typography variant="body2" sx={{
@@ -670,7 +712,7 @@ const CompactFieldCard = ({ fieldName, value, status, isImageField }) => {
                             backgroundColor: `${getStatusColor()}20`,
                             px: 1,
                             py: 0.25,
-                            borderRadius: '12px',
+                            borderRadius: '8px',
                             ml: 1
                         }}>
                             {getStatusText()}
@@ -680,10 +722,7 @@ const CompactFieldCard = ({ fieldName, value, status, isImageField }) => {
                         color: status === 'error' ? '#d32f2f' : 'text.primary',
                         fontStyle: status === 'error' ? 'italic' : 'normal',
                         lineHeight: 1.3,
-                        fontSize: '0.8rem',
-                        backgroundColor: status === 'error' ? '#ffebee' : 'transparent',
-                        p: status === 'error' ? 0.5 : 0,
-                        borderRadius: status === 'error' ? '4px' : '0'
+                        fontSize: '0.8rem'
                     }}>
                         {isImageField && value !== "MISSING" && value !== "Not Provided" ?
                             "✓ Image Available" :
@@ -710,17 +749,13 @@ const CompactDetailRow = ({ label, value }) => (
     }}>
         <Typography variant="caption" sx={{
             fontWeight: 'bold',
-            color: '#555',
-            fontSize: '0.75rem'
+            color: '#555'
         }}>
             {label}:
         </Typography>
         <Typography variant="caption" sx={{
             color: '#333',
-            fontWeight: 'medium',
-            fontSize: '0.75rem',
-            textAlign: 'right',
-            maxWidth: '60%'
+            fontWeight: 'medium'
         }}>
             {value}
         </Typography>

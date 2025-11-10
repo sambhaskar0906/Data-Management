@@ -27,6 +27,7 @@ const Sidebar = () => {
         { label: "Settings", route: "/settings", icon: <SettingsIcon /> },
         { label: "Greeting", route: "/greeting", icon: <EventSeatIcon /> },
         { label: "Guarantor", route: "/guarantor", icon: <People /> },
+        { label: "Guarantor List", route: "/guarantorList", icon: <People /> },
     ];
 
     return (
