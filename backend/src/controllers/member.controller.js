@@ -83,7 +83,10 @@ export const createMember = async (req, res) => {
         passportNoPhoto: fileFields.passportNoPhoto || ""
       },
       professionalDetails: professionalDetails || {},
-      bankDetails: bankDetails || {}
+      bankDetails: {
+        ...bankDetails,
+        civilScore: bankDetails?.civilScore ? Number(bankDetails.civilScore) : undefined
+      },
     };
 
     console.log("✅ Final data to save:", JSON.stringify(memberData, null, 2));
@@ -152,29 +155,24 @@ export const getAllMembers = async (req, res) => {
 
 export const updateMember = async (req, res) => {
   try {
-    const updatedMember = await Member.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!updatedMember) {
-      return res.status(404).json({
-        success: false,
-        message: "Member not found"
-      });
+    const member = await Member.findById(req.params.id);
+    if (!member) return res.status(404).json({ success: false, message: "Member not found" });
+
+    if (req.body.bankDetails && req.body.bankDetails.civilScore) {
+      req.body.bankDetails.civilScore = Number(req.body.bankDetails.civilScore);
     }
+
+    Object.assign(member, req.body);
+
+    await member.save(); // ✅ triggers pre('save')
+
     res.status(200).json({
       success: true,
       message: "Member updated successfully",
-      data: updatedMember
+      data: member,
     });
   } catch (error) {
-    console.error("Error updating member:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -200,7 +198,6 @@ export const deleteMember = async (req, res) => {
     });
   }
 };
-
 
 export const getMissingFieldsForMember = async (req, res) => {
   try {
@@ -306,6 +303,7 @@ export const getMissingFieldsForMember = async (req, res) => {
         branch: "",
         accountNumber: "",
         ifscCode: "",
+        civilScore: 0,
       },
       guaranteeDetails: {
         whetherMemberHasGivenGuaranteeInOtherSociety: false,
@@ -366,9 +364,6 @@ export const getMissingFieldsForMember = async (req, res) => {
     });
   }
 };
-
-
-
 
 export const addGuarantor = async (req, res) => {
   try {
@@ -453,13 +448,6 @@ export const addGuarantor = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-
 export const getGuarantorRelationsByMember = async (req, res) => {
   try {
     const { search } = req.query;
@@ -538,4 +526,3 @@ export const getGuarantorRelationsByMember = async (req, res) => {
     });
   }
 };
-

@@ -22,8 +22,7 @@ import {
     PictureAsPdf
 } from "@mui/icons-material";
 import { fetchMemberById } from "../features/member/memberSlice";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import html2pdf from "html2pdf.js";
 
 const FIELD_MAP = {
     "personalDetails.nameOfMember": "Member Name",
@@ -75,6 +74,8 @@ const FIELD_MAP = {
     "guaranteeDetails.otherSociety": "Other Society Guarantees",
     "guaranteeDetails.whetherMemberHasGivenGuaranteeInOurSociety": "Guarantee Given in Our Society",
     "guaranteeDetails.ourSociety": "Our Society Guarantees",
+    // ✅ Loan Details field add करें
+    "loanDetails": "Loan Details",
 };
 
 const getValueByPath = (obj, path) => {
@@ -94,9 +95,12 @@ const isMissing = (value) => {
     if (Array.isArray(value)) return value.length === 0;
     if (typeof value === "object") {
         if (Object.keys(value).length === 0) return true;
-        return Object.values(value).every(val =>
-            val === undefined || val === null || val === "" ||
-            (typeof val === 'object' && Object.keys(val).length === 0)
+        return Object.values(value).every(
+            (val) =>
+                val === undefined ||
+                val === null ||
+                val === "" ||
+                (typeof val === "object" && Object.keys(val).length === 0)
         );
     }
     return false;
@@ -107,112 +111,73 @@ const MemberPDF = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const dispatch = useDispatch();
-    const { selectedMember, loading, error } = useSelector((state) => state.members);
+    const { selectedMember, loading, error } = useSelector(
+        (state) => state.members
+    );
     const pdfRef = useRef();
-
-    const viewType = searchParams.get('viewType') || 'all';
+    const viewType = searchParams.get("viewType") || "all";
 
     useEffect(() => {
-        if (id) {
-            dispatch(fetchMemberById(id));
-        }
+        if (id) dispatch(fetchMemberById(id));
     }, [id, dispatch]);
 
-    const downloadPDF = async () => {
+    const downloadPDF = () => {
         const element = pdfRef.current;
         if (!element) return;
 
-        try {
-            // Hide download button before capturing
-            const downloadButton = element.querySelector('#download-button');
-            if (downloadButton) {
-                downloadButton.style.display = 'none';
-            }
+        // Hide download button before generating PDF
+        const downloadButton = document.getElementById('download-button');
+        if (downloadButton) {
+            downloadButton.style.display = 'none';
+        }
 
-            // Use better PDF generation approach
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-
-            // Calculate content dimensions
-            const canvas = await html2canvas(element, {
-                scale: 2, // Higher scale for better quality
+        // Optimized PDF options
+        const options = {
+            margin: [10, 10, 10, 10],
+            filename: `${selectedMember?.personalDetails?.nameOfMember || 'member'}_${selectedMember?.personalDetails?.membershipNumber || 'unknown'}_${viewType}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: {
+                scale: 2,
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#ffffff',
                 scrollX: 0,
                 scrollY: 0,
                 width: element.scrollWidth,
-                height: element.scrollHeight,
-                windowWidth: element.scrollWidth,
-                windowHeight: element.scrollHeight
+                height: element.scrollHeight
+            },
+            jsPDF: {
+                unit: 'mm',
+                format: 'a4',
+                orientation: 'portrait',
+                compress: true
+            },
+            pagebreak: {
+                mode: ['avoid-all', 'css', 'legacy'],
+                before: '.page-break-before',
+                after: '.page-break-after',
+                avoid: '.no-break'
+            }
+        };
+
+        // Generate PDF
+        html2pdf()
+            .set(options)
+            .from(element)
+            .save()
+            .then(() => {
+                // Show download button again
+                if (downloadButton) {
+                    downloadButton.style.display = 'inline-flex';
+                }
+            })
+            .catch((error) => {
+                console.error('PDF generation error:', error);
+                // Show download button again in case of error
+                if (downloadButton) {
+                    downloadButton.style.display = 'inline-flex';
+                }
             });
-
-            const imgData = canvas.toDataURL('image/png', 1.0);
-
-            // Calculate image dimensions to fit page width with margins
-            const margin = 10; // 10mm margin on all sides
-            const contentWidth = pageWidth - (2 * margin);
-            const imgWidth = contentWidth;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-            // Add content to PDF with proper page breaking
-            let heightLeft = imgHeight;
-            let position = margin;
-            let pageNumber = 1;
-
-            // First page
-            pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
-            heightLeft -= (pageHeight - (2 * margin));
-
-            // Add page numbers
-            pdf.setFontSize(10);
-            pdf.setTextColor(100);
-            pdf.text(
-                `Page ${pageNumber}`,
-                pageWidth / 2,
-                pageHeight - 5,
-                { align: 'center' }
-            );
-
-            // Additional pages if needed
-            while (heightLeft > 0) {
-                position = -heightLeft + margin;
-                pdf.addPage();
-                pageNumber++;
-
-                pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
-
-                // Add page number
-                pdf.setFontSize(10);
-                pdf.setTextColor(100);
-                pdf.text(
-                    `Page ${pageNumber}`,
-                    pageWidth / 2,
-                    pageHeight - 5,
-                    { align: 'center' }
-                );
-
-                heightLeft -= (pageHeight - (2 * margin));
-            }
-
-            // Show download button again
-            if (downloadButton) {
-                downloadButton.style.display = 'block';
-            }
-
-            const memberName = selectedMember?.personalDetails?.nameOfMember || 'member';
-            const membershipNo = selectedMember?.personalDetails?.membershipNumber || 'unknown';
-
-            pdf.save(`${memberName}_${membershipNo}_${viewType}.pdf`);
-        } catch (error) {
-            console.error('Error generating PDF:', error);
-            // Show download button again in case of error
-            const downloadButton = element.querySelector('#download-button');
-            if (downloadButton) {
-                downloadButton.style.display = 'block';
-            }
-        }
     };
 
     // Filter fields based on viewType
@@ -247,61 +212,110 @@ const MemberPDF = () => {
     const formatValue = (value, fieldKey) => {
         if (isMissing(value)) return { text: "MISSING", status: "error" };
 
-        // Handle object values properly
-        if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-            // Special handling for guarantee objects
-            if (fieldKey.includes('guaranteeDetails')) {
-                if (fieldKey.includes('ourSociety') || fieldKey.includes('otherSociety')) {
-                    const guarantees = Object.values(value).filter(val =>
-                        val && typeof val === 'object' && val.memberName
-                    );
-                    if (guarantees.length === 0) return { text: "No guarantees", status: "info" };
+        // Handle Our Society Guarantees
+        if (fieldKey === 'guaranteeDetails.ourSociety' || fieldKey === 'guaranteeDetails.otherSociety') {
+            if (!value || value.length === 0) return { text: "No guarantees", status: "info" };
 
-                    const formatted = guarantees.map(g =>
-                        `${g.memberName || 'Unknown'} (${g.amount || 'N/A'})`
-                    ).join(", ");
-                    return { text: formatted, status: "success" };
+            const formattedGuarantees = value.map(guarantee => {
+                const parts = [];
+                if (guarantee.nameOfMember) parts.push(`Member: ${guarantee.nameOfMember}`);
+                if (guarantee.membershipNo) parts.push(`Mem No: ${guarantee.membershipNo}`);
+                if (guarantee.amountOfLoan) parts.push(`Amount: ₹${guarantee.amountOfLoan}`);
+                if (guarantee.typeOfLoan) parts.push(`Type: ${guarantee.typeOfLoan}`);
+                if (guarantee.ifIrregular) parts.push(`Irregular: ${guarantee.ifIrregular}`);
+
+                return parts.join(', ');
+            }).join(' | ');
+
+            return { text: formattedGuarantees, status: "success" };
+        }
+
+        // Handle Loan Details
+        if (fieldKey === 'loanDetails') {
+            if (!value || value.length === 0) return { text: "No loans", status: "info" };
+
+            const formattedLoans = value.map(loan => {
+                const parts = [];
+                if (loan.loanType) parts.push(`Type: ${loan.loanType}`);
+                if (loan.amount) parts.push(`Amount: ₹${loan.amount}`);
+                if (loan.purpose) parts.push(`Purpose: ${loan.purpose}`);
+                if (loan.dateOfLoan) {
+                    try {
+                        const date = new Date(loan.dateOfLoan);
+                        parts.push(`Date: ${date.toLocaleDateString('en-IN')}`);
+                    } catch (e) {
+                        parts.push(`Date: ${loan.dateOfLoan}`);
+                    }
                 }
+
+                return parts.join(', ');
+            }).join(' | ');
+
+            return { text: formattedLoans, status: "success" };
+        }
+
+        // Handle address objects
+        if (fieldKey === 'addressDetails.permanentAddress' || fieldKey === 'addressDetails.currentResidentalAddress') {
+            if (!value || typeof value !== 'object') return { text: "No address data", status: "info" };
+
+            const addressParts = [];
+            if (value.flatHouseNo) addressParts.push(value.flatHouseNo);
+            if (value.areaStreetSector) addressParts.push(value.areaStreetSector);
+            if (value.locality) addressParts.push(value.locality);
+            if (value.landmark) addressParts.push(`near ${value.landmark}`);
+            if (value.city) addressParts.push(value.city);
+            if (value.state) addressParts.push(value.state);
+            if (value.pincode) addressParts.push(value.pincode);
+            if (value.country) addressParts.push(value.country);
+
+            return {
+                text: addressParts.length > 0 ? addressParts.join(', ') : "Address not specified",
+                status: addressParts.length > 0 ? "success" : "info"
+            };
+        }
+
+        // Handle arrays
+        if (Array.isArray(value)) {
+            if (value.length === 0) return { text: "None", status: "info" };
+
+            // Handle array of strings
+            if (typeof value[0] === 'string') {
+                return {
+                    text: value.join(", "),
+                    status: "success"
+                };
             }
 
-            // General object handling
+            // Handle array of objects
+            const formattedArray = value.map(item => {
+                if (typeof item === 'object') {
+                    return Object.entries(item)
+                        .map(([k, v]) => `${k}: ${v || 'N/A'}`)
+                        .join(', ');
+                }
+                return String(item);
+            }).join(' | ');
+
+            return { text: formattedArray, status: "success" };
+        }
+
+        // Handle objects
+        if (typeof value === "object" && value !== null) {
             const entries = Object.entries(value);
             if (entries.length === 0) return { text: "Not Provided", status: "info" };
 
             const formatted = Object.entries(value)
                 .map(([k, v]) => {
-                    if (v && typeof v === 'object') {
-                        return `${k}: ${JSON.stringify(v)}`;
-                    }
-                    return `${k}: ${v || 'Not Provided'}`;
+                    if (v === null || v === undefined) return `${k}: N/A`;
+                    if (typeof v === 'object') return `${k}: [Object]`;
+                    return `${k}: ${v}`;
                 })
-                .join(", ");
+                .join(', ');
             return { text: formatted, status: "success" };
-        }
-
-        if (Array.isArray(value)) {
-            if (value.length === 0) return { text: "None", status: "info" };
-
-            // Handle array of objects (like loan details)
-            if (value[0] && typeof value[0] === 'object') {
-                const formatted = value.map(item => {
-                    if (item.loanType) {
-                        return `${item.loanType} (₹${item.amount || '0'})`;
-                    }
-                    return JSON.stringify(item);
-                }).join(", ");
-                return { text: formatted, status: "success" };
-            }
-
-            return {
-                text: value.length > 0 ? value.join(", ") : "None",
-                status: value.length > 0 ? "success" : "info"
-            };
         }
 
         if (typeof value === "boolean") return { text: value ? "Yes" : "No", status: "success" };
 
-        // Format date strings
         if (typeof value === "string" && value.includes('T') && !isNaN(Date.parse(value))) {
             try {
                 const date = new Date(value);
@@ -336,7 +350,6 @@ const MemberPDF = () => {
     const renderImageField = (fieldKey, value) => {
         if (!value || typeof value !== 'string') return null;
 
-        // Check if it's a base64 image or URL
         const isBase64 = value.startsWith('data:image') || value.startsWith('blob:');
         const isURL = value.startsWith('http') || value.startsWith('/');
 
@@ -431,7 +444,7 @@ const MemberPDF = () => {
                 </Button>
             </Box>
 
-            {/* PDF Content - Fixed for proper PDF generation */}
+            {/* PDF Content - Optimized for html2pdf.js */}
             <Paper
                 ref={pdfRef}
                 sx={{
@@ -547,13 +560,25 @@ const MemberPDF = () => {
                                 const formatted = formatValue(value, fieldKey);
                                 const isImageField = fieldKey.includes('Photo') || fieldKey.includes('Size');
 
+                                // Special handling for guarantee and loan fields to make them wider
+                                const isWideField = fieldKey.includes('guaranteeDetails') || fieldKey === 'loanDetails';
+
                                 return (
-                                    <Grid size={{ xs: 12, sm: 6, md: 4 }} key={fieldKey}>
+                                    <Grid
+                                        size={{
+                                            xs: 12,
+                                            sm: isWideField ? 12 : 6,
+                                            md: isWideField ? 12 : 4
+                                        }}
+                                        key={fieldKey}
+                                        className="no-break"
+                                    >
                                         <CompactFieldCard
                                             fieldName={FIELD_MAP[fieldKey]}
                                             value={formatted.text}
                                             status={formatted.status}
                                             isImageField={isImageField}
+                                            isWideField={isWideField}
                                         />
                                         {isImageField && renderImageField(fieldKey, value)}
                                     </Grid>
@@ -565,7 +590,7 @@ const MemberPDF = () => {
 
                 {/* Loan Details */}
                 {viewType !== 'missing' && loanDetails && loanDetails.length > 0 && (
-                    <Box sx={{ mb: 3 }}>
+                    <Box sx={{ mb: 3 }} className="page-break-before">
                         <Typography variant="h5" gutterBottom sx={{
                             color: '#00897b',
                             fontWeight: 'bold',
@@ -577,7 +602,7 @@ const MemberPDF = () => {
                         </Typography>
                         <Grid container spacing={2}>
                             {loanDetails.map((loan, index) => (
-                                <Grid size={{ xs: 12, md: 6 }} key={index}>
+                                <Grid size={{ xs: 12, md: 6 }} key={index} className="no-break">
                                     <Card sx={{
                                         border: '2px solid #00897b',
                                         backgroundColor: '#e0f2f1',
@@ -602,7 +627,6 @@ const MemberPDF = () => {
                         </Grid>
                     </Box>
                 )}
-
                 {/* Footer */}
                 <Box sx={{
                     pt: 2,
@@ -652,7 +676,7 @@ const CompactStatCard = ({ title, value, color }) => (
 );
 
 // Compact Field Card Component
-const CompactFieldCard = ({ fieldName, value, status, isImageField }) => {
+const CompactFieldCard = ({ fieldName, value, status, isImageField, isWideField = false }) => {
     const getStatusColor = () => {
         switch (status) {
             case 'success': return '#2e7d32';
@@ -682,11 +706,12 @@ const CompactFieldCard = ({ fieldName, value, status, isImageField }) => {
 
     return (
         <Card sx={{
-            p: 1.5,
+            p: isWideField ? 2 : 1.5,
             border: `1px solid ${getStatusColor()}`,
             backgroundColor: `${getStatusColor()}08`,
             borderRadius: '4px',
-            mb: 1
+            mb: 1,
+            minHeight: isWideField ? '80px' : 'auto'
         }}>
             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                 <Typography variant="body2" sx={{
@@ -713,20 +738,26 @@ const CompactFieldCard = ({ fieldName, value, status, isImageField }) => {
                             px: 1,
                             py: 0.25,
                             borderRadius: '8px',
-                            ml: 1
+                            ml: 1,
+                            whiteSpace: 'nowrap'
                         }}>
                             {getStatusText()}
                         </Typography>
                     </Box>
-                    <Typography variant="body2" sx={{
-                        color: status === 'error' ? '#d32f2f' : 'text.primary',
-                        fontStyle: status === 'error' ? 'italic' : 'normal',
-                        lineHeight: 1.3,
-                        fontSize: '0.8rem'
-                    }}>
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            color: status === 'error' ? '#d32f2f' : 'text.primary',
+                            fontStyle: status === 'error' ? 'italic' : 'normal',
+                            lineHeight: 1.3,
+                            fontSize: isWideField ? '0.7rem' : '0.8rem',
+                            wordBreak: 'break-word',
+                            fontFamily: isWideField ? 'monospace' : 'inherit'
+                        }}
+                    >
                         {isImageField && value !== "MISSING" && value !== "Not Provided" ?
                             "✓ Image Available" :
-                            (value.length > 60 ? value.substring(0, 60) + '...' : value)
+                            value
                         }
                     </Typography>
                 </Box>

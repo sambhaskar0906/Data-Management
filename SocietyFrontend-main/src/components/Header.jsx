@@ -18,8 +18,8 @@ const Header = () => (
             Welcome to CA Co-Operative Thrift & Credit Socity
         </Typography>
         <Box display="flex" alignItems="center" gap={1}>
-            <Typography variant="body2">Hi, Raj Patel</Typography>
-            <Avatar sx={{ bgcolor: "#3f51b5" }}>RP</Avatar>
+            <Typography variant="body2">Hi,Shubham Bhaskar</Typography>
+            <Avatar sx={{ bgcolor: "#3f51b5" }}>SB</Avatar>
         </Box>
     </Box>
 );

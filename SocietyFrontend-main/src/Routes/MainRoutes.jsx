@@ -1,3 +1,4 @@
+// MainRoutes.jsx - Sirf do naye routes add karein
 import React from 'react'
 import DashboardLayout from '../layout/DashboardLayout'
 import { Routes, Route, Navigate } from "react-router-dom";
@@ -8,8 +9,11 @@ import FestivalGreetingPage from '../pages/Greeting'
 import MemberDetails from '../pages/MamberReport/MemberDetails';
 import MemberPDF from '../components/MemberPDF';
 import GuarantorPage from '../pages/Guarantor/Guarantor';
-import MemberDetailsPage from '../pages/MemberDetail';
+import MemberDetailsPage from '../pages/Member/MemberDetail.jsx';
 import GuarantorList from '../pages/GuarantorList/GuarantorList.jsx'
+import MemberViewPage from '../pages/Member/MemberView.jsx';
+import MemberEditPage from '../pages/Member/MemberEdit.jsx';
+import NoticePage from '../pages/Notice/Notice.jsx'
 
 const MainRoutes = () => {
   return (
@@ -25,6 +29,9 @@ const MainRoutes = () => {
         <Route path="/guarantor" element={<GuarantorPage />} />
         <Route path="/memberdetail" element={<MemberDetailsPage />} />
         <Route path="/guarantorList" element={<GuarantorList />} />
+        <Route path="/member/view/:id" element={<MemberViewPage />} />
+        <Route path="/member/edit/:id" element={<MemberEditPage />} />
+        <Route path="/notice" element={<NoticePage />} />
       </Route>
     </Routes>
   )

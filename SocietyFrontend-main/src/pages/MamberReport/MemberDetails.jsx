@@ -31,7 +31,7 @@ import ImageIcon from "@mui/icons-material/Image";
 import { fetchMemberById, clearSelectedMember, updateMember } from "../../features/member/memberSlice";
 
 const getValueByPath = (obj, path) => {
-    if (!path) return undefined;
+    if (!path || !obj) return undefined;
     const parts = path.split(".");
     let cur = obj;
     for (const p of parts) {
@@ -163,9 +163,20 @@ const FIELD_MAP = {
     "loanDetails": "Loan Details",
 };
 
-// Image Display in Card Component
+// Enhanced Image Display Component with Full Image View
 const ImageDisplay = ({ imageUrl, alt, height = 120 }) => {
     const [imgError, setImgError] = useState(false);
+    const [showFullImage, setShowFullImage] = useState(false);
+
+    const handleImageClick = () => {
+        if (imageUrl && !imgError) {
+            setShowFullImage(true);
+        }
+    };
+
+    const handleCloseFullImage = () => {
+        setShowFullImage(false);
+    };
 
     if (!imageUrl || imgError) {
         return (
@@ -188,21 +199,79 @@ const ImageDisplay = ({ imageUrl, alt, height = 120 }) => {
     }
 
     return (
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-            <img
-                src={imageUrl}
-                alt={alt}
-                style={{
-                    maxWidth: '100%',
-                    height: height,
-                    objectFit: 'contain',
-                    borderRadius: '8px',
-                    border: '1px solid #e0e0e0'
+        <>
+            <Box
+                sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    '&:hover': {
+                        opacity: 0.8,
+                        transition: 'opacity 0.2s'
+                    }
                 }}
-                onError={() => setImgError(true)}
-                onLoad={() => setImgError(false)}
-            />
-        </Box>
+                onClick={handleImageClick}
+                title="Click to view full image"
+            >
+                <img
+                    src={imageUrl}
+                    alt={alt}
+                    style={{
+                        maxWidth: '100%',
+                        height: height,
+                        objectFit: 'contain',
+                        borderRadius: '8px',
+                        border: '1px solid #e0e0e0'
+                    }}
+                    onError={() => setImgError(true)}
+                    onLoad={() => setImgError(false)}
+                />
+            </Box>
+
+            {/* Full Image Modal */}
+            <Dialog
+                open={showFullImage}
+                onClose={handleCloseFullImage}
+                maxWidth="lg"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="h6">{alt}</Typography>
+                        <Button
+                            onClick={handleCloseFullImage}
+                            color="primary"
+                        >
+                            Close
+                        </Button>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
+                        <img
+                            src={imageUrl}
+                            alt={alt}
+                            style={{
+                                maxWidth: '100%',
+                                maxHeight: '80vh',
+                                objectFit: 'contain',
+                                borderRadius: '8px'
+                            }}
+                        />
+                    </Box>
+                    <Box sx={{ mt: 2, textAlign: 'center' }}>
+                        <Button
+                            variant="outlined"
+                            href={imageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            Open Image in New Tab
+                        </Button>
+                    </Box>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 };
 
@@ -466,14 +535,11 @@ const MemberDetails = () => {
         navigate(`/edit-member/${id}`);
     };
 
-    const handleDownloadPDF = () => {
-        // Ye function separate PDF component ko call karega
-        navigate(`/member-pdf/${id}?viewType=${viewType}`);
-    };
-
+    // Enhanced formatValue function to handle objects properly
     const formatValue = (value, fieldKey) => {
         if (isMissing(value)) return <span style={{ color: "red", fontWeight: "bold" }}>Missing</span>;
 
+        // Handle image fields
         if (imageFields.includes(fieldKey)) {
             const hasImage = value && (value.includes('cloudinary') || value.includes('http'));
             if (hasImage) {
@@ -497,18 +563,101 @@ const MemberDetails = () => {
             );
         }
 
-        if (Array.isArray(value)) {
-            return value.length > 0 ? value.join(", ") : "Empty Array";
+        // Handle Our Society Guarantees
+        if (fieldKey === 'guaranteeDetails.ourSociety' || fieldKey === 'guaranteeDetails.otherSociety') {
+            if (!value || value.length === 0) return "No guarantees";
+
+            return (
+                <Box sx={{ mt: 1 }}>
+                    {value.map((guarantee, index) => (
+                        <Card key={index} variant="outlined" sx={{ mb: 1, p: 1.5, backgroundColor: '#f8f9fa' }}>
+                            <Typography variant="body2" gutterBottom>
+                                <strong>Member:</strong> {guarantee.nameOfMember || 'N/A'}
+                            </Typography>
+                            <Typography variant="body2" gutterBottom>
+                                <strong>Membership No:</strong> {guarantee.membershipNo || 'N/A'}
+                            </Typography>
+                            <Typography variant="body2" gutterBottom>
+                                <strong>Loan Amount:</strong> ₹{guarantee.amountOfLoan || 'N/A'}
+                            </Typography>
+                            <Typography variant="body2" gutterBottom>
+                                <strong>Loan Type:</strong> {guarantee.typeOfLoan || 'N/A'}
+                            </Typography>
+                            <Typography variant="body2">
+                                <strong>Irregular:</strong> {guarantee.ifIrregular === 'Yes' ? 'Yes ⚠️' : 'No ✅'}
+                            </Typography>
+                        </Card>
+                    ))}
+                </Box>
+            );
         }
+
+        // Handle Loan Details
+        if (fieldKey === 'loanDetails') {
+            if (!value || value.length === 0) return "No loans";
+
+            return (
+                <Box sx={{ mt: 1 }}>
+                    {value.map((loan, index) => (
+                        <Card key={index} variant="outlined" sx={{ mb: 1, p: 1.5, backgroundColor: '#f0f8ff' }}>
+                            <Typography variant="body2" gutterBottom>
+                                <strong>Loan Type:</strong> {loan.loanType || 'N/A'}
+                            </Typography>
+                            <Typography variant="body2" gutterBottom>
+                                <strong>Amount:</strong> ₹{loan.amount || 'N/A'}
+                            </Typography>
+                            <Typography variant="body2" gutterBottom>
+                                <strong>Purpose:</strong> {loan.purpose || 'N/A'}
+                            </Typography>
+                            <Typography variant="body2">
+                                <strong>Date:</strong> {loan.dateOfLoan ? new Date(loan.dateOfLoan).toLocaleDateString() : 'N/A'}
+                            </Typography>
+                        </Card>
+                    ))}
+                </Box>
+            );
+        }
+
+        // Handle address objects
+        if (fieldKey === 'addressDetails.permanentAddress' || fieldKey === 'addressDetails.currentResidentalAddress') {
+            if (!value || typeof value !== 'object') return "No address data";
+
+            return (
+                <Box sx={{ mt: 1 }}>
+                    <Typography variant="body2"><strong>House No:</strong> {value.flatHouseNo || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Area:</strong> {value.areaStreetSector || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Locality:</strong> {value.locality || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Landmark:</strong> {value.landmark || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>City:</strong> {value.city || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>State:</strong> {value.state || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Pincode:</strong> {value.pincode || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Country:</strong> {value.country || 'N/A'}</Typography>
+                </Box>
+            );
+        }
+
+        // Handle arrays
+        if (Array.isArray(value)) {
+            return value.length > 0 ? value.join(", ") : "No data";
+        }
+
+        // Handle objects
         if (typeof value === "object" && value !== null) {
             const entries = Object.entries(value);
-            if (entries.length === 0) return "Empty Object";
-            return entries.map(([k, v]) => (
-                <div key={k}><strong>{k}:</strong> {v || "Empty"}</div>
-            ));
+            if (entries.length === 0) return "No data";
+            return (
+                <Box sx={{ mt: 1 }}>
+                    {entries.map(([k, v]) => (
+                        <Typography key={k} variant="body2">
+                            <strong>{k}:</strong> {v || "N/A"}
+                        </Typography>
+                    ))}
+                </Box>
+            );
         }
+
         if (typeof value === "boolean") return value ? "Yes" : "No";
-        return value || "Empty";
+        return value || "No data";
     };
 
     if (loading) {
@@ -666,16 +815,31 @@ const MemberDetails = () => {
                     const missing = isMissing(value);
                     const isImageField = imageFields.includes(fieldKey);
                     const hasImage = isImageField && value && (value.includes('cloudinary') || value.includes('http'));
+
+                    // Check if it's a special field that needs more space
+                    const isSpecialField = fieldKey === 'guaranteeDetails.ourSociety' ||
+                        fieldKey === 'guaranteeDetails.otherSociety' ||
+                        fieldKey === 'loanDetails' ||
+                        fieldKey === 'addressDetails.permanentAddress' ||
+                        fieldKey === 'addressDetails.currentResidentalAddress';
+
                     const displayValue = formatValue(value, fieldKey);
 
                     return (
-                        <Grid size={{ xs: 12, md: 4 }} key={fieldKey}>
+                        <Grid
+                            size={{
+                                xs: 12,
+                                md: isSpecialField ? 12 : 4,
+                                lg: isSpecialField ? 6 : 4
+                            }}
+                            key={fieldKey}
+                        >
                             <Card
                                 variant="outlined"
                                 sx={{
                                     borderColor: missing ? 'error.main' : hasImage ? 'success.main' : 'primary.main',
-                                    backgroundColor: missing ? '#fff5f5' : hasImage ? '#f0fff0' : '#f5fff5',
-                                    height: '100%',
+                                    backgroundColor: missing ? '#fff5f5' : hasImage ? '#f0fff0' : isSpecialField ? '#f8f9fa' : '#f5fff5',
+                                    height: isSpecialField ? 'auto' : '100%',
                                     '&:hover': {
                                         boxShadow: 3,
                                         transform: 'translateY(-2px)',
@@ -710,7 +874,7 @@ const MemberDetails = () => {
                                     </Typography>
                                     {isImageField && hasImage && (
                                         <Typography variant="caption" color="success.main" display="block" sx={{ mt: 1 }}>
-                                            ✅ Image Uploaded
+                                            ✅ Image Uploaded (Click to view full size)
                                         </Typography>
                                     )}
                                 </CardContent>
@@ -726,38 +890,6 @@ const MemberDetails = () => {
                                 {viewType === 'missing' ? "No missing fields found!" : "No filled fields found!"}
                             </Typography>
                         </Box>
-                    </Grid>
-                )}
-
-                {selectedMember.loanDetails && selectedMember.loanDetails.length > 0 && viewType !== 'missing' && (
-                    <Grid size={{ xs: 12 }}>
-                        <Card variant="outlined">
-                            <CardContent>
-                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                                    <Typography variant="subtitle2" color="primary" gutterBottom>
-                                        Loan Details
-                                    </Typography>
-                                    <Button
-                                        size="small"
-                                        startIcon={<EditIcon />}
-                                        onClick={() => handleNavigateToEditForm()}
-                                    >
-                                        Edit Loans
-                                    </Button>
-                                </Box>
-                                {selectedMember.loanDetails.map((loan, index) => (
-                                    <Box key={index} sx={{ mb: 2, p: 1, border: "1px solid #eee", borderRadius: 1 }}>
-                                        <Typography variant="body2">
-                                            <strong>Loan {index + 1}:</strong><br />
-                                            <strong>Type:</strong> {loan.loanType || 'N/A'}<br />
-                                            <strong>Amount:</strong> {loan.amount || 'N/A'}<br />
-                                            <strong>Purpose:</strong> {loan.purpose || 'N/A'}<br />
-                                            <strong>Date:</strong> {loan.dateOfLoan || 'N/A'}
-                                        </Typography>
-                                    </Box>
-                                ))}
-                            </CardContent>
-                        </Card>
                     </Grid>
                 )}
             </Grid>

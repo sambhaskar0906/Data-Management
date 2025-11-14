@@ -11,6 +11,7 @@ import {
   AccountBalance as BankIcon,
   Add as AddIcon,
   Delete as DeleteIcon,
+  Score as ScoreIcon,
 } from "@mui/icons-material";
 import StyledTextField from "../../ui/StyledTextField";
 import SectionHeader from "../../layout/SectionHeader";
@@ -27,24 +28,27 @@ const BankGuaranteeForm = ({ formData, handleChange }) => {
       [field]: value
     };
     handleChange('bankDetails', null, updatedBankDetails);
-
   };
 
   // Add new bank detail
   const addBankDetail = () => {
     const updatedBankDetails = [
       ...bankDetails,
-      { bankName: "", branch: "", accountNumber: "", ifscCode: "" }
+      {
+        bankName: "",
+        branch: "",
+        accountNumber: "",
+        ifscCode: "",
+        civilScore: ""
+      }
     ];
     handleChange('bankDetails', null, updatedBankDetails);
-
   };
 
   // Remove bank detail
   const removeBankDetail = (index) => {
     const updatedBankDetails = bankDetails.filter((_, i) => i !== index);
     handleChange('bankDetails', null, updatedBankDetails);
-
   };
 
   // Prevent form submission on button click
@@ -67,7 +71,7 @@ const BankGuaranteeForm = ({ formData, handleChange }) => {
           <SectionHeader
             icon={<BankIcon />}
             title="Bank Account Details"
-            subtitle="Add one or more bank accounts"
+            subtitle="Add one or more bank accounts with civil score"
           />
 
           {bankDetails.map((bank, index) => (
@@ -81,12 +85,31 @@ const BankGuaranteeForm = ({ formData, handleChange }) => {
                 backgroundColor: "#fafafa",
               }}
             >
-              <Typography
-                variant="subtitle1"
-                sx={{ mb: 2, fontWeight: "bold" }}
-              >
-                Bank Account {index + 1}
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                  Bank Account {index + 1}
+                </Typography>
+
+                {/* Civil Score Badge */}
+                {bank?.civilScore && (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      backgroundColor: '#e3f2fd',
+                      px: 2,
+                      py: 0.5,
+                      borderRadius: 2,
+                      border: '1px solid #90caf9'
+                    }}
+                  >
+                    <ScoreIcon sx={{ fontSize: 18, mr: 1, color: '#1976d2' }} />
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                      Civil Score: {bank.civilScore}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
 
               <Grid container spacing={3}>
                 <Grid item xs={12} sm={6}>
@@ -94,6 +117,7 @@ const BankGuaranteeForm = ({ formData, handleChange }) => {
                     label="Bank Name"
                     value={bank?.bankName || ""}
                     onChange={(e) => handleBankDetailChange(index, 'bankName', e.target.value)}
+                    fullWidth
                   />
                 </Grid>
 
@@ -102,6 +126,7 @@ const BankGuaranteeForm = ({ formData, handleChange }) => {
                     label="Branch"
                     value={bank?.branch || ""}
                     onChange={(e) => handleBankDetailChange(index, 'branch', e.target.value)}
+                    fullWidth
                   />
                 </Grid>
 
@@ -110,6 +135,7 @@ const BankGuaranteeForm = ({ formData, handleChange }) => {
                     label="Account Number"
                     value={bank?.accountNumber || ""}
                     onChange={(e) => handleBankDetailChange(index, 'accountNumber', e.target.value)}
+                    fullWidth
                   />
                 </Grid>
 
@@ -118,7 +144,51 @@ const BankGuaranteeForm = ({ formData, handleChange }) => {
                     label="IFSC Code"
                     value={bank?.ifscCode || ""}
                     onChange={(e) => handleBankDetailChange(index, 'ifscCode', e.target.value)}
+                    fullWidth
                   />
+                </Grid>
+
+                {/* Civil Score Field */}
+                <Grid item xs={12} sm={6}>
+                  <StyledTextField
+                    label="Civil Score (300-900)"
+                    value={bank?.civilScore || ""}
+                    onChange={(e) => handleBankDetailChange(index, 'civilScore', e.target.value)}
+                    type="number"
+                    inputProps={{
+                      min: 300,
+                      max: 900,
+                      step: 1
+                    }}
+                    helperText="Score between 300-900"
+                    fullWidth
+                  />
+                </Grid>
+
+                {/* Civil Score Status Indicator */}
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    height: '100%',
+                    mt: 2
+                  }}>
+                    {bank?.civilScore && (
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 'bold',
+                          color: bank.civilScore >= 750 ? '#2e7d32' :
+                            bank.civilScore >= 600 ? '#ed6c02' :
+                              '#d32f2f'
+                        }}
+                      >
+                        {bank.civilScore >= 750 ? 'Excellent Credit Score' :
+                          bank.civilScore >= 600 ? 'Good Credit Score' :
+                            'Poor Credit Score'}
+                      </Typography>
+                    )}
+                  </Box>
                 </Grid>
 
                 {bankDetails.length > 1 && (
@@ -145,6 +215,7 @@ const BankGuaranteeForm = ({ formData, handleChange }) => {
             startIcon={<AddIcon />}
             onClick={handleButtonClick}
             type="button" // Important: prevent form submission
+            sx={{ mt: 2 }}
           >
             Add Another Bank
           </Button>

@@ -17,28 +17,22 @@ import {
     Select,
     FormControl,
     InputLabel,
-    Chip,
     Stack,
     Dialog,
     DialogTitle,
     DialogContent,
     DialogActions,
     IconButton,
-    Grid,
-    Card,
-    CardContent,
-    Tabs,
-    Tab,
     CircularProgress,
-    Alert
+    Alert,
+    Chip,
+    Tabs,
+    Tab
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import CloseIcon from "@mui/icons-material/Close";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DeleteIcon from "@mui/icons-material/Delete";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Formik, Form } from "formik";
@@ -63,9 +57,7 @@ const isMissing = (value) => {
     if (typeof value === "string") return value.trim() === "";
     if (Array.isArray(value)) return value.length === 0;
     if (typeof value === "object") {
-        // Check if it's an empty object
         if (Object.keys(value).length === 0) return true;
-        // Check if all values in the object are empty
         return Object.values(value).every(val =>
             val === undefined || val === null || val === "" ||
             (typeof val === 'object' && Object.keys(val).length === 0)
@@ -74,14 +66,25 @@ const isMissing = (value) => {
     return false;
 };
 
-const FIELD_MAP = {
-    // Personal
+// Civil Score specific check
+const getCivilScoreStatus = (civilScore) => {
+    if (civilScore === undefined || civilScore === null || civilScore === "") return "missing";
+    const score = Number(civilScore);
+    if (isNaN(score)) return "invalid";
+    if (score >= 750) return "excellent";
+    if (score >= 600) return "good";
+    return "poor";
+};
+
+// All fields with their display names
+const ALL_FIELDS = {
+    // Personal Details
     "personalDetails.nameOfMember": "Member Name",
     "personalDetails.membershipNumber": "Membership No",
     "personalDetails.nameOfFather": "Father's Name",
     "personalDetails.nameOfMother": "Mother's Name",
     "personalDetails.dateOfBirth": "Date of Birth",
-    "personalDetails.ageInYears": "Age (Years)",
+    "personalDetails.ageInYears": "Age",
     "personalDetails.membershipDate": "Membership Date",
     "personalDetails.amountInCredit": "Amount In Credit",
     "personalDetails.gender": "Gender",
@@ -92,136 +95,123 @@ const FIELD_MAP = {
     "personalDetails.alternatePhoneNo": "Alternate Phone",
     "personalDetails.emailId": "Email",
 
-    // Address - permanent
-    "addressDetails.permanentAddress.flatHouseNo": "Permanent - Flat/House No",
-    "addressDetails.permanentAddress.areaStreetSector": "Permanent - Area/Street/Sector",
+    // Address Details
+    "addressDetails.permanentAddress.flatHouseNo": "Permanent - House No",
+    "addressDetails.permanentAddress.areaStreetSector": "Permanent - Area",
     "addressDetails.permanentAddress.locality": "Permanent - Locality",
     "addressDetails.permanentAddress.landmark": "Permanent - Landmark",
     "addressDetails.permanentAddress.city": "Permanent - City",
     "addressDetails.permanentAddress.country": "Permanent - Country",
     "addressDetails.permanentAddress.state": "Permanent - State",
     "addressDetails.permanentAddress.pincode": "Permanent - Pincode",
-    "addressDetails.permanentAddressBillPhoto": "Permanent - Bill Photo",
-
-    // Address - current
-    "addressDetails.currentResidentalAddress.flatHouseNo": "Current - Flat/House No",
-    "addressDetails.currentResidentalAddress.areaStreetSector": "Current - Area/Street/Sector",
+    "addressDetails.currentResidentalAddress.flatHouseNo": "Current - House No",
+    "addressDetails.currentResidentalAddress.areaStreetSector": "Current - Area",
     "addressDetails.currentResidentalAddress.locality": "Current - Locality",
     "addressDetails.currentResidentalAddress.landmark": "Current - Landmark",
     "addressDetails.currentResidentalAddress.city": "Current - City",
     "addressDetails.currentResidentalAddress.country": "Current - Country",
     "addressDetails.currentResidentalAddress.state": "Current - State",
     "addressDetails.currentResidentalAddress.pincode": "Current - Pincode",
-    "addressDetails.currentResidentalBillPhoto": "Current - Bill Photo",
-    "addressDetails.previousCurrentAddress": "Previous Addresses",
-
-    // References & guarantors
-    "referenceDetails.referenceName": "Reference Name",
-    "referenceDetails.referenceMno": "Reference Mobile",
-    "referenceDetails.guarantorName": "Guarantor Name",
-    "referenceDetails.gurantorMno": "Guarantor Mobile(s)",
 
     // Documents
-    "documents.passportSize": "Passport Size Photo",
-    "documents.panNo": "PAN No",
-    "documents.rationCard": "Ration Card",
-    "documents.drivingLicense": "Driving License",
-    "documents.aadhaarNo": "Aadhaar No",
+    "documents.aadhaarNo": "Aadhaar Card",
+    "documents.panNo": "PAN Card",
     "documents.voterId": "Voter ID",
-    "documents.passportNo": "Passport No",
-    "documents.panNoPhoto": "PAN Photo",
-    "documents.rationCardPhoto": "Ration Card Photo",
-    "documents.drivingLicensePhoto": "DL Photo",
+    "documents.drivingLicense": "Driving License",
+    "documents.passportNo": "Passport",
+    "documents.rationCard": "Ration Card",
+    "documents.passportSize": "Passport Photo",
     "documents.aadhaarNoPhoto": "Aadhaar Photo",
+    "documents.panNoPhoto": "PAN Photo",
     "documents.voterIdPhoto": "Voter ID Photo",
+    "documents.drivingLicensePhoto": "DL Photo",
     "documents.passportNoPhoto": "Passport Photo",
+    "documents.rationCardPhoto": "Ration Card Photo",
+
+    // Professional Details
     "professionalDetails.qualification": "Qualification",
     "professionalDetails.occupation": "Occupation",
 
-    // Family
-    "familyDetails.familyMembersMemberOfSociety": "Family Members in Society",
-    "familyDetails.familyMember": "Family Member Names",
-    "familyDetails.familyMemberNo": "Family Member Phones",
+    // Family Details
+    "familyDetails.familyMembersMemberOfSociety": "Family in Society",
+    "familyDetails.familyMember": "Family Members",
+    "familyDetails.familyMemberNo": "Family Phones",
 
-    // Bank
+    // Bank Details
     "bankDetails.bankName": "Bank Name",
     "bankDetails.branch": "Bank Branch",
     "bankDetails.accountNumber": "Account Number",
     "bankDetails.ifscCode": "IFSC Code",
+    "bankDetails.civilScore": "Civil Score", // ✅ Added Civil Score
 
-    // Guarantee
-    "guaranteeDetails.whetherMemberHasGivenGuaranteeInOtherSociety": "Guarantee Given in Other Society",
-    "guaranteeDetails.otherSociety": "Other Society Guarantees",
-    "guaranteeDetails.whetherMemberHasGivenGuaranteeInOurSociety": "Guarantee Given in Our Society",
-    "guaranteeDetails.ourSociety": "Our Society Guarantees",
+    // Reference Details
+    "referenceDetails.referenceName": "Reference Name",
+    "referenceDetails.referenceMno": "Reference Mobile",
+    "referenceDetails.guarantorName": "Guarantor Name",
 
-    // Loans
+    // Guarantee Details
+    "guaranteeDetails.whetherMemberHasGivenGuaranteeInOtherSociety": "Guarantee Other Society",
+    "guaranteeDetails.whetherMemberHasGivenGuaranteeInOurSociety": "Guarantee Our Society",
+
+    // Loan Details
     "loanDetails": "Loan Details",
 };
 
-// Define the 4 main fields to show in table
-const MAIN_TABLE_FIELDS = [
-    "personalDetails.nameOfMember",
-    "personalDetails.membershipNumber",
-    "personalDetails.phoneNo",
-    "personalDetails.emailId"
-];
-
-// Field groups for dropdown
+// Field groups for organization
 const FIELD_GROUPS = {
-    "mainFields": {
-        label: "Main Fields (4 Fields)",
-        fields: MAIN_TABLE_FIELDS
-    },
-    "allFields": {
-        label: "All Fields",
-        fields: Object.keys(FIELD_MAP)
-    },
-    "personalDetails": {
+    "personal": {
         label: "Personal Details",
-        fields: Object.keys(FIELD_MAP).filter(f => f.startsWith("personalDetails"))
+        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("personalDetails"))
     },
-    "addressDetails": {
+    "address": {
         label: "Address Details",
-        fields: Object.keys(FIELD_MAP).filter(f => f.startsWith("addressDetails"))
-    },
-    "referenceDetails": {
-        label: "Reference & Guarantor",
-        fields: Object.keys(FIELD_MAP).filter(f => f.startsWith("referenceDetails"))
+        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("addressDetails"))
     },
     "documents": {
         label: "Documents",
-        fields: Object.keys(FIELD_MAP).filter(f => f.startsWith("documents"))
+        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("documents"))
     },
-    "professionalDetails": {
-        label: "Professional Details",
-        fields: Object.keys(FIELD_MAP).filter(f => f.startsWith("professionalDetails"))
+    "professional": {
+        label: "Professional",
+        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("professionalDetails"))
     },
-    "familyDetails": {
-        label: "Family Details",
-        fields: Object.keys(FIELD_MAP).filter(f => f.startsWith("familyDetails"))
+    "family": {
+        label: "Family",
+        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("familyDetails"))
     },
-    "bankDetails": {
-        label: "Bank Details",
-        fields: Object.keys(FIELD_MAP).filter(f => f.startsWith("bankDetails"))
+    "bank": {
+        label: "Bank",
+        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("bankDetails"))
     },
-    "guaranteeDetails": {
-        label: "Guarantee Details",
-        fields: Object.keys(FIELD_MAP).filter(f => f.startsWith("guaranteeDetails"))
+    "reference": {
+        label: "Reference",
+        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("referenceDetails"))
     },
-    "loanDetails": {
-        label: "Loan Details",
+    "guarantee": {
+        label: "Guarantee",
+        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("guaranteeDetails"))
+    },
+    "loan": {
+        label: "Loan",
         fields: ["loanDetails"]
     }
+};
+
+// Civil Score specific filters
+const CIVIL_SCORE_FILTERS = {
+    "all": "All Civil Scores",
+    "missing": "Missing Civil Score",
+    "excellent": "Excellent (750-900)",
+    "good": "Good (600-749)",
+    "poor": "Poor (300-599)",
+    "invalid": "Invalid Score"
 };
 
 // Delete Confirmation Dialog
 const DeleteConfirmationDialog = ({ open, onClose, onConfirm, memberName }) => {
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle>
-                Confirm Delete
-            </DialogTitle>
+            <DialogTitle>Confirm Delete</DialogTitle>
             <DialogContent>
                 <Typography>
                     Are you sure you want to delete member <strong>"{memberName}"</strong>?
@@ -230,17 +220,28 @@ const DeleteConfirmationDialog = ({ open, onClose, onConfirm, memberName }) => {
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Cancel</Button>
-                <Button
-                    onClick={onConfirm}
-                    variant="contained"
-                    color="error"
-                >
+                <Button onClick={onConfirm} variant="contained" color="error">
                     Delete
                 </Button>
             </DialogActions>
         </Dialog>
     );
 };
+
+// Tab Panel Component
+function TabPanel({ children, value, index, ...other }) {
+    return (
+        <div
+            role="tabpanel"
+            hidden={value !== index}
+            id={`field-tabpanel-${index}`}
+            aria-labelledby={`field-tab-${index}`}
+            {...other}
+        >
+            {value === index && <Box sx={{ py: 2 }}>{children}</Box>}
+        </div>
+    );
+}
 
 // Main Component
 const MissingMembersTable = () => {
@@ -250,64 +251,51 @@ const MissingMembersTable = () => {
     // Get data from Redux store
     const { members, loading, error, operationLoading } = useSelector((state) => state.members);
 
-    const [selectedMember, setSelectedMember] = useState(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [memberToDelete, setMemberToDelete] = useState(null);
+    const [tabValue, setTabValue] = useState(0);
 
     // Fetch members on component mount
     useEffect(() => {
         dispatch(fetchAllMembers());
     }, [dispatch]);
 
-    const fieldKeys = Object.keys(FIELD_MAP);
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
+    };
 
-    const generatePDF = (filteredMembers, visibleFields, viewType) => {
+    const generatePDF = (filteredMembers, selectedField, viewType) => {
         const doc = new jsPDF();
-        doc.setFontSize(14);
-        doc.text("Members Report", 14, 16);
-        doc.setFontSize(9);
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
-        doc.text(`View: ${viewType} — Total: ${filteredMembers.length}`, 14, 28);
+        doc.setFontSize(16);
+        doc.text("Field Status Report", 14, 16);
+        doc.setFontSize(10);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 24);
+        doc.text(`Field: ${ALL_FIELDS[selectedField]} | View: ${viewType} | Total: ${filteredMembers.length}`, 14, 32);
 
-        const head = [["S. No", ...visibleFields.map((f) => FIELD_MAP[f]), "Status"]];
+        const head = [["S. No", "Member Name", "Membership No", "Phone No", "Status"]];
 
         const body = filteredMembers.map((m, idx) => {
-            const row = [idx + 1];
-            visibleFields.forEach((f) => {
-                const val = getValueByPath(m, f);
-                const missing = isMissing(val);
+            const fieldValue = getValueByPath(m, selectedField);
+            const isFieldMissing = isMissing(fieldValue);
 
-                let display = "";
-                if (Array.isArray(val)) {
-                    display = val.length > 0 ? val.slice(0, 3).join(", ") : "Missing";
-                } else if (typeof val === "object" && val !== null) {
-                    const entries = Object.entries(val);
-                    display = entries.length > 0
-                        ? entries.slice(0, 3).map(([k, v]) => `${k}:${v}`).join(", ")
-                        : "Missing";
-                } else {
-                    display = !missing ? (val || "Filled") : "Missing";
-                }
-                row.push(display);
-            });
-
-            // Add overall status
-            const totalFields = Object.keys(FIELD_MAP).length;
-            const filledFields = Object.keys(FIELD_MAP).filter(f => !isMissing(getValueByPath(m, f))).length;
-            row.push(`${filledFields}/${totalFields}`);
-
-            return row;
+            return [
+                idx + 1,
+                getValueByPath(m, "personalDetails.nameOfMember") || "—",
+                getValueByPath(m, "personalDetails.membershipNumber") || "—",
+                getValueByPath(m, "personalDetails.phoneNo") || "—",
+                isFieldMissing ? "MISSING" : "AVAILABLE"
+            ];
         });
 
         autoTable(doc, {
-            startY: 34,
+            startY: 40,
             head,
             body,
-            styles: { fontSize: 7, cellPadding: 2 },
-            headStyles: { fillColor: [25, 118, 210], textColor: 255, fontSize: 8 },
+            styles: { fontSize: 9, cellPadding: 3 },
+            headStyles: { fillColor: [25, 118, 210], textColor: 255, fontSize: 10 },
         });
 
-        doc.save(`Members_Report_${viewType}_${Date.now()}.pdf`);
+        doc.save(`${viewType}_${ALL_FIELDS[selectedField]}_Report_${Date.now()}.pdf`);
     };
 
     const handleViewDetails = (member) => {
@@ -326,7 +314,6 @@ const MissingMembersTable = () => {
                 .then(() => {
                     setDeleteDialogOpen(false);
                     setMemberToDelete(null);
-                    // Refresh the list
                     dispatch(fetchAllMembers());
                 });
         }
@@ -366,7 +353,7 @@ const MissingMembersTable = () => {
         return (
             <Box sx={{ p: 3 }}>
                 <Alert severity="info">
-                    No members found. The data might be empty or there might be an issue with the API response.
+                    No members found.
                 </Alert>
                 <Button variant="contained" onClick={() => dispatch(fetchAllMembers())} sx={{ mt: 2 }}>
                     Refresh Data
@@ -378,11 +365,11 @@ const MissingMembersTable = () => {
     return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h5" sx={{ mb: 2, color: "primary.main", fontWeight: "bold" }}>
-                Members Missing / Filled Fields Overview
+                Field Status Overview
             </Typography>
 
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Total Members: {members.length} | Click on any row to view complete details
+                Total Members: {members.length} | Select a field and view type to check status
             </Typography>
 
             <DeleteConfirmationDialog
@@ -392,40 +379,102 @@ const MissingMembersTable = () => {
                 memberName={memberToDelete ? getValueByPath(memberToDelete, "personalDetails.nameOfMember") : ""}
             />
 
-            <Formik initialValues={{ search: "", viewType: "all", fieldGroup: "mainFields" }} onSubmit={() => { }}>
+            <Formik initialValues={{
+                search: "",
+                selectedField: "documents.aadhaarNo",
+                viewType: "all", // all, missing, available
+                civilScoreFilter: "all" // Civil score specific filter
+            }} onSubmit={() => { }}>
                 {({ values, setFieldValue }) => {
                     const filteredMembers = useMemo(() => {
                         if (!members) return [];
 
                         let result = [...members];
 
-                        // Filter by view type
-                        if (values.viewType === "missing") {
-                            result = result.filter((m) =>
-                                fieldKeys.some((f) => isMissing(getValueByPath(m, f)))
-                            );
-                        } else if (values.viewType === "filled") {
-                            result = result.filter((m) =>
-                                fieldKeys.every((f) => !isMissing(getValueByPath(m, f)))
-                            );
-                        }
-
                         // Filter by search
-                        const q = values.search.trim().toLowerCase();
-                        if (q) {
-                            result = result.filter((m) => {
+                        const searchTerm = values.search.trim().toLowerCase();
+                        if (searchTerm) {
+                            result = result.filter(m => {
                                 const name = (getValueByPath(m, "personalDetails.nameOfMember") || "").toLowerCase();
                                 const memNo = (getValueByPath(m, "personalDetails.membershipNumber") || "").toLowerCase();
-                                return name.includes(q) || memNo.includes(q);
+                                const phone = (getValueByPath(m, "personalDetails.phoneNo") || "").toLowerCase();
+                                return name.includes(searchTerm) || memNo.includes(searchTerm) || phone.includes(searchTerm);
+                            });
+                        }
+
+                        // Filter by field status
+                        if (values.viewType !== "all") {
+                            result = result.filter(m => {
+                                const fieldValue = getValueByPath(m, values.selectedField);
+                                const isFieldMissing = isMissing(fieldValue);
+                                return values.viewType === "missing" ? isFieldMissing : !isFieldMissing;
+                            });
+                        }
+
+                        // Filter by civil score (if civil score field is selected)
+                        if (values.selectedField === "bankDetails.civilScore" && values.civilScoreFilter !== "all") {
+                            result = result.filter(m => {
+                                const civilScore = getValueByPath(m, "bankDetails.civilScore");
+                                const civilScoreStatus = getCivilScoreStatus(civilScore);
+                                return civilScoreStatus === values.civilScoreFilter;
                             });
                         }
 
                         return result;
-                    }, [values.search, values.viewType, members, fieldKeys]);
+                    }, [values.search, values.selectedField, values.viewType, values.civilScoreFilter, members]);
 
-                    const visibleFields = useMemo(() => {
-                        return FIELD_GROUPS[values.fieldGroup]?.fields || MAIN_TABLE_FIELDS;
-                    }, [values.fieldGroup]);
+                    const allMembersCount = useMemo(() => {
+                        return members.filter(m => {
+                            const searchTerm = values.search.trim().toLowerCase();
+                            if (searchTerm) {
+                                const name = (getValueByPath(m, "personalDetails.nameOfMember") || "").toLowerCase();
+                                const memNo = (getValueByPath(m, "personalDetails.membershipNumber") || "").toLowerCase();
+                                const phone = (getValueByPath(m, "personalDetails.phoneNo") || "").toLowerCase();
+                                return name.includes(searchTerm) || memNo.includes(searchTerm) || phone.includes(searchTerm);
+                            }
+                            return true;
+                        }).length;
+                    }, [values.search, members]);
+
+                    const missingCount = useMemo(() => {
+                        return members.filter(m => {
+                            const fieldValue = getValueByPath(m, values.selectedField);
+                            const isFieldMissing = isMissing(fieldValue);
+
+                            const searchTerm = values.search.trim().toLowerCase();
+                            if (searchTerm) {
+                                const name = (getValueByPath(m, "personalDetails.nameOfMember") || "").toLowerCase();
+                                const memNo = (getValueByPath(m, "personalDetails.membershipNumber") || "").toLowerCase();
+                                const phone = (getValueByPath(m, "personalDetails.phoneNo") || "").toLowerCase();
+                                if (!name.includes(searchTerm) && !memNo.includes(searchTerm) && !phone.includes(searchTerm)) {
+                                    return false;
+                                }
+                            }
+
+                            return isFieldMissing;
+                        }).length;
+                    }, [values.selectedField, values.search, members]);
+
+                    const availableCount = allMembersCount - missingCount;
+
+                    // Civil Score Statistics
+                    const civilScoreStats = useMemo(() => {
+                        const stats = {
+                            missing: 0,
+                            excellent: 0,
+                            good: 0,
+                            poor: 0,
+                            invalid: 0
+                        };
+
+                        members.forEach(m => {
+                            const civilScore = getValueByPath(m, "bankDetails.civilScore");
+                            const status = getCivilScoreStatus(civilScore);
+                            stats[status]++;
+                        });
+
+                        return stats;
+                    }, [members]);
 
                     return (
                         <Form>
@@ -433,7 +482,7 @@ const MissingMembersTable = () => {
                                 <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
                                     <TextField
                                         size="small"
-                                        placeholder="Search by name or membership no"
+                                        placeholder="Search by name, membership no, or phone"
                                         value={values.search}
                                         onChange={(e) => setFieldValue("search", e.target.value)}
                                         InputProps={{
@@ -446,7 +495,7 @@ const MissingMembersTable = () => {
                                         sx={{ width: 300 }}
                                     />
 
-                                    <FormControl size="small" sx={{ minWidth: 160 }}>
+                                    <FormControl size="small" sx={{ minWidth: 180 }}>
                                         <InputLabel>View Type</InputLabel>
                                         <Select
                                             value={values.viewType}
@@ -454,30 +503,33 @@ const MissingMembersTable = () => {
                                             onChange={(e) => setFieldValue("viewType", e.target.value)}
                                         >
                                             <MenuItem value="all">All Members</MenuItem>
-                                            <MenuItem value="missing">With Missing Fields</MenuItem>
-                                            <MenuItem value="filled">All Fields Filled</MenuItem>
+                                            <MenuItem value="missing">Missing Only</MenuItem>
+                                            <MenuItem value="available">Available Only</MenuItem>
                                         </Select>
                                     </FormControl>
 
-                                    <FormControl size="small" sx={{ minWidth: 200 }}>
-                                        <InputLabel>Show Fields</InputLabel>
-                                        <Select
-                                            value={values.fieldGroup}
-                                            label="Show Fields"
-                                            onChange={(e) => setFieldValue("fieldGroup", e.target.value)}
-                                        >
-                                            {Object.keys(FIELD_GROUPS).map((groupKey) => (
-                                                <MenuItem key={groupKey} value={groupKey}>
-                                                    {FIELD_GROUPS[groupKey].label}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
+                                    {/* Civil Score Filter - Only show when civil score field is selected */}
+                                    {values.selectedField === "bankDetails.civilScore" && (
+                                        <FormControl size="small" sx={{ minWidth: 200 }}>
+                                            <InputLabel>Civil Score</InputLabel>
+                                            <Select
+                                                value={values.civilScoreFilter}
+                                                label="Civil Score"
+                                                onChange={(e) => setFieldValue("civilScoreFilter", e.target.value)}
+                                            >
+                                                {Object.entries(CIVIL_SCORE_FILTERS).map(([key, label]) => (
+                                                    <MenuItem key={key} value={key}>
+                                                        {label}
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    )}
 
                                     <Button
                                         variant="contained"
                                         startIcon={<PictureAsPdfIcon />}
-                                        onClick={() => generatePDF(filteredMembers, visibleFields, values.viewType)}
+                                        onClick={() => generatePDF(filteredMembers, values.selectedField, values.viewType)}
                                         disabled={filteredMembers.length === 0}
                                     >
                                         Download PDF
@@ -492,16 +544,118 @@ const MissingMembersTable = () => {
                                     </Button>
                                 </Box>
 
-                                <Typography variant="body2" color="text.secondary">
-                                    Showing {filteredMembers.length} of {members.length} members |
-                                    View: {values.viewType} |
-                                    Fields: {FIELD_GROUPS[values.fieldGroup].label}
-                                </Typography>
+                                {/* Field Selection Tabs */}
+                                <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                                    <Tabs value={tabValue} onChange={handleTabChange} aria-label="field categories">
+                                        {Object.keys(FIELD_GROUPS).map((groupKey, index) => (
+                                            <Tab
+                                                key={groupKey}
+                                                label={FIELD_GROUPS[groupKey].label}
+                                                id={`field-tab-${index}`}
+                                            />
+                                        ))}
+                                    </Tabs>
+                                </Box>
+
+                                {/* Field Buttons Grid */}
+                                {Object.keys(FIELD_GROUPS).map((groupKey, index) => (
+                                    <TabPanel key={groupKey} value={tabValue} index={index}>
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                            {FIELD_GROUPS[groupKey].fields.map(fieldKey => (
+                                                <Chip
+                                                    key={fieldKey}
+                                                    label={ALL_FIELDS[fieldKey]}
+                                                    onClick={() => {
+                                                        setFieldValue("selectedField", fieldKey);
+                                                        // Reset civil score filter when switching away from civil score field
+                                                        if (fieldKey !== "bankDetails.civilScore") {
+                                                            setFieldValue("civilScoreFilter", "all");
+                                                        }
+                                                    }}
+                                                    color={values.selectedField === fieldKey ? "primary" : "default"}
+                                                    variant={values.selectedField === fieldKey ? "filled" : "outlined"}
+                                                    clickable
+                                                />
+                                            ))}
+                                        </Box>
+                                    </TabPanel>
+                                ))}
+
+                                {/* Summary Chips */}
+                                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <Chip
+                                        label={`Total: ${allMembersCount}`}
+                                        color="primary"
+                                        variant="outlined"
+                                    />
+                                    <Chip
+                                        label={`Missing: ${missingCount}`}
+                                        color="error"
+                                        variant={values.viewType === "missing" ? "filled" : "outlined"}
+                                        clickable
+                                        onClick={() => setFieldValue("viewType", "missing")}
+                                    />
+                                    <Chip
+                                        label={`Available: ${availableCount}`}
+                                        color="success"
+                                        variant={values.viewType === "available" ? "filled" : "outlined"}
+                                        clickable
+                                        onClick={() => setFieldValue("viewType", "available")}
+                                    />
+                                    <Chip
+                                        label={`All: ${allMembersCount}`}
+                                        color="default"
+                                        variant={values.viewType === "all" ? "filled" : "outlined"}
+                                        clickable
+                                        onClick={() => setFieldValue("viewType", "all")}
+                                    />
+
+                                    {/* Civil Score Stats Chips - Only show when civil score field is selected */}
+                                    {values.selectedField === "bankDetails.civilScore" && (
+                                        <>
+                                            <Chip
+                                                label={`Excellent: ${civilScoreStats.excellent}`}
+                                                color="success"
+                                                variant={values.civilScoreFilter === "excellent" ? "filled" : "outlined"}
+                                                clickable
+                                                onClick={() => setFieldValue("civilScoreFilter", "excellent")}
+                                            />
+                                            <Chip
+                                                label={`Good: ${civilScoreStats.good}`}
+                                                color="warning"
+                                                variant={values.civilScoreFilter === "good" ? "filled" : "outlined"}
+                                                clickable
+                                                onClick={() => setFieldValue("civilScoreFilter", "good")}
+                                            />
+                                            <Chip
+                                                label={`Poor: ${civilScoreStats.poor}`}
+                                                color="error"
+                                                variant={values.civilScoreFilter === "poor" ? "filled" : "outlined"}
+                                                clickable
+                                                onClick={() => setFieldValue("civilScoreFilter", "poor")}
+                                            />
+                                            <Chip
+                                                label={`Missing: ${civilScoreStats.missing}`}
+                                                color="default"
+                                                variant={values.civilScoreFilter === "missing" ? "filled" : "outlined"}
+                                                clickable
+                                                onClick={() => setFieldValue("civilScoreFilter", "missing")}
+                                            />
+                                        </>
+                                    )}
+
+                                    <Typography variant="body2" color="text.secondary">
+                                        Selected: <strong>{ALL_FIELDS[values.selectedField]}</strong>
+                                        {values.selectedField === "bankDetails.civilScore" && values.civilScoreFilter !== "all" && (
+                                            <span> | Filter: <strong>{CIVIL_SCORE_FILTERS[values.civilScoreFilter]}</strong></span>
+                                        )}
+                                    </Typography>
+                                </Box>
                             </Stack>
 
                             {filteredMembers.length === 0 ? (
                                 <Alert severity="info">
-                                    No members match the current filters. Try changing your search criteria or view type.
+                                    No members match the current filters.
                                 </Alert>
                             ) : (
                                 <TableContainer component={Paper} sx={{ maxHeight: '70vh', overflow: 'auto' }}>
@@ -509,66 +663,98 @@ const MissingMembersTable = () => {
                                         <TableHead>
                                             <TableRow>
                                                 <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>S. No</TableCell>
-                                                {visibleFields.map((f) => (
-                                                    <TableCell key={f} sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>
-                                                        {FIELD_MAP[f]}
-                                                    </TableCell>
-                                                ))}
+                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Member Name</TableCell>
+                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Membership No</TableCell>
+                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Phone No</TableCell>
                                                 <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>
-                                                    Actions
+                                                    {ALL_FIELDS[values.selectedField]} Status
                                                 </TableCell>
+                                                {values.selectedField === "bankDetails.civilScore" && (
+                                                    <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>
+                                                        Civil Score Value
+                                                    </TableCell>
+                                                )}
+                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Actions</TableCell>
                                             </TableRow>
                                         </TableHead>
 
                                         <TableBody>
                                             {filteredMembers.map((m, idx) => {
-                                                const filledCount = fieldKeys.filter(f => !isMissing(getValueByPath(m, f))).length;
-                                                const totalCount = fieldKeys.length;
-                                                const completionRate = Math.round((filledCount / totalCount) * 100);
+                                                const fieldValue = getValueByPath(m, values.selectedField);
+                                                const isFieldMissing = isMissing(fieldValue);
+                                                const civilScore = getValueByPath(m, "bankDetails.civilScore");
+                                                const civilScoreStatus = getCivilScoreStatus(civilScore);
 
                                                 return (
                                                     <TableRow
                                                         key={m._id || idx}
                                                         sx={{
                                                             "&:nth-of-type(odd)": { backgroundColor: "#fafafa" },
-                                                            "&:hover": { backgroundColor: "#f0f0f0", cursor: "pointer" }
+                                                            "&:hover": { backgroundColor: "#f0f0f0", cursor: "pointer" },
+                                                            backgroundColor: isFieldMissing ? "#ffebee" : "inherit"
                                                         }}
                                                         onClick={() => handleViewDetails(m)}
                                                     >
                                                         <TableCell>{idx + 1}</TableCell>
-                                                        {visibleFields.map((f) => {
-                                                            const val = getValueByPath(m, f);
-                                                            const missing = isMissing(val);
+                                                        <TableCell>
+                                                            {getValueByPath(m, "personalDetails.nameOfMember") || "—"}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {getValueByPath(m, "personalDetails.membershipNumber") || "—"}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {getValueByPath(m, "personalDetails.phoneNo") || "—"}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {values.selectedField === "bankDetails.civilScore" ? (
+                                                                <Chip
+                                                                    label={
+                                                                        civilScoreStatus === "missing" ? "MISSING" :
+                                                                            civilScoreStatus === "excellent" ? "EXCELLENT" :
+                                                                                civilScoreStatus === "good" ? "GOOD" :
+                                                                                    civilScoreStatus === "poor" ? "POOR" : "INVALID"
+                                                                    }
+                                                                    color={
+                                                                        civilScoreStatus === "missing" ? "default" :
+                                                                            civilScoreStatus === "excellent" ? "success" :
+                                                                                civilScoreStatus === "good" ? "warning" :
+                                                                                    civilScoreStatus === "poor" ? "error" : "error"
+                                                                    }
+                                                                    size="small"
+                                                                />
+                                                            ) : (
+                                                                <Chip
+                                                                    label={isFieldMissing ? "MISSING" : "AVAILABLE"}
+                                                                    color={isFieldMissing ? "error" : "success"}
+                                                                    size="small"
+                                                                />
+                                                            )}
+                                                        </TableCell>
 
-                                                            let display = "";
-                                                            if (Array.isArray(val)) {
-                                                                display = val.length > 0 ? val.slice(0, 2).join(", ") + (val.length > 2 ? "..." : "") : "Missing";
-                                                            } else if (typeof val === "object" && val !== null) {
-                                                                const entries = Object.entries(val);
-                                                                display = entries.length > 0
-                                                                    ? entries.slice(0, 2).map(([k, v]) => `${k}:${v}`).join(", ") + (entries.length > 2 ? "..." : "")
-                                                                    : "Missing";
-                                                            } else {
-                                                                display = !missing ? (val || "—") : "Missing";
-                                                            }
+                                                        {/* Civil Score Value Column */}
+                                                        {values.selectedField === "bankDetails.civilScore" && (
+                                                            <TableCell>
+                                                                {civilScore ? (
+                                                                    <Typography
+                                                                        variant="body2"
+                                                                        sx={{
+                                                                            fontWeight: 'bold',
+                                                                            color:
+                                                                                civilScoreStatus === "excellent" ? '#2e7d32' :
+                                                                                    civilScoreStatus === "good" ? '#ed6c02' :
+                                                                                        civilScoreStatus === "poor" ? '#d32f2f' : '#757575'
+                                                                        }}
+                                                                    >
+                                                                        {civilScore}
+                                                                    </Typography>
+                                                                ) : (
+                                                                    <Typography variant="body2" color="text.secondary">
+                                                                        —
+                                                                    </Typography>
+                                                                )}
+                                                            </TableCell>
+                                                        )}
 
-                                                            return (
-                                                                <TableCell
-                                                                    key={f}
-                                                                    sx={{
-                                                                        color: missing ? "error.main" : "text.primary",
-                                                                        fontWeight: missing ? "bold" : "normal",
-                                                                        maxWidth: 200,
-                                                                        overflow: 'hidden',
-                                                                        textOverflow: 'ellipsis',
-                                                                        whiteSpace: 'nowrap'
-                                                                    }}
-                                                                    title={display}
-                                                                >
-                                                                    {display}
-                                                                </TableCell>
-                                                            );
-                                                        })}
                                                         <TableCell>
                                                             <Box sx={{ display: 'flex', gap: 1 }}>
                                                                 <IconButton
@@ -577,7 +763,7 @@ const MissingMembersTable = () => {
                                                                         e.stopPropagation();
                                                                         handleViewDetails(m);
                                                                     }}
-                                                                    title={`View Details (${completionRate}% filled)`}
+                                                                    title="View Details"
                                                                     color="primary"
                                                                 >
                                                                     <VisibilityIcon />

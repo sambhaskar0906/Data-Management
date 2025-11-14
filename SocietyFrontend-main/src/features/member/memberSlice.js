@@ -120,6 +120,7 @@ const memberSlice = createSlice({
     initialState: {
         members: [],
         selectedMember: null,
+        currentMember: null,
         loading: false,
         error: null,
         guarantorRelations: {
@@ -166,6 +167,18 @@ const memberSlice = createSlice({
                 myGuarantors: [],
                 forWhomIAmGuarantor: [],
             };
+        },
+        fetchMemberStart: (state) => {
+            state.operationLoading.fetch = true;
+            state.error = null;
+        },
+        fetchMemberSuccess: (state, action) => {
+            state.operationLoading.fetch = false;
+            state.currentMember = action.payload;
+        },
+        fetchMemberFailure: (state, action) => {
+            state.operationLoading.fetch = false;
+            state.error = action.payload;
         },
     },
     extraReducers: (builder) => {
@@ -299,7 +312,7 @@ const memberSlice = createSlice({
             .addCase(fetchGuarantorRelations.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
-            });
+            })
 
     },
 });

@@ -50,6 +50,10 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import jsPDF from "jspdf";
+import 'jspdf-autotable';
+import DownloadIcon from "@mui/icons-material/Download";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 
 import {
     fetchAllMembers,
@@ -57,7 +61,7 @@ import {
     deleteMember,
     clearError,
     clearSuccessMessage
-} from "../features/member/memberSlice";
+} from "../../features/member/memberSlice";
 
 // Field mapping based on your MongoDB schema
 const FIELD_MAP = {
@@ -136,6 +140,7 @@ const FIELD_MAP = {
     "bankDetails.branch": "Bank Branch",
     "bankDetails.accountNumber": "Account Number",
     "bankDetails.ifscCode": "IFSC Code",
+    "bankDetails.civilScore": "Civil Score", // ✅ Civil Score added
 
     // Guarantee Details
     "guaranteeDetails.whetherMemberHasGivenGuaranteeInOtherSociety": "Guarantee Given in Other Society",
@@ -180,6 +185,294 @@ const isMissing = (value) => {
     if (Array.isArray(value)) return value.length === 0;
     if (typeof value === "object") return Object.keys(value).length === 0;
     return false;
+};
+
+// PDF Generation Functions
+const generateMemberPDF = (member) => {
+    const doc = new jsPDF();
+    const memberName = getValueByPath(member, 'personalDetails.nameOfMember') || 'Unknown';
+    const membershipNumber = getValueByPath(member, 'personalDetails.membershipNumber') || 'N/A';
+
+    // Title
+    doc.setFontSize(16);
+    doc.setTextColor(40, 53, 147);
+    doc.text(`Member Details - ${memberName}`, 105, 15, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Membership Number: ${membershipNumber} | Generated on: ${new Date().toLocaleDateString()}`, 105, 22, { align: 'center' });
+
+    let yPosition = 35;
+
+    // Function to add section
+    const addSection = (title, fields, data) => {
+        if (yPosition > 250) {
+            doc.addPage();
+            yPosition = 20;
+        }
+
+        doc.setFontSize(12);
+        doc.setTextColor(40, 53, 147);
+        doc.text(title, 14, yPosition);
+        yPosition += 8;
+
+        doc.setDrawColor(200, 200, 200);
+        doc.line(14, yPosition, 196, yPosition);
+        yPosition += 5;
+
+        doc.setFontSize(9);
+        doc.setTextColor(80, 80, 80);
+
+        fields.forEach(fieldKey => {
+            if (yPosition > 270) {
+                doc.addPage();
+                yPosition = 20;
+            }
+
+            const fieldName = FIELD_MAP[fieldKey];
+            const value = getValueByPath(data, fieldKey);
+            const displayValue = formatValueForPDF(value);
+
+            doc.text(`${fieldName}:`, 16, yPosition);
+            doc.setTextColor(20, 20, 20);
+            doc.text(displayValue, 70, yPosition);
+            doc.setTextColor(80, 80, 80);
+
+            yPosition += 6;
+        });
+
+        yPosition += 10;
+    };
+
+    // Personal Details
+    const personalFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('personalDetails'));
+    addSection('Personal Details', personalFields, member);
+
+    // Address Details
+    const addressFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('addressDetails'));
+    addSection('Address Details', addressFields, member);
+
+    // Reference Details
+    const referenceFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('referenceDetails'));
+    addSection('Reference & Guarantor Details', referenceFields, member);
+
+    // Document Details
+    const documentFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('documents'));
+    addSection('Document Details', documentFields, member);
+
+    // Professional Details
+    const professionalFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('professionalDetails'));
+    addSection('Professional Details', professionalFields, member);
+
+    // Family Details
+    const familyFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('familyDetails'));
+    addSection('Family Details', familyFields, member);
+
+    // Bank Details
+    const bankFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('bankDetails'));
+    addSection('Bank Details', bankFields, member);
+
+    // Guarantee Details
+    const guaranteeFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('guaranteeDetails'));
+    addSection('Guarantee Details', guaranteeFields, member);
+
+    // Loan Details
+    const loanFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('loanDetails'));
+    addSection('Loan Details', loanFields, member);
+
+    // Save the PDF
+    doc.save(`Member_${membershipNumber}_${memberName.replace(/\s+/g, '_')}.pdf`);
+};
+
+const generateMembersListPDF = (members) => {
+    const doc = new jsPDF();
+
+    // Title
+    doc.setFontSize(18);
+    doc.setTextColor(40, 53, 147);
+    doc.text('Members List Report', 105, 20, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()} | Total Members: ${members.length}`, 105, 28, { align: 'center' });
+
+    // Manual table creation
+    let yPosition = 40;
+    const lineHeight = 8;
+    const colWidths = [15, 25, 35, 30, 45, 25, 20, 25]; // Column widths
+    const pageHeight = doc.internal.pageSize.height;
+
+    // Table headers
+    const headers = ['S.No', 'Member No', 'Name', 'Phone', 'Email', 'City', 'Civil Score', 'Status'];
+
+    // Draw header background
+    doc.setFillColor(40, 53, 147);
+    doc.rect(10, yPosition, 190, 10, 'F');
+
+    // Draw header text
+    doc.setTextColor(255, 255, 255);
+    doc.setFont(undefined, 'bold');
+    let xPosition = 12;
+    headers.forEach((header, index) => {
+        doc.text(header, xPosition, yPosition + 7);
+        xPosition += colWidths[index];
+    });
+
+    yPosition += 12;
+
+    // Table data
+    doc.setTextColor(0, 0, 0);
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(8);
+
+    members.forEach((member, index) => {
+        // Check if we need a new page
+        if (yPosition > pageHeight - 20) {
+            doc.addPage();
+            yPosition = 20;
+
+            // Redraw headers on new page
+            doc.setFillColor(40, 53, 147);
+            doc.rect(10, yPosition, 190, 10, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(9);
+            let newX = 12;
+            headers.forEach((header, idx) => {
+                doc.text(header, newX, yPosition + 7);
+                newX += colWidths[idx];
+            });
+            yPosition += 12;
+            doc.setTextColor(0, 0, 0);
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(8);
+        }
+
+        const civilScore = getValueByPath(member, 'bankDetails.civilScore') || 'N/A';
+        const civilScoreColor = civilScore >= 700 ? '#2e7d32' : civilScore >= 600 ? '#ed6c02' : '#d32f2f';
+
+        const rowData = [
+            (index + 1).toString(),
+            truncateText(getValueByPath(member, 'personalDetails.membershipNumber') || 'N/A', 10),
+            truncateText(getValueByPath(member, 'personalDetails.nameOfMember') || 'Unknown', 15),
+            truncateText(getValueByPath(member, 'personalDetails.phoneNo') || 'N/A', 12),
+            truncateText(getValueByPath(member, 'personalDetails.emailId') || 'N/A', 20),
+            truncateText(getValueByPath(member, 'addressDetails.currentResidentalAddress.city') || 'N/A', 12),
+            civilScore.toString(),
+            'Active'
+        ];
+
+        // Draw row data
+        xPosition = 12;
+        rowData.forEach((cell, cellIndex) => {
+            if (cellIndex === 6) { // Civil Score column
+                doc.setTextColor(civilScoreColor);
+            } else {
+                doc.setTextColor(0, 0, 0);
+            }
+            doc.text(cell, xPosition, yPosition + 5);
+            xPosition += colWidths[cellIndex];
+        });
+
+        // Draw horizontal line
+        doc.setDrawColor(200, 200, 200);
+        doc.line(10, yPosition + 7, 200, yPosition + 7);
+
+        yPosition += lineHeight;
+    });
+
+    // Summary section
+    if (yPosition < pageHeight - 20) {
+        doc.setFontSize(10);
+        doc.setTextColor(40, 53, 147);
+        doc.text('Summary:', 14, yPosition + 10);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`Total Members: ${members.length}`, 14, yPosition + 17);
+
+        // Civil Score Summary
+        const scores = members.map(m => getValueByPath(m, 'bankDetails.civilScore')).filter(s => s && !isNaN(s));
+        if (scores.length > 0) {
+            const avgScore = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
+            doc.text(`Average Civil Score: ${avgScore}`, 14, yPosition + 24);
+        }
+    }
+
+    doc.save(`Members_List_${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+// MemberView component ke andar
+const handleAddressUpdate = () => {
+    const currentFormData = { ...formData };
+
+    // Get current address (jo ab previous banega)
+    const currentAddress = getValueByPath(currentFormData, 'addressDetails.currentResidentalAddress');
+
+    // Get existing previous addresses
+    const previousAddresses = getValueByPath(currentFormData, 'addressDetails.previousCurrentAddress') || [];
+
+    // Check if current address is not empty and different from the last previous address
+    if (currentAddress &&
+        Object.keys(currentAddress).some(key => currentAddress[key]) &&
+        !isAddressEqual(currentAddress, previousAddresses[0])) {
+
+        // Add current address to previous addresses (at beginning)
+        const updatedPreviousAddresses = [currentAddress, ...previousAddresses];
+
+        // Update form data with new previous addresses
+        currentFormData.addressDetails.previousCurrentAddress = updatedPreviousAddresses;
+
+        // Set form data
+        setFormData(currentFormData);
+
+        // Show success message
+        alert('Current address moved to previous addresses! Now you can enter new current address.');
+    } else {
+        alert('Current address is empty or same as previous address. No changes made.');
+    }
+};
+
+// Helper function to compare two addresses
+const isAddressEqual = (addr1, addr2) => {
+    if (!addr1 || !addr2) return false;
+
+    const keys = ['flatHouseNo', 'areaStreetSector', 'locality', 'landmark', 'city', 'country', 'state', 'pincode'];
+    return keys.every(key => addr1[key] === addr2[key]);
+};
+
+// Helper function to truncate long text
+const truncateText = (text, maxLength) => {
+    if (!text) return 'N/A';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+};
+
+const formatValueForPDF = (value) => {
+    if (isMissing(value)) return 'Not Provided';
+
+    // Check if value is a URL (image link)
+    if (typeof value === "string" && (value.startsWith('http') || value.startsWith('https'))) {
+        return 'Image Available';
+    }
+
+    if (Array.isArray(value)) {
+        // Handle array of objects
+        if (value.length > 0 && typeof value[0] === 'object') {
+            return value.map(item =>
+                Object.entries(item)
+                    .map(([k, v]) => `${k}: ${formatValueForPDF(v)}`)
+                    .join('; ')
+            ).join(' | ');
+        }
+        return value.join(', ');
+    }
+
+    if (typeof value === 'object') {
+        return Object.entries(value)
+            .map(([k, v]) => `${k}: ${formatValueForPDF(v)}`)
+            .join('; ');
+    }
+
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    return value.toString();
 };
 
 // Delete Confirmation Dialog Component
@@ -576,12 +869,68 @@ const MemberView = ({ member, open, onClose, onSave, onDelete, loading }) => {
 
     const formatValue = (value) => {
         if (isMissing(value)) return <span style={{ color: "red", fontWeight: "bold" }}>Missing</span>;
-        if (Array.isArray(value)) return value.join(", ");
+
+        // Check if value is a URL (image link)
+        if (typeof value === "string" && (value.startsWith('http') || value.startsWith('https'))) {
+            return (
+                <Box>
+                    <img
+                        src={value}
+                        alt="Document"
+                        style={{
+                            maxWidth: '100px',
+                            maxHeight: '100px',
+                            borderRadius: '4px',
+                            border: '1px solid #ddd'
+                        }}
+                    />
+                    <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                        <a href={value} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2' }}>
+                            View Full Image
+                        </a>
+                    </Typography>
+                </Box>
+            );
+        }
+
+        if (Array.isArray(value)) {
+            // Handle array of objects (like ourSociety, loanDetails)
+            if (value.length > 0 && typeof value[0] === 'object') {
+                return (
+                    <Box>
+                        {value.map((item, index) => (
+                            <Card key={index} variant="outlined" sx={{ mb: 1, p: 1 }}>
+                                {Object.entries(item).map(([key, val]) => (
+                                    <Typography key={key} variant="body2">
+                                        <strong>{key}:</strong> {formatSingleValue(val)}
+                                    </Typography>
+                                ))}
+                            </Card>
+                        ))}
+                    </Box>
+                );
+            }
+            return value.join(", ");
+        }
+
         if (typeof value === "object" && value !== null && !(value instanceof Date)) {
             return Object.entries(value).map(([k, v]) => (
                 <div key={k}><strong>{k}:</strong> {formatValue(v)}</div>
             ));
         }
+
+        if (typeof value === "boolean") return value ? "Yes" : "No";
+        return value?.toString() || "";
+    };
+
+    // Helper function for single values (to avoid recursion)
+    const formatSingleValue = (value) => {
+        if (isMissing(value)) return 'Missing';
+        if (typeof value === "string" && (value.startsWith('http') || value.startsWith('https'))) {
+            return "Image Available";
+        }
+        if (Array.isArray(value)) return value.join(", ");
+        if (typeof value === "object") return JSON.stringify(value);
         if (typeof value === "boolean") return value ? "Yes" : "No";
         return value?.toString() || "";
     };
@@ -598,49 +947,6 @@ const MemberView = ({ member, open, onClose, onSave, onDelete, loading }) => {
 
     const missingCount = Object.keys(FIELD_MAP).filter(f => isMissing(getValueByPath(formData, f))).length;
     const filledCount = Object.keys(FIELD_MAP).length - missingCount;
-
-    const handlePrint = () => {
-        const printWindow = window.open('', '_blank', 'width=800,height=900');
-        const memberName = getValueByPath(formData, 'personalDetails.nameOfMember') || 'Unknown';
-
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>${memberName} - Complete Details</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; }
-                        h1 { text-align: center; color: #1976d2; border-bottom: 2px solid #1976d2; padding-bottom: 10px; }
-                        .section { margin: 20px 0; }
-                        .section-title { background: #1976d2; color: white; padding: 10px; font-weight: bold; }
-                        .field { margin: 8px 0; padding: 8px; border-bottom: 1px solid #eee; }
-                        .field-label { font-weight: bold; color: #555; }
-                        .field-value { margin-left: 10px; }
-                        .missing { color: red; font-weight: bold; }
-                        @media print { body { padding: 0; } }
-                    </style>
-                </head>
-                <body>
-                    <h1>Member Complete Details - ${memberName}</h1>
-                    ${Object.keys(FIELD_MAP).map(fieldKey => {
-            const value = getValueByPath(formData, fieldKey);
-            const missing = isMissing(value);
-            return `
-                            <div class="field">
-                                <span class="field-label">${FIELD_MAP[fieldKey]}:</span>
-                                <span class="field-value ${missing ? 'missing' : ''}">
-                                    ${missing ? 'Missing' : formatValue(value).toString()}
-                                </span>
-                            </div>
-                        `;
-        }).join('')}
-                    <script>
-                        window.onload = function() { window.print(); setTimeout(() => window.close(), 500); }
-                    </script>
-                </body>
-            </html>
-        `);
-        printWindow.document.close();
-    };
 
     if (!member) return null;
 
@@ -790,34 +1096,139 @@ const MemberView = ({ member, open, onClose, onSave, onDelete, loading }) => {
                                                 />
                                             </Grid>
 
-                                            {/* Current Address */}
+                                            {/* Current Address - With Special Update Logic */}
                                             <Grid size={{ xs: 12, sm: 6 }}>
-                                                <EditableObjectField
-                                                    label="Current Address"
-                                                    value={getValueByPath(formData, 'addressDetails.currentResidentalAddress')}
-                                                    path="addressDetails.currentResidentalAddress"
-                                                    onUpdate={handleFieldUpdate}
-                                                    fields={[
-                                                        { key: 'flatHouseNo', label: 'Flat/House No' },
-                                                        { key: 'areaStreetSector', label: 'Area/Street/Sector' },
-                                                        { key: 'locality', label: 'Locality' },
-                                                        { key: 'landmark', label: 'Landmark' },
-                                                        { key: 'city', label: 'City' },
-                                                        { key: 'country', label: 'Country' },
-                                                        { key: 'state', label: 'State' },
-                                                        { key: 'pincode', label: 'Pincode' },
-                                                    ]}
-                                                />
-                                            </Grid>
+                                                <Accordion defaultExpanded>
+                                                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                                        <Typography variant="h6" color="primary">
+                                                            Current Residential Address
+                                                        </Typography>
+                                                    </AccordionSummary>
+                                                    <AccordionDetails>
+                                                        {editMode ? (
+                                                            <Box>
+                                                                <Box sx={{ mb: 2, p: 2, backgroundColor: '#fff3e0', borderRadius: 1 }}>
+                                                                    <Typography variant="body2" color="warning.main" gutterBottom>
+                                                                        <strong>Note:</strong> To update address, first click "Move to Previous" then enter new address
+                                                                    </Typography>
+                                                                </Box>
 
+                                                                {/* Move Current to Previous Button */}
+                                                                <Button
+                                                                    variant="outlined"
+                                                                    color="warning"
+                                                                    startIcon={<SaveIcon />}
+                                                                    onClick={handleAddressUpdate}
+                                                                    sx={{ mb: 2 }}
+                                                                    fullWidth
+                                                                >
+                                                                    Move Current Address to Previous
+                                                                </Button>
+
+                                                                {/* Current Address Fields */}
+                                                                <EditableObjectField
+                                                                    label="Enter New Current Address"
+                                                                    value={getValueByPath(formData, 'addressDetails.currentResidentalAddress')}
+                                                                    path="addressDetails.currentResidentalAddress"
+                                                                    onUpdate={handleFieldUpdate}
+                                                                    fields={[
+                                                                        { key: 'flatHouseNo', label: 'Flat/House No' },
+                                                                        { key: 'areaStreetSector', label: 'Area/Street/Sector' },
+                                                                        { key: 'locality', label: 'Locality' },
+                                                                        { key: 'landmark', label: 'Landmark' },
+                                                                        { key: 'city', label: 'City' },
+                                                                        { key: 'country', label: 'Country' },
+                                                                        { key: 'state', label: 'State' },
+                                                                        { key: 'pincode', label: 'Pincode' },
+                                                                    ]}
+                                                                />
+                                                            </Box>
+                                                        ) : (
+                                                            // VIEW MODE - Display current address
+                                                            <Box>
+                                                                {Object.entries(getValueByPath(formData, 'addressDetails.currentResidentalAddress') || {}).map(([key, value]) => (
+                                                                    <Box key={key} sx={{ mb: 1 }}>
+                                                                        <Typography variant="subtitle2" color="primary">
+                                                                            {key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}:
+                                                                        </Typography>
+                                                                        <Typography variant="body2">
+                                                                            {value || 'Not provided'}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                ))}
+                                                            </Box>
+                                                        )}
+                                                    </AccordionDetails>
+                                                </Accordion>
+                                            </Grid>
                                             {/* Previous Addresses */}
                                             <Grid size={{ xs: 12 }}>
-                                                <EditableArrayField
-                                                    label="Previous Addresses"
-                                                    values={getValueByPath(formData, 'addressDetails.previousCurrentAddress')}
-                                                    path="addressDetails.previousCurrentAddress"
-                                                    onUpdate={handleFieldUpdate}
-                                                />
+                                                <Accordion>
+                                                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                                            <Typography variant="h6" color="primary">
+                                                                Previous Address History
+                                                            </Typography>
+                                                            <Chip
+                                                                label={`${getValueByPath(formData, 'addressDetails.previousCurrentAddress')?.length || 0} addresses`}
+                                                                size="small"
+                                                                color="primary"
+                                                                variant="outlined"
+                                                            />
+                                                        </Box>
+                                                    </AccordionSummary>
+                                                    <AccordionDetails>
+                                                        {(getValueByPath(formData, 'addressDetails.previousCurrentAddress') || []).length > 0 ? (
+                                                            (getValueByPath(formData, 'addressDetails.previousCurrentAddress') || []).map((address, index) => (
+                                                                <Card key={index} variant="outlined" sx={{ mb: 2, p: 2, backgroundColor: index === 0 ? '#e8f5e8' : '#f8f9fa' }}>
+                                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                                                        <Typography variant="subtitle1" color={index === 0 ? "success.main" : "text.primary"}>
+                                                                            {index === 0 ? "Most Recent Previous Address" : `Previous Address ${index + 1}`}
+                                                                        </Typography>
+                                                                        <Chip
+                                                                            label={index === 0 ? "Latest" : `#${index + 1}`}
+                                                                            size="small"
+                                                                            color={index === 0 ? "success" : "default"}
+                                                                            variant="outlined"
+                                                                        />
+                                                                    </Box>
+
+                                                                    <Grid container spacing={1}>
+                                                                        {Object.entries(address).map(([key, value]) => (
+                                                                            <Grid size={{ xs: 12, sm: 6 }} key={key}>
+                                                                                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                                                                                    <strong>
+                                                                                        {key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}:
+                                                                                    </strong>
+                                                                                    <span style={{ marginLeft: '8px', color: value ? 'inherit' : '#ff6b6b' }}>
+                                                                                        {value || 'Not provided'}
+                                                                                    </span>
+                                                                                </Typography>
+                                                                            </Grid>
+                                                                        ))}
+                                                                    </Grid>
+
+                                                                    {index === 0 && (
+                                                                        <Box sx={{ mt: 1, pt: 1, borderTop: '1px dashed #ddd' }}>
+                                                                            <Typography variant="caption" color="text.secondary">
+                                                                                This was the previous current address before the last update
+                                                                            </Typography>
+                                                                        </Box>
+                                                                    )}
+                                                                </Card>
+                                                            ))
+                                                        ) : (
+                                                            <Box sx={{ textAlign: 'center', py: 3 }}>
+                                                                <Typography variant="body1" color="text.secondary" gutterBottom>
+                                                                    No previous addresses found
+                                                                </Typography>
+                                                                <Typography variant="body2" color="text.secondary">
+                                                                    When you update the current address, it will appear here as previous address history.
+                                                                </Typography>
+                                                            </Box>
+                                                        )}
+                                                    </AccordionDetails>
+                                                </Accordion>
                                             </Grid>
                                         </Grid>
                                     </AccordionDetails>
@@ -859,7 +1270,6 @@ const MemberView = ({ member, open, onClose, onSave, onDelete, loading }) => {
                                 </Accordion>
                             </Grid>
 
-                            {/* Add more sections for Documents, Professional, Family, Bank, Guarantee, Loan details */}
                             {/* Documents Section */}
                             <Grid size={{ xs: 12 }}>
                                 <Accordion>
@@ -879,6 +1289,34 @@ const MemberView = ({ member, open, onClose, onSave, onDelete, loading }) => {
                                                             value={getValueByPath(formData, fieldKey)}
                                                             path={fieldKey}
                                                             onUpdate={handleFieldUpdate}
+                                                        />
+                                                    </Grid>
+                                                ))}
+                                        </Grid>
+                                    </AccordionDetails>
+                                </Accordion>
+                            </Grid>
+
+                            {/* Bank Details Section - Civil Score Added */}
+                            <Grid size={{ xs: 12 }}>
+                                <Accordion>
+                                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                        <Typography variant="h6" color="primary">
+                                            Bank Details
+                                        </Typography>
+                                    </AccordionSummary>
+                                    <AccordionDetails>
+                                        <Grid container spacing={2}>
+                                            {Object.keys(FIELD_MAP)
+                                                .filter(f => f.startsWith('bankDetails'))
+                                                .map(fieldKey => (
+                                                    <Grid size={{ xs: 12, sm: 6, md: 4 }} key={fieldKey}>
+                                                        <EditableField
+                                                            label={FIELD_MAP[fieldKey]}
+                                                            value={getValueByPath(formData, fieldKey)}
+                                                            path={fieldKey}
+                                                            onUpdate={handleFieldUpdate}
+                                                            type={fieldKey.includes('civilScore') ? 'number' : 'text'}
                                                         />
                                                     </Grid>
                                                 ))}
@@ -921,11 +1359,134 @@ const MemberView = ({ member, open, onClose, onSave, onDelete, loading }) => {
                                 const value = getValueByPath(formData, fieldKey);
                                 const missing = isMissing(value);
 
+                                // Special handling for specific fields
+                                const renderFieldValue = () => {
+                                    // Handle ourSociety guarantees
+                                    if (fieldKey === 'guaranteeDetails.ourSociety' || fieldKey === 'guaranteeDetails.otherSociety') {
+                                        if (missing) return <span style={{ color: "red", fontWeight: "bold" }}>Missing</span>;
+
+                                        return (
+                                            <Box>
+                                                {value.map((guarantee, index) => (
+                                                    <Card key={index} variant="outlined" sx={{ mb: 1, p: 1.5, backgroundColor: '#f8f9fa' }}>
+                                                        <Typography variant="body2" gutterBottom>
+                                                            <strong>Member:</strong> {guarantee.nameOfMember || 'N/A'}
+                                                        </Typography>
+                                                        <Typography variant="body2" gutterBottom>
+                                                            <strong>Membership No:</strong> {guarantee.membershipNo || 'N/A'}
+                                                        </Typography>
+                                                        <Typography variant="body2" gutterBottom>
+                                                            <strong>Loan Amount:</strong> {guarantee.amountOfLoan || 'N/A'}
+                                                        </Typography>
+                                                        <Typography variant="body2" gutterBottom>
+                                                            <strong>Loan Type:</strong> {guarantee.typeOfLoan || 'N/A'}
+                                                        </Typography>
+                                                        <Typography variant="body2">
+                                                            <strong>Irregular:</strong> {guarantee.ifIrregular || 'No'}
+                                                        </Typography>
+                                                    </Card>
+                                                ))}
+                                            </Box>
+                                        );
+                                    }
+
+                                    // Handle loan details
+                                    if (fieldKey === 'loanDetails') {
+                                        if (missing) return <span style={{ color: "red", fontWeight: "bold" }}>Missing</span>;
+
+                                        return (
+                                            <Box>
+                                                {value.map((loan, index) => (
+                                                    <Card key={index} variant="outlined" sx={{ mb: 1, p: 1.5, backgroundColor: '#f0f8ff' }}>
+                                                        <Typography variant="body2" gutterBottom>
+                                                            <strong>Type:</strong> {loan.loanType || 'N/A'}
+                                                        </Typography>
+                                                        <Typography variant="body2" gutterBottom>
+                                                            <strong>Amount:</strong> {loan.amount || 'N/A'}
+                                                        </Typography>
+                                                        <Typography variant="body2" gutterBottom>
+                                                            <strong>Purpose:</strong> {loan.purpose || 'N/A'}
+                                                        </Typography>
+                                                        <Typography variant="body2">
+                                                            <strong>Date:</strong> {loan.dateOfLoan ? new Date(loan.dateOfLoan).toLocaleDateString() : 'N/A'}
+                                                        </Typography>
+                                                    </Card>
+                                                ))}
+                                            </Box>
+                                        );
+                                    }
+
+                                    // Handle Civil Score with color coding
+                                    if (fieldKey === 'bankDetails.civilScore') {
+                                        if (missing) return <span style={{ color: "red", fontWeight: "bold" }}>Missing</span>;
+
+                                        const score = parseInt(value);
+                                        let color = '#d32f2f'; // red
+                                        if (score >= 700) color = '#2e7d32'; // green
+                                        else if (score >= 600) color = '#ed6c02'; // orange
+
+                                        return (
+                                            <Box display="flex" alignItems="center" gap={1}>
+                                                <Typography
+                                                    variant="body2"
+                                                    style={{
+                                                        color: color,
+                                                        fontWeight: 'bold',
+                                                        fontSize: '16px'
+                                                    }}
+                                                >
+                                                    {value}
+                                                </Typography>
+                                                {score >= 700 && (
+                                                    <Chip label="Excellent" size="small" color="success" variant="outlined" />
+                                                )}
+                                                {score >= 600 && score < 700 && (
+                                                    <Chip label="Good" size="small" color="warning" variant="outlined" />
+                                                )}
+                                                {score < 600 && (
+                                                    <Chip label="Needs Improvement" size="small" color="error" variant="outlined" />
+                                                )}
+                                            </Box>
+                                        );
+                                    }
+
+                                    // Handle image fields
+                                    if (fieldName.includes('Photo') || fieldName.includes('Size')) {
+                                        if (missing) return <span style={{ color: "red", fontWeight: "bold" }}>Missing</span>;
+
+                                        if (typeof value === 'string' && (value.startsWith('http') || value.startsWith('https'))) {
+                                            return (
+                                                <Box>
+                                                    <img
+                                                        src={value}
+                                                        alt={fieldName}
+                                                        style={{
+                                                            maxWidth: '150px',
+                                                            maxHeight: '150px',
+                                                            borderRadius: '4px',
+                                                            border: '1px solid #ddd'
+                                                        }}
+                                                    />
+                                                    <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                                                        <a href={value} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2' }}>
+                                                            View Full Image
+                                                        </a>
+                                                    </Typography>
+                                                </Box>
+                                            );
+                                        }
+                                    }
+
+                                    // Default formatting for other fields
+                                    return formatValue(value);
+                                };
+
                                 return (
                                     <Grid size={{ xs: 12, sm: 6, md: 4 }} key={fieldKey}>
                                         <Card variant="outlined" sx={{
                                             borderColor: missing ? 'error.main' : 'success.main',
-                                            backgroundColor: missing ? '#fff5f5' : '#f5fff5'
+                                            backgroundColor: missing ? '#fff5f5' : '#f5fff5',
+                                            height: '100%'
                                         }}>
                                             <CardContent sx={{ p: 2 }}>
                                                 <Box display="flex" alignItems="center" gap={1} mb={1}>
@@ -939,7 +1500,7 @@ const MemberView = ({ member, open, onClose, onSave, onDelete, loading }) => {
                                                     </Typography>
                                                 </Box>
                                                 <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
-                                                    {formatValue(value)}
+                                                    {renderFieldValue()}
                                                 </Typography>
                                             </CardContent>
                                         </Card>
@@ -964,16 +1525,6 @@ const MemberView = ({ member, open, onClose, onSave, onDelete, loading }) => {
 
                 <DialogActions>
                     <Button onClick={onClose} disabled={loading}>Close</Button>
-                    {!editMode && (
-                        <Button
-                            startIcon={<PrintIcon />}
-                            variant="contained"
-                            onClick={handlePrint}
-                            disabled={loading}
-                        >
-                            Print
-                        </Button>
-                    )}
                 </DialogActions>
             </Dialog>
 
@@ -1040,9 +1591,23 @@ export default function MemberDetailsPage() {
     };
 
     const handleSave = (updatedMember) => {
+        // Ensure address structure is correct
+        const finalData = {
+            ...updatedMember,
+            addressDetails: {
+                ...updatedMember.addressDetails,
+                // Ensure previousCurrentAddress is always an array
+                previousCurrentAddress: updatedMember.addressDetails.previousCurrentAddress || [],
+                // Ensure currentResidentalAddress exists
+                currentResidentalAddress: updatedMember.addressDetails.currentResidentalAddress || {}
+            }
+        };
+
+        console.log('Saving member data:', finalData);
+
         dispatch(updateMember({
             id: updatedMember._id,
-            formData: updatedMember
+            formData: finalData
         }));
     };
 
@@ -1077,22 +1642,32 @@ export default function MemberDetailsPage() {
                 </Box>
             )}
 
-            {/* Search Field */}
-            <TextField
-                placeholder="Search by name, membership number, phone, or email..."
-                fullWidth
-                size="small"
-                sx={{ mb: 3 }}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                InputProps={{
-                    startAdornment: (
-                        <InputAdornment position="start">
-                            <SearchIcon />
-                        </InputAdornment>
-                    ),
-                }}
-            />
+            {/* Search Field और PDF Download Button */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+                <TextField
+                    placeholder="Search by name, membership number, phone, or email..."
+                    fullWidth
+                    size="small"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
+                <Button
+                    variant="contained"
+                    startIcon={<DownloadIcon />}
+                    onClick={() => generateMembersListPDF(filteredMembers)}
+                    disabled={loading || filteredMembers.length === 0}
+                    sx={{ whiteSpace: 'nowrap', minWidth: 'auto' }}
+                >
+                    Download PDF List
+                </Button>
+            </Box>
 
             {/* Members Table */}
             <TableContainer component={Paper} elevation={3}>
@@ -1105,71 +1680,88 @@ export default function MemberDetailsPage() {
                             <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Phone</TableCell>
                             <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Email</TableCell>
                             <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>City</TableCell>
+                            <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Civil Score</TableCell>
                             <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Actions</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {filteredMembers.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                                <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
                                     <Typography color="text.secondary">
                                         {loading ? 'Loading members...' : 'No members found matching your search criteria'}
                                     </Typography>
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filteredMembers.map((member, index) => (
-                                <TableRow
-                                    key={member._id}
-                                    sx={{
-                                        '&:hover': {
-                                            backgroundColor: '#f5f5f5',
-                                            cursor: 'pointer'
-                                        }
-                                    }}
-                                >
-                                    <TableCell>
-                                        <Typography fontWeight="medium" align="center">
-                                            {index + 1}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography fontWeight="medium">
-                                            {getValueByPath(member, 'personalDetails.membershipNumber')}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography fontWeight="medium">
-                                            {getValueByPath(member, 'personalDetails.nameOfMember')}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>{getValueByPath(member, 'personalDetails.phoneNo')}</TableCell>
-                                    <TableCell>{getValueByPath(member, 'personalDetails.emailId')}</TableCell>
-                                    <TableCell>
-                                        {getValueByPath(member, 'addressDetails.currentResidentalAddress.city')}
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        <Stack direction="row" spacing={1} justifyContent="center">
-                                            <IconButton
-                                                color="primary"
+                            filteredMembers.map((member, index) => {
+                                const civilScore = getValueByPath(member, 'bankDetails.civilScore');
+                                const scoreColor = civilScore >= 700 ? '#2e7d32' : civilScore >= 600 ? '#ed6c02' : '#d32f2f';
+
+                                return (
+                                    <TableRow
+                                        key={member._id}
+                                        sx={{
+                                            '&:hover': {
+                                                backgroundColor: '#f5f5f5',
+                                                cursor: 'pointer'
+                                            }
+                                        }}
+                                    >
+                                        <TableCell>
+                                            <Typography fontWeight="medium" align="center">
+                                                {index + 1}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography fontWeight="medium">
+                                                {getValueByPath(member, 'personalDetails.membershipNumber')}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography fontWeight="medium">
+                                                {getValueByPath(member, 'personalDetails.nameOfMember')}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell>{getValueByPath(member, 'personalDetails.phoneNo')}</TableCell>
+                                        <TableCell>{getValueByPath(member, 'personalDetails.emailId')}</TableCell>
+                                        <TableCell>
+                                            {getValueByPath(member, 'addressDetails.currentResidentalAddress.city')}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Chip
+                                                label={civilScore || 'N/A'}
                                                 size="small"
-                                                onClick={() => handleView(member)}
-                                                title="View & Edit Complete Details"
-                                            >
-                                                <VisibilityIcon />
-                                            </IconButton>
-                                            <IconButton
-                                                color="error"
-                                                size="small"
-                                                onClick={() => handleDeleteClick(member)}
-                                                title="Delete Member"
-                                            >
-                                                <DeleteIcon />
-                                            </IconButton>
-                                        </Stack>
-                                    </TableCell>
-                                </TableRow>
-                            ))
+                                                style={{
+                                                    backgroundColor: scoreColor,
+                                                    color: 'white',
+                                                    fontWeight: 'bold'
+                                                }}
+                                            />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Stack direction="row" spacing={1} justifyContent="center">
+                                                <IconButton
+                                                    color="primary"
+                                                    size="small"
+                                                    onClick={() => handleView(member)}
+                                                    title="View & Edit Complete Details"
+                                                >
+                                                    <VisibilityIcon />
+                                                </IconButton>
+                                                <IconButton
+                                                    color="error"
+                                                    size="small"
+                                                    onClick={() => handleDeleteClick(member)}
+                                                    title="Delete Member"
+                                                >
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </Stack>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
                         )}
                     </TableBody>
                 </Table>

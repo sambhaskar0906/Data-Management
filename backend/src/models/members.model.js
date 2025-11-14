@@ -45,7 +45,18 @@ const memberSchema = new mongoose.Schema(
         pincode: { type: String },
       },
       currentResidentalBillPhoto: { type: String }, // Fixed: single string, not array
-      previousCurrentAddress: [{ type: String }],
+      previousCurrentAddress: [
+        {
+          flatHouseNo: String,
+          areaStreetSector: String,
+          locality: String,
+          landmark: String,
+          city: String,
+          state: String,
+          country: String,
+          pincode: String,
+        }
+      ],
     },
 
     // ===== REFERENCES & GUARANTORS =====
@@ -92,6 +103,11 @@ const memberSchema = new mongoose.Schema(
       branch: { type: String },
       accountNumber: { type: String },
       ifscCode: { type: String },
+      civilScore: {
+        type: Number,
+        min: 300,
+        max: 900
+      },
     },
 
     // ===== GUARANTEE DETAILS =====
@@ -135,14 +151,18 @@ memberSchema.pre("save", async function (next) {
   if (!this.isNew) {
     const oldDoc = await this.constructor.findById(this._id);
     if (oldDoc && oldDoc.addressDetails.currentResidentalAddress) {
+      // ✅ Make sure we store object, not string
       this.addressDetails.previousCurrentAddress = [
         ...(oldDoc.addressDetails.previousCurrentAddress || []),
-        oldDoc.addressDetails.currentResidentalAddress,
+        oldDoc.addressDetails.currentResidentalAddress.toObject
+          ? oldDoc.addressDetails.currentResidentalAddress.toObject()
+          : oldDoc.addressDetails.currentResidentalAddress,
       ];
     }
   }
   next();
 });
+
 
 const Member = mongoose.model("Member", memberSchema);
 export default Member;
