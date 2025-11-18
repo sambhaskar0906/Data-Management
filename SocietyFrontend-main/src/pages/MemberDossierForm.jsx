@@ -37,6 +37,8 @@ const MemberDossierForm = () => {
   const [formData, setFormData] = useState({
     personalInformation: {
       nameOfMember: "",
+      title: "",
+      minor: "",
       membershipNumber: "",
       nameOfFather: "",
       nameOfMother: "",
@@ -45,6 +47,7 @@ const MemberDossierForm = () => {
       membershipDate: "",
       amountInCredit: "",
       gender: "",
+      nameOfSpouse: "",
       religion: "",
       maritalStatus: "",
       caste: "",
@@ -52,6 +55,7 @@ const MemberDossierForm = () => {
       alternatePhoneNo: "",
       emailId: "",
     },
+
     Address: {
       permanentAddress: {
         flatHouseNo: "",
@@ -77,6 +81,7 @@ const MemberDossierForm = () => {
         proofDocument: null,
       },
     },
+
     identityProofs: {
       passportSizePhoto: null,
       passportSizePreview: "",
@@ -113,6 +118,7 @@ const MemberDossierForm = () => {
       passportPhoto: null,
       passportPreview: "",
     },
+
     professionalDetails: {
       qualification: "",
       occupation: "",
@@ -124,12 +130,22 @@ const MemberDossierForm = () => {
         },
       ],
     },
-    bankDetails: [{
-      bankName: "",
-      branch: "",
-      accountNumber: "",
-      ifscCode: "",
-    }],
+
+    bankDetails: [
+      {
+        bankName: "",
+        branch: "",
+        accountNumber: "",
+        ifscCode: "",
+      },
+    ],
+
+    nomineeDetails: {
+      nomineeName: "",
+      relationWithApplicant: "",
+      introduceBy: "",
+      memberShipNo: "",
+    },
 
     remarks: [
       {
@@ -139,6 +155,7 @@ const MemberDossierForm = () => {
       },
     ],
   });
+
 
   const steps = [
     { label: "Personal Info", icon: "👤" },
@@ -151,13 +168,24 @@ const MemberDossierForm = () => {
 
   const handleChange = useCallback((section, field, value) => {
     setFormData((prev) => {
-      if (section === 'bankDetails' || section === 'remarks') {
+
+      // When field === null → replace the entire object/array
+      if (field === null) {
         return {
           ...prev,
-          [section]: value // Directly set the array value
+          [section]: value,
         };
       }
 
+      // Arrays like bankDetails and remarks handled directly
+      if (Array.isArray(prev[section])) {
+        return {
+          ...prev,
+          [section]: value,
+        };
+      }
+
+      // Normal nested object update
       return {
         ...prev,
         [section]: {
@@ -167,6 +195,7 @@ const MemberDossierForm = () => {
       };
     });
   }, []);
+
 
 
   // NEW: Deep nested handleChange for address fields
@@ -205,172 +234,280 @@ const MemberDossierForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Debug: Log current form data
     console.log("📋 Current Form Data:", JSON.stringify(formData, null, 2));
 
     try {
       const formDataToSend = new FormData();
-
       const values = formData;
 
-      // --- PERSONAL INFORMATION ---
+      /* -----------------------------------------
+         PERSONAL DETAILS
+      ----------------------------------------- */
       Object.entries(values.personalInformation || {}).forEach(([key, value]) => {
-        if (value !== null && value !== undefined && value !== "") {
-          formDataToSend.append(`personalDetails[${key}]`, value.toString());
-          console.log(`✅ Added personalDetails[${key}]:`, value);
+        if (value !== "" && value !== null && value !== undefined) {
+          formDataToSend.append(`personalDetails[${key}]`, value);
         }
       });
 
-      // --- ADDRESS DETAILS ---
+      /* -----------------------------------------
+         ADDRESS DETAILS
+      ----------------------------------------- */
+
       // Permanent Address
       Object.entries(values.Address?.permanentAddress || {}).forEach(([key, value]) => {
-        if (key !== 'proofDocument' && value !== null && value !== undefined && value !== "") {
-          formDataToSend.append(`addressDetails[permanentAddress][${key}]`, value.toString());
-          console.log(`✅ Added addressDetails[permanentAddress][${key}]:`, value);
+        if (key !== "proofDocument" && value) {
+          formDataToSend.append(
+            `addressDetails[permanentAddress][${key}]`,
+            value.toString()
+          );
         }
       });
+
+      // Permanent Address proof
+      if (values.Address?.permanentAddress?.proofDocument instanceof File) {
+        formDataToSend.append(
+          "addressDetails[permanentAddressBillPhoto]",
+          values.Address.permanentAddress.proofDocument
+        );
+      }
 
       // Current Residential Address
-      Object.entries(values.Address?.currentResidentialAddress || {}).forEach(([key, value]) => {
-        if (key !== 'proofDocument' && value !== null && value !== undefined && value !== "") {
-          formDataToSend.append(`addressDetails[currentResidentalAddress][${key}]`, value.toString());
-          console.log(`✅ Added addressDetails[currentResidentalAddress][${key}]:`, value);
+      Object.entries(values.Address?.currentResidentialAddress || {}).forEach(
+        ([key, value]) => {
+          if (key !== "proofDocument" && value) {
+            formDataToSend.append(
+              `addressDetails[currentResidentalAddress][${key}]`,
+              value.toString()
+            );
+          }
         }
-      });
+      );
 
-      // Address Proof Files
-      if (values.Address?.permanentAddress?.proofDocument instanceof File) {
-        formDataToSend.append('permanentAddressBillPhoto', values.Address.permanentAddress.proofDocument);
-        console.log("✅ Added permanentAddressBillPhoto file");
-      }
+      // Current Address proof
       if (values.Address?.currentResidentialAddress?.proofDocument instanceof File) {
-        formDataToSend.append('currentResidentalBillPhoto', values.Address.currentResidentialAddress.proofDocument);
-        console.log("✅ Added currentResidentalBillPhoto file");
+        formDataToSend.append(
+          "addressDetails[currentResidentalBillPhoto]",
+          values.Address.currentResidentialAddress.proofDocument
+        );
       }
 
-      // --- IDENTITY PROOFS (Documents) ---
+      /* -----------------------------------------
+         DOCUMENTS (Identity Proofs)
+      ----------------------------------------- */
       const idProofs = values.identityProofs || {};
 
-      // Document numbers
-      if (idProofs.panNumber) {
-        formDataToSend.append('documents[panNo]', idProofs.panNumber);
-        console.log("✅ Added documents[panNo]:", idProofs.panNumber);
-      }
-      if (idProofs.aadhaarCardNumber) {
-        formDataToSend.append('documents[aadhaarNo]', idProofs.aadhaarCardNumber);
-        console.log("✅ Added documents[aadhaarNo]:", idProofs.aadhaarCardNumber);
-      }
-      if (idProofs.rationCardNumber) {
-        formDataToSend.append('documents[rationCard]', idProofs.rationCardNumber);
-      }
-      if (idProofs.drivingLicenseNumber) {
-        formDataToSend.append('documents[drivingLicense]', idProofs.drivingLicenseNumber);
-      }
-      if (idProofs.voterIdNumber) {
-        formDataToSend.append('documents[voterId]', idProofs.voterIdNumber);
-      }
-      if (idProofs.passportNumber) {
-        formDataToSend.append('documents[passportNo]', idProofs.passportNumber);
-      }
+      // Numbers
+      const docNumberMap = {
+        panNumber: "panNo",
+        aadhaarCardNumber: "aadhaarNo",
+        rationCardNumber: "rationCard",
+        drivingLicenseNumber: "drivingLicense",
+        voterIdNumber: "voterId",
+        passportNumber: "passportNo",
+      };
 
-      // Document photos
-      if (idProofs.passportSizePhoto instanceof File) {
-        formDataToSend.append('passportSize', idProofs.passportSizePhoto);
-        console.log("✅ Added passportSize file");
-      }
-      if (idProofs.panCardPhoto instanceof File) {
-        formDataToSend.append('panNoPhoto', idProofs.panCardPhoto);
-      }
-      if (idProofs.aadhaarFrontPhoto instanceof File) {
-        formDataToSend.append('aadhaarNoPhoto', idProofs.aadhaarFrontPhoto);
-      }
-      if (idProofs.rationFrontPhoto instanceof File) {
-        formDataToSend.append('rationCardPhoto', idProofs.rationFrontPhoto);
-      }
-      if (idProofs.drivingFrontPhoto instanceof File) {
-        formDataToSend.append('drivingLicensePhoto', idProofs.drivingFrontPhoto);
-      }
-      if (idProofs.voterFrontPhoto instanceof File) {
-        formDataToSend.append('voterIdPhoto', idProofs.voterFrontPhoto);
-      }
-      if (idProofs.passportPhoto instanceof File) {
-        formDataToSend.append('passportNoPhoto', idProofs.passportPhoto);
-      }
-
-      // --- PROFESSIONAL DETAILS ---
-      Object.entries(values.professionalDetails || {}).forEach(([key, value]) => {
-        if (key !== 'familyMemberMemberOfSociety' && key !== 'familyMembers' && value !== null && value !== undefined && value !== "") {
-          formDataToSend.append(`professionalDetails[${key}]`, value.toString());
+      Object.entries(docNumberMap).forEach(([formKey, dbKey]) => {
+        if (idProofs[formKey]) {
+          formDataToSend.append(`documents[${dbKey}]`, idProofs[formKey]);
         }
       });
 
-      // --- FAMILY DETAILS ---
-      if (values.professionalDetails?.familyMemberMemberOfSociety) {
-        formDataToSend.append('familyDetails[familyMembersMemberOfSociety]', 'true');
+      // Photos
+      const photoMap = {
+        passportSizePhoto: "passportSize",
+        panCardPhoto: "panNoPhoto",
+        aadhaarFrontPhoto: "aadhaarNoPhoto",
+        rationFrontPhoto: "rationCardPhoto",
+        drivingFrontPhoto: "drivingLicensePhoto",
+        voterFrontPhoto: "voterIdPhoto",
+        passportPhoto: "passportNoPhoto",
+      };
 
-        values.professionalDetails.familyMembers?.forEach((member, index) => {
-          if (member.name) formDataToSend.append(`familyDetails[familyMember][${index}]`, member.name);
-          if (member.membershipNo) formDataToSend.append(`familyDetails[familyMemberNo][${index}]`, member.membershipNo);
-        });
-      } else {
-        formDataToSend.append('familyDetails[familyMembersMemberOfSociety]', 'false');
+      Object.entries(photoMap).forEach(([formKey, dbKey]) => {
+        if (idProofs[formKey] instanceof File) {
+          formDataToSend.append(dbKey, idProofs[formKey]);
+        }
+      });
+
+      /* -----------------------------------------
+         PROFESSIONAL DETAILS
+      ----------------------------------------- */
+      const pro = values.professionalDetails || {};
+
+      if (pro.qualification)
+        formDataToSend.append(
+          "professionalDetails[qualification]",
+          pro.qualification
+        );
+
+      if (pro.occupation)
+        formDataToSend.append("professionalDetails[occupation]", pro.occupation);
+
+      /* ------ SERVICE (Govt / Pvt) ------- */
+      if (pro.inCaseOfServiceGovt) {
+        formDataToSend.append("professionalDetails[inCaseOfService]", true);
+        formDataToSend.append("professionalDetails[serviceType]", "Govt");
       }
 
-      // --- BANK DETAILS ---
-      (values.bankDetails || []).forEach((bank, index) => {
-        Object.entries(bank || {}).forEach(([key, value]) => {
-          if (value !== null && value !== undefined && value !== "") {
-            formDataToSend.append(`bankDetails[${key}]`, value.toString());
+      if (pro.inCaseOfPrivate) {
+        formDataToSend.append("professionalDetails[inCaseOfService]", true);
+        formDataToSend.append("professionalDetails[serviceType]", "Pvt");
+      }
+
+      /* ------ SERVICE DETAILS ------- */
+      if (pro.serviceDetails) {
+        Object.entries(pro.serviceDetails).forEach(([key, value]) => {
+          if (value) {
+            formDataToSend.append(
+              `professionalDetails[serviceDetails][${key}]`,
+              value.toString()
+            );
           }
         });
-      });
+      }
 
-      // --- LOAN DETAILS ---
-      (values.remarks || []).forEach((remark, index) => {
-        formDataToSend.append(`loanDetails[${index}][loanType]`, "Personal");
-        if (remark.loanAmount) formDataToSend.append(`loanDetails[${index}][amount]`, remark.loanAmount);
-        if (remark.purposeOfLoan) formDataToSend.append(`loanDetails[${index}][purpose]`, remark.purposeOfLoan);
-        if (remark.loanDate) formDataToSend.append(`loanDetails[${index}][dateOfLoan]`, remark.loanDate);
-      });
+      /* ------ BUSINESS ------- */
+      if (pro.inCaseOfBusiness) {
+        formDataToSend.append("professionalDetails[inCaseOfBusiness]", true);
+      }
 
-      // --- REFERENCE DETAILS ---
-      formDataToSend.append('referenceDetails[referenceName]', "");
-      formDataToSend.append('referenceDetails[referenceMno]', "");
-      formDataToSend.append('referenceDetails[guarantorName]', "");
+      /* ------ BUSINESS DETAILS ------- */
+      if (pro.businessDetails) {
+        Object.entries(pro.businessDetails).forEach(([key, value]) => {
+          if (key !== "gstCertificate" && value) {
+            formDataToSend.append(
+              `professionalDetails[businessDetails][${key}]`,
+              value.toString()
+            );
+          }
+        });
 
-      // --- GUARANTEE DETAILS ---
-      formDataToSend.append('guaranteeDetails[whetherMemberHasGivenGuaranteeInOtherSociety]', 'false');
-      formDataToSend.append('guaranteeDetails[whetherMemberHasGivenGuaranteeInOurSociety]', 'false');
-
-      // --- DEBUG LOGS ---
-      console.log("🟡 Final FormData entries:");
-      let hasData = false;
-      for (const pair of formDataToSend.entries()) {
-        console.log(pair[0], ":", pair[1]);
-        if (pair[1] && pair[1] !== "") {
-          hasData = true;
+        // GST File
+        if (pro.businessDetails.gstCertificate instanceof File) {
+          formDataToSend.append(
+            "professionalDetails[businessDetails][gstCertificate]",
+            pro.businessDetails.gstCertificate
+          );
         }
       }
 
-      if (!hasData) {
-        showSnackbar("No form data to submit. Please fill in the form.", "error");
-        return;
+      /* -----------------------------------------
+         FAMILY DETAILS
+      ----------------------------------------- */
+      formDataToSend.append(
+        "familyDetails[familyMembersMemberOfSociety]",
+        pro.familyMemberMemberOfSociety ? "true" : "false"
+      );
+
+      if (pro.familyMembers?.length) {
+        pro.familyMembers.forEach((mem, index) => {
+          if (mem.name)
+            formDataToSend.append(
+              `familyDetails[familyMember][${index}]`,
+              mem.name
+            );
+          if (mem.membershipNo)
+            formDataToSend.append(
+              `familyDetails[familyMemberNo][${index}]`,
+              mem.membershipNo
+            );
+        });
       }
 
-      console.log("🚀 Dispatching createMember thunk...");
+      /* -----------------------------------------
+         BANK DETAILS
+      ----------------------------------------- */
+      const bank = values.bankDetails || {};
+      Object.entries(bank).forEach(([key, value]) => {
+        if (value) {
+          formDataToSend.append(`bankDetails[${key}]`, value.toString());
+        }
+      });
+
+      /* -----------------------------------------
+         LOAN DETAILS
+      ----------------------------------------- */
+      (values.remarks || []).forEach((remark, index) => {
+        formDataToSend.append(`loanDetails[${index}][loanType]`, "Personal");
+
+        if (remark.loanAmount)
+          formDataToSend.append(
+            `loanDetails[${index}][amount]`,
+            remark.loanAmount
+          );
+
+        if (remark.purposeOfLoan)
+          formDataToSend.append(
+            `loanDetails[${index}][purpose]`,
+            remark.purposeOfLoan
+          );
+
+        if (remark.loanDate)
+          formDataToSend.append(
+            `loanDetails[${index}][dateOfLoan]`,
+            remark.loanDate
+          );
+      });
+
+      /* -----------------------------------------
+         REFERENCES
+      ----------------------------------------- */
+      const ref = values.referenceDetails || {};
+      if (ref.referenceName)
+        formDataToSend.append(
+          `referenceDetails[0][referenceName]`,
+          ref.referenceName
+        );
+      if (ref.referenceMno)
+        formDataToSend.append(
+          `referenceDetails[0][referenceMno]`,
+          ref.referenceMno
+        );
+
+      /* -----------------------------------------
+         GUARANTEE DETAILS (default false)
+      ----------------------------------------- */
+      formDataToSend.append(
+        "guaranteeDetails[whetherMemberHasGivenGuaranteeInOtherSociety]",
+        "false"
+      );
+      formDataToSend.append(
+        "guaranteeDetails[whetherMemberHasGivenGuaranteeInOurSociety]",
+        "false"
+      );
+
+      /* -----------------------------------------
+         NOMINEE DETAILS
+      ----------------------------------------- */
+      const nom = values.nomineeDetails || {};
+      Object.entries(nom).forEach(([key, value]) => {
+        if (value) {
+          formDataToSend.append(`nomineeDetails[${key}]`, value.toString());
+        }
+      });
+
+      /* -----------------------------------------
+         DEBUG: Show final FormData
+      ----------------------------------------- */
+      console.log("🟡 Final FormData:");
+      for (const [key, value] of formDataToSend.entries()) {
+        console.log(key, ":", value);
+      }
+
+      /* -----------------------------------------
+         SEND REQUEST
+      ----------------------------------------- */
       await dispatch(createMember(formDataToSend)).unwrap();
-      console.log("✅ Thunk dispatched successfully");
 
       showSnackbar("✅ Member created successfully!", "success");
-
-      // Reset form after successful submission
       setActiveStep(0);
 
     } catch (err) {
       console.error("❌ Failed to create member:", err);
-      showSnackbar(`Error: ${err.message || "Failed to create member"}`, "error");
+      showSnackbar(err.message || "Failed to create member", "error");
     }
   };
+
 
   // Show success/error messages from Redux state
   React.useEffect(() => {

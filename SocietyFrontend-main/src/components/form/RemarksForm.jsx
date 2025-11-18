@@ -18,29 +18,46 @@ const RemarksForm = ({ formData, handleChange }) => {
   // Ensure remarks is always an array with safe fallback
   const remarks = Array.isArray(formData.remarks) ? formData.remarks : [];
 
+  // Nominee Details
+  const nominee = formData.nomineeDetails || {
+    nomineeName: "",
+    relationWithApplicant: "",
+    introduceBy: "",
+    memberShipNo: "",
+  };
+
   // Handle changes for remark fields
   const handleRemarkChange = (index, field, value) => {
     const updatedRemarks = [...remarks];
     updatedRemarks[index] = {
       ...updatedRemarks[index],
-      [field]: value
+      [field]: value,
     };
-    handleChange('remarks', null, updatedRemarks);
+    handleChange("remarks", null, updatedRemarks);
+  };
+
+  // Handle nominee changes
+  const handleNomineeChange = (field, value) => {
+    const updatedNominee = {
+      ...nominee,
+      [field]: value,
+    };
+    handleChange("nomineeDetails", null, updatedNominee);
   };
 
   // Add new remark
   const addRemark = () => {
     const updatedRemarks = [
       ...remarks,
-      { loanAmount: "", purposeOfLoan: "", loanDate: "" }
+      { loanAmount: "", purposeOfLoan: "", loanDate: "" },
     ];
-    handleChange('remarks', null, updatedRemarks);
+    handleChange("remarks", null, updatedRemarks);
   };
 
   // Delete remark
   const deleteRemark = (index) => {
     const updatedRemarks = remarks.filter((_, i) => i !== index);
-    handleChange('remarks', null, updatedRemarks);
+    handleChange("remarks", null, updatedRemarks);
   };
 
   return (
@@ -52,6 +69,9 @@ const RemarksForm = ({ formData, handleChange }) => {
           subtitle="Complete the member dossier"
         />
 
+        {/* ----------------------- */}
+        {/* Loan Remarks Section */}
+        {/* ----------------------- */}
         {remarks.map((remark, index) => (
           <Box
             key={index}
@@ -69,7 +89,9 @@ const RemarksForm = ({ formData, handleChange }) => {
                   label="Loan Amount"
                   type="number"
                   value={remark?.loanAmount || ""}
-                  onChange={(e) => handleRemarkChange(index, 'loanAmount', e.target.value)}
+                  onChange={(e) =>
+                    handleRemarkChange(index, "loanAmount", e.target.value)
+                  }
                 />
               </Grid>
 
@@ -78,7 +100,9 @@ const RemarksForm = ({ formData, handleChange }) => {
                 <StyledTextField
                   label="Purpose of Loan"
                   value={remark?.purposeOfLoan || ""}
-                  onChange={(e) => handleRemarkChange(index, 'purposeOfLoan', e.target.value)}
+                  onChange={(e) =>
+                    handleRemarkChange(index, "purposeOfLoan", e.target.value)
+                  }
                 />
               </Grid>
 
@@ -89,7 +113,9 @@ const RemarksForm = ({ formData, handleChange }) => {
                   type="date"
                   InputLabelProps={{ shrink: true }}
                   value={remark?.loanDate || ""}
-                  onChange={(e) => handleRemarkChange(index, 'loanDate', e.target.value)}
+                  onChange={(e) =>
+                    handleRemarkChange(index, "loanDate", e.target.value)
+                  }
                 />
               </Grid>
             </Grid>
@@ -111,12 +137,13 @@ const RemarksForm = ({ formData, handleChange }) => {
           </Box>
         ))}
 
-        {/* Buttons */}
+        {/* Add loan button */}
         <Box
           sx={{
             display: "flex",
             justifyContent: "flex-end",
             gap: 2,
+            mb: 4,
           }}
         >
           <Button
@@ -128,6 +155,69 @@ const RemarksForm = ({ formData, handleChange }) => {
           >
             Add Another Loan
           </Button>
+        </Box>
+
+        {/* ----------------------- */}
+        {/* Nominee Details Section */}
+        {/* ----------------------- */}
+        <SectionHeader
+          title="Nominee Details"
+          subtitle="Information about the nominated person"
+        />
+
+        <Box
+          sx={{
+            border: "1px solid #e0e0e0",
+            borderRadius: 2,
+            p: 3,
+            mt: 2,
+          }}
+        >
+          <Grid container spacing={3}>
+            {/* Nominee Name */}
+            <Grid item xs={12} sm={6}>
+              <StyledTextField
+                label="Nominee Name"
+                value={nominee.nomineeName || ""}
+                onChange={(e) =>
+                  handleNomineeChange("nomineeName", e.target.value)
+                }
+              />
+            </Grid>
+
+            {/* Relation With Applicant */}
+            <Grid item xs={12} sm={6}>
+              <StyledTextField
+                label="Relation with Applicant"
+                value={nominee.relationWithApplicant || ""}
+                onChange={(e) =>
+                  handleNomineeChange("relationWithApplicant", e.target.value)
+                }
+              />
+            </Grid>
+
+            {/* Introduced By */}
+            <Grid item xs={12} sm={6}>
+              <StyledTextField
+                label="Introduced By"
+                value={nominee.introduceBy || ""}
+                onChange={(e) =>
+                  handleNomineeChange("introduceBy", e.target.value)
+                }
+              />
+            </Grid>
+
+            {/* Membership No */}
+            <Grid item xs={12} sm={6}>
+              <StyledTextField
+                label="Membership No"
+                value={nominee.memberShipNo || ""}
+                onChange={(e) =>
+                  handleNomineeChange("memberShipNo", e.target.value)
+                }
+              />
+            </Grid>
+          </Grid>
         </Box>
       </CardContent>
     </Card>

@@ -14,10 +14,12 @@ import GuarantorList from '../pages/GuarantorList/GuarantorList.jsx'
 import MemberViewPage from '../pages/Member/MemberView.jsx';
 import MemberEditPage from '../pages/Member/MemberEdit.jsx';
 import NoticePage from '../pages/Notice/Notice.jsx'
+import Login from "../components/Login.jsx";
 
 const MainRoutes = () => {
   return (
     <Routes>
+      <Route path="/login" element={<Login />} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route element={<DashboardLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />

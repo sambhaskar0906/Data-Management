@@ -2,9 +2,9 @@ import React from "react";
 import { Box, Grid, Typography, Paper } from "@mui/material";
 import StatCard from "../components/StatCard";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import ApartmentIcon from "@mui/icons-material/Apartment";
+import RealEstateAgentIcon from '@mui/icons-material/RealEstateAgent';
 import PeopleIcon from "@mui/icons-material/People";
-import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
 import WorkIcon from "@mui/icons-material/Work";
 
 const data = [
@@ -17,17 +17,14 @@ const data = [
 const Dashboard = () => (
     <Box sx={{ p: 3 }}>
         <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 3 }}>
-                <StatCard label="Towers/Streets" value="20" color="#E3F2FD" icon={<ApartmentIcon />} />
+            <Grid size={{ xs: 12, md: 4 }}>
+                <StatCard label="Total Member" value="20" color="#E3F2FD" icon={<PeopleIcon />} />
             </Grid>
-            <Grid size={{ xs: 12, md: 3 }}>
-                <StatCard label="Members" value="59" color="#FFF3E0" icon={<PeopleIcon />} />
+            <Grid size={{ xs: 12, md: 4 }}>
+                <StatCard label="Total Loans" value="59" color="#FFF3E0" icon={<RealEstateAgentIcon />} />
             </Grid>
-            <Grid size={{ xs: 12, md: 3 }}>
-                <StatCard label="Vehicles" value="47" color="#FFEBEE" icon={<DirectionsCarIcon />} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 3 }}>
-                <StatCard label="Staffs" value="10" color="#E8F5E9" icon={<WorkIcon />} />
+            <Grid size={{ xs: 12, md: 4 }}>
+                <StatCard label="Total Loan Amount" value="5,60000 L" color="#FFEBEE" icon={<CurrencyRupeeIcon />} />
             </Grid>
         </Grid>
 

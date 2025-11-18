@@ -4,10 +4,22 @@ const memberSchema = new mongoose.Schema(
   {
     // ===== BASIC DETAILS =====
     personalDetails: {
+      title: { type: String },
       nameOfMember: { type: String },
+
+      // You mentioned this comment: “in gstCertificate it will hold image pdf anything”
+      // Already supported by type: String (Cloudinary URL)
+
       membershipNumber: { type: String },
+
+      minor: {
+        type: Boolean,
+        default: false,
+      },
+
       nameOfFather: { type: String },
       nameOfMother: { type: String },
+      nameOfSpouse: { type: String },
       dateOfBirth: { type: Date },
       ageInYears: { type: String },
       membershipDate: { type: String },
@@ -33,7 +45,9 @@ const memberSchema = new mongoose.Schema(
         state: { type: String },
         pincode: { type: String },
       },
-      permanentAddressBillPhoto: { type: String }, // Fixed: single string, not array
+
+      permanentAddressBillPhoto: { type: String },
+
       currentResidentalAddress: {
         flatHouseNo: { type: String },
         areaStreetSector: { type: String },
@@ -44,7 +58,9 @@ const memberSchema = new mongoose.Schema(
         state: { type: String },
         pincode: { type: String },
       },
-      currentResidentalBillPhoto: { type: String }, // Fixed: single string, not array
+
+      currentResidentalBillPhoto: { type: String },
+
       previousCurrentAddress: [
         {
           flatHouseNo: String,
@@ -55,16 +71,18 @@ const memberSchema = new mongoose.Schema(
           state: String,
           country: String,
           pincode: String,
-        }
+        },
       ],
     },
 
-    // ===== REFERENCES & GUARANTORS =====
-    referenceDetails: [{
-      referenceName: { type: String },
-      referenceMno: { type: String },
-    },
+    // ===== REFERENCES =====
+    referenceDetails: [
+      {
+        referenceName: { type: String },
+        referenceMno: { type: String },
+      },
     ],
+
     // ===== DOCUMENTS =====
     documents: {
       passportSize: { type: String },
@@ -75,7 +93,7 @@ const memberSchema = new mongoose.Schema(
       voterId: { type: String },
       passportNo: { type: String },
 
-      // Document Photos
+      // PHOTOS
       panNoPhoto: { type: String },
       rationCardPhoto: { type: String },
       drivingLicensePhoto: { type: String },
@@ -88,7 +106,35 @@ const memberSchema = new mongoose.Schema(
     professionalDetails: {
       qualification: { type: String },
       occupation: { type: String },
+
+      inCaseOfServiceGovt: { type: Boolean, default: false },
+      inCaseOfPrivate: { type: Boolean, default: false },
+      inCaseOfService: { type: Boolean, default: false },
+      serviceType: { type: String },
+
+      serviceDetails: {
+        fullNameOfCompany: { type: String },
+        addressOfCompany: { type: String },
+        monthlyIncome: { type: String },
+        designation: { type: String },
+        dateOfJoining: { type: String },
+        employeeCode: { type: String },
+        dateOfRetirement: { type: String },
+        officeNo: { type: String },
+      },
+
+      inCaseOfBusiness: { type: Boolean, default: false },
+      businessDetails: {
+        fullNameOfCompany: { type: String },
+        addressOfCompany: { type: String },
+        businessStructure: { type: String },
+        gstCertificate: { type: String },  // holds image/pdf URL
+      },
+
+
     },
+
+
 
     // ===== FAMILY DETAILS =====
     familyDetails: {
@@ -103,11 +149,6 @@ const memberSchema = new mongoose.Schema(
       branch: { type: String },
       accountNumber: { type: String },
       ifscCode: { type: String },
-      civilScore: {
-        type: Number,
-        min: 300,
-        max: 900
-      },
     },
 
     // ===== GUARANTEE DETAILS =====
@@ -119,6 +160,7 @@ const memberSchema = new mongoose.Schema(
           amountOfGuarantee: { type: String },
         },
       ],
+
       whetherMemberHasGivenGuaranteeInOurSociety: { type: Boolean },
       ourSociety: [
         {
@@ -140,29 +182,39 @@ const memberSchema = new mongoose.Schema(
         dateOfLoan: { type: String },
       },
     ],
+
+    // ===== NOMINEE DETAILS =====
+    nomineeDetails: {
+      nomineeName: { type: String },
+      relationWithApplicant: { type: String },
+      introduceBy: { type: String },
+      memberShipNo: { type: String },
+    },
   },
   { timestamps: true }
 );
 
-// Middleware to track address changes
+// ===== Middleware: Track Address Changes =====
 memberSchema.pre("save", async function (next) {
-  if (!this.isModified("addressDetails.currentResidentalAddress")) return next();
+  if (!this.isModified("addressDetails.currentResidentalAddress")) {
+    return next();
+  }
 
   if (!this.isNew) {
     const oldDoc = await this.constructor.findById(this._id);
+
     if (oldDoc && oldDoc.addressDetails.currentResidentalAddress) {
-      // ✅ Make sure we store object, not string
       this.addressDetails.previousCurrentAddress = [
         ...(oldDoc.addressDetails.previousCurrentAddress || []),
-        oldDoc.addressDetails.currentResidentalAddress.toObject
-          ? oldDoc.addressDetails.currentResidentalAddress.toObject()
-          : oldDoc.addressDetails.currentResidentalAddress,
+        {
+          ...oldDoc.addressDetails.currentResidentalAddress,
+        },
       ];
     }
   }
+
   next();
 });
-
 
 const Member = mongoose.model("Member", memberSchema);
 export default Member;

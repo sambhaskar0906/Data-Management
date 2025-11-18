@@ -30,6 +30,11 @@ import EditIcon from "@mui/icons-material/Edit";
 import ImageIcon from "@mui/icons-material/Image";
 import { fetchMemberById, clearSelectedMember, updateMember } from "../../features/member/memberSlice";
 
+// ADD THESE IMPORTS
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+
 const getValueByPath = (obj, path) => {
     if (!path || !obj) return undefined;
     const parts = path.split(".");
@@ -93,10 +98,13 @@ const isMissing = (value) => {
 
 const FIELD_MAP = {
     // Personal
+    "personalDetails.title": "Title",
     "personalDetails.nameOfMember": "Member Name",
     "personalDetails.membershipNumber": "Membership No",
+    "personalDetails.minor": "Is Minor",
     "personalDetails.nameOfFather": "Father's Name",
     "personalDetails.nameOfMother": "Mother's Name",
+    "personalDetails.nameOfSpouse": "Spouse's Name",
     "personalDetails.dateOfBirth": "Date of Birth",
     "personalDetails.ageInYears": "Age (Years)",
     "personalDetails.membershipDate": "Membership Date",
@@ -111,15 +119,13 @@ const FIELD_MAP = {
 
     // Address
     "addressDetails.permanentAddress": "Permanent Address",
-    "addressDetails.currentResidentalAddress": "Current Address",
     "addressDetails.permanentAddressBillPhoto": "Permanent Address Bill Photo",
+    "addressDetails.currentResidentalAddress": "Current Address",
+    "addressDetails.currentResidentalBillPhoto": "Current Address Bill Photo",
     "addressDetails.previousCurrentAddress": "Previous Addresses",
 
-    // References & guarantors
-    "referenceDetails.referenceName": "Reference Name",
-    "referenceDetails.referenceMno": "Reference Mobile",
-    "referenceDetails.guarantorName": "Guarantor Name",
-    "referenceDetails.gurantorMno": "Guarantor Mobile(s)",
+    // References
+    "referenceDetails": "References",
 
     // Documents - Text Fields
     "documents.panNo": "PAN No",
@@ -138,9 +144,32 @@ const FIELD_MAP = {
     "documents.voterIdPhoto": "Voter ID Photo",
     "documents.passportNoPhoto": "Passport Photo",
 
-    // Professional
+    // Professional - Basic
     "professionalDetails.qualification": "Qualification",
     "professionalDetails.occupation": "Occupation",
+
+    // Professional - Employment Type
+    "professionalDetails.inCaseOfServiceGovt": "Government Service",
+    "professionalDetails.inCaseOfPrivate": "Private Service",
+    "professionalDetails.inCaseOfService": "Service",
+    "professionalDetails.serviceType": "Service Type",
+
+    // Professional - Service Details
+    "professionalDetails.serviceDetails.fullNameOfCompany": "Company Name",
+    "professionalDetails.serviceDetails.addressOfCompany": "Company Address",
+    "professionalDetails.serviceDetails.monthlyIncome": "Monthly Income",
+    "professionalDetails.serviceDetails.designation": "Designation",
+    "professionalDetails.serviceDetails.dateOfJoining": "Date of Joining",
+    "professionalDetails.serviceDetails.employeeCode": "Employee Code",
+    "professionalDetails.serviceDetails.dateOfRetirement": "Date of Retirement",
+    "professionalDetails.serviceDetails.officeNo": "Office Phone",
+
+    // Professional - Business
+    "professionalDetails.inCaseOfBusiness": "Business",
+    "professionalDetails.businessDetails.fullNameOfCompany": "Business Name",
+    "professionalDetails.businessDetails.addressOfCompany": "Business Address",
+    "professionalDetails.businessDetails.businessStructure": "Business Structure",
+    "professionalDetails.businessDetails.gstCertificate": "GST Certificate",
 
     // Family
     "familyDetails.familyMembersMemberOfSociety": "Family Members in Society",
@@ -153,14 +182,22 @@ const FIELD_MAP = {
     "bankDetails.accountNumber": "Account Number",
     "bankDetails.ifscCode": "IFSC Code",
 
-    // Guarantee
+    // Guarantee - Other Society
     "guaranteeDetails.whetherMemberHasGivenGuaranteeInOtherSociety": "Guarantee Given in Other Society",
     "guaranteeDetails.otherSociety": "Other Society Guarantees",
+
+    // Guarantee - Our Society
     "guaranteeDetails.whetherMemberHasGivenGuaranteeInOurSociety": "Guarantee Given in Our Society",
     "guaranteeDetails.ourSociety": "Our Society Guarantees",
 
     // Loans
     "loanDetails": "Loan Details",
+
+    // Nominee
+    "nomineeDetails.nomineeName": "Nominee Name",
+    "nomineeDetails.relationWithApplicant": "Relation with Applicant",
+    "nomineeDetails.introduceBy": "Introduced By",
+    "nomineeDetails.memberShipNo": "Membership No",
 };
 
 // Enhanced Image Display Component with Full Image View
@@ -428,7 +465,7 @@ const MemberDetails = () => {
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
-    // Image field names array
+    // Image field names array - UPDATED
     const imageFields = [
         'documents.passportSize',
         'documents.panNoPhoto',
@@ -437,7 +474,9 @@ const MemberDetails = () => {
         'documents.aadhaarNoPhoto',
         'documents.voterIdPhoto',
         'documents.passportNoPhoto',
-        'addressDetails.permanentAddressBillPhoto'
+        'addressDetails.permanentAddressBillPhoto',
+        'addressDetails.currentResidentalBillPhoto',
+        'professionalDetails.businessDetails.gstCertificate'
     ];
 
     useEffect(() => {
@@ -535,7 +574,7 @@ const MemberDetails = () => {
         navigate(`/edit-member/${id}`);
     };
 
-    // Enhanced formatValue function to handle objects properly
+    // Enhanced formatValue function to handle objects properly - UPDATED
     const formatValue = (value, fieldKey) => {
         if (isMissing(value)) return <span style={{ color: "red", fontWeight: "bold" }}>Missing</span>;
 
@@ -618,6 +657,104 @@ const MemberDetails = () => {
             );
         }
 
+        // Handle Reference Details (array of objects)
+        if (fieldKey === 'referenceDetails') {
+            if (!value || value.length === 0) return "No references";
+
+            return (
+                <Box sx={{ mt: 1 }}>
+                    {value.map((reference, index) => (
+                        <Card key={index} variant="outlined" sx={{ mb: 1, p: 1.5, backgroundColor: '#f0f8ff' }}>
+                            <Typography variant="body2" gutterBottom>
+                                <strong>Name:</strong> {reference.referenceName || 'N/A'}
+                            </Typography>
+                            <Typography variant="body2">
+                                <strong>Mobile:</strong> {reference.referenceMno || 'N/A'}
+                            </Typography>
+                        </Card>
+                    ))}
+                </Box>
+            );
+        }
+
+        // Handle Service Details
+        if (fieldKey.startsWith('professionalDetails.serviceDetails.')) {
+            if (!value || typeof value !== 'object') return "No service details";
+
+            return (
+                <Box sx={{ mt: 1 }}>
+                    <Typography variant="body2"><strong>Company:</strong> {value.fullNameOfCompany || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Address:</strong> {value.addressOfCompany || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Income:</strong> {value.monthlyIncome || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Designation:</strong> {value.designation || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Joining Date:</strong> {value.dateOfJoining || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Employee Code:</strong> {value.employeeCode || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Retirement Date:</strong> {value.dateOfRetirement || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Office Phone:</strong> {value.officeNo || 'N/A'}</Typography>
+                </Box>
+            );
+        }
+
+        // Handle Business Details
+        if (fieldKey.startsWith('professionalDetails.businessDetails.')) {
+            if (!value || typeof value !== 'object') return "No business details";
+
+            return (
+                <Box sx={{ mt: 1 }}>
+                    <Typography variant="body2"><strong>Company:</strong> {value.fullNameOfCompany || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Address:</strong> {value.addressOfCompany || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Structure:</strong> {value.businessStructure || 'N/A'}</Typography>
+                    {value.gstCertificate && (
+                        <Box sx={{ mt: 1 }}>
+                            <Typography variant="body2" gutterBottom><strong>GST Certificate:</strong></Typography>
+                            <ImageDisplay
+                                imageUrl={value.gstCertificate}
+                                alt="GST Certificate"
+                                height={120}
+                            />
+                        </Box>
+                    )}
+                </Box>
+            );
+        }
+
+        // Handle Nominee Details
+        if (fieldKey.startsWith('nomineeDetails.')) {
+            if (!value || typeof value !== 'object') return "No nominee details";
+
+            return (
+                <Box sx={{ mt: 1 }}>
+                    <Typography variant="body2"><strong>Name:</strong> {value.nomineeName || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Relation:</strong> {value.relationWithApplicant || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Introduced By:</strong> {value.introduceBy || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Membership No:</strong> {value.memberShipNo || 'N/A'}</Typography>
+                </Box>
+            );
+        }
+
+        // Handle Previous Addresses
+        if (fieldKey === 'addressDetails.previousCurrentAddress') {
+            if (!value || value.length === 0) return "No previous addresses";
+
+            return (
+                <Box sx={{ mt: 1 }}>
+                    {value.map((address, index) => (
+                        <Card key={index} variant="outlined" sx={{ mb: 1, p: 1.5, backgroundColor: '#fff8e1' }}>
+                            <Typography variant="body2" gutterBottom><strong>Address {index + 1}:</strong></Typography>
+                            <Typography variant="body2"><strong>House No:</strong> {address.flatHouseNo || 'N/A'}</Typography>
+                            <Typography variant="body2"><strong>Area:</strong> {address.areaStreetSector || 'N/A'}</Typography>
+                            <Typography variant="body2"><strong>Locality:</strong> {address.locality || 'N/A'}</Typography>
+                            <Typography variant="body2"><strong>Landmark:</strong> {address.landmark || 'N/A'}</Typography>
+                            <Typography variant="body2"><strong>City:</strong> {address.city || 'N/A'}</Typography>
+                            <Typography variant="body2"><strong>State:</strong> {address.state || 'N/A'}</Typography>
+                            <Typography variant="body2"><strong>Pincode:</strong> {address.pincode || 'N/A'}</Typography>
+                            <Typography variant="body2"><strong>Country:</strong> {address.country || 'N/A'}</Typography>
+                        </Card>
+                    ))}
+                </Box>
+            );
+        }
+
         // Handle address objects
         if (fieldKey === 'addressDetails.permanentAddress' || fieldKey === 'addressDetails.currentResidentalAddress') {
             if (!value || typeof value !== 'object') return "No address data";
@@ -658,6 +795,125 @@ const MemberDetails = () => {
 
         if (typeof value === "boolean") return value ? "Yes" : "No";
         return value || "No data";
+    };
+
+    // Convert values to plain text suitable for Excel/PDF
+    const formatValuePlain = (value, fieldKey) => {
+        if (value === undefined || value === null) return "";
+        if (typeof value === "boolean") return value ? "Yes" : "No";
+        if (Array.isArray(value)) {
+            if (value.length === 0) return "";
+            // If array of objects, stringify each object concisely
+            if (typeof value[0] === "object") {
+                return value.map(v => {
+                    try { return Object.entries(v).map(([k, val]) => `${k}: ${formatValuePlain(val)}`).join("; "); }
+                    catch { return JSON.stringify(v); }
+                }).join(" | ");
+            }
+            return value.join(", ");
+        }
+        if (typeof value === "object") {
+            // For address objects, flatten commonly used keys
+            try {
+                return Object.entries(value).map(([k, v]) => `${k}: ${formatValuePlain(v)}`).join("; ");
+            } catch {
+                return JSON.stringify(value);
+            }
+        }
+        // For image URLs, just show "Image URL" or the URL itself truncated
+        if (typeof value === "string") {
+            if (value.startsWith("http") || value.includes("cloudinary")) {
+                return value;
+            }
+            return value;
+        }
+        return String(value);
+    };
+
+    // Return list of field keys filtered by viewType
+    const getFieldsByView = (member, viewType) => {
+        const keys = Object.keys(FIELD_MAP);
+        if (viewType === "all") return keys;
+        if (viewType === "filled") return keys.filter(k => {
+            const v = getValueByPath(member, k);
+            return !isMissing(v);
+        });
+        if (viewType === "missing") return keys.filter(k => {
+            const v = getValueByPath(member, k);
+            return isMissing(v);
+        });
+        return keys;
+    };
+
+    // Export member fields to Excel
+    const exportMemberToExcel = (member, viewType = "all") => {
+        if (!member) return;
+        const fields = getFieldsByView(member, viewType);
+        const rows = fields.map((key, idx) => ({
+            "S. No": idx + 1,
+            Field: FIELD_MAP[key] || key,
+            Value: formatValuePlain(getValueByPath(member, key), key)
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows, { header: ["S. No", "Field", "Value"] });
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Member Report");
+        const name = (getValueByPath(member, "personalDetails.nameOfMember") || "Member").replace(/\s+/g, "_");
+        XLSX.writeFile(wb, `${name}_Fields_${viewType}_${Date.now()}.xlsx`);
+    };
+
+    // Generate PDF for member fields using jsPDF + autotable
+    const generateMemberFieldsPDF = (member, viewType = "all") => {
+        if (!member) return;
+        const doc = new jsPDF();
+        const memberName = getValueByPath(member, "personalDetails.nameOfMember") || "Member";
+        const membershipNumber = getValueByPath(member, "personalDetails.membershipNumber") || "N/A";
+
+        doc.setFontSize(16);
+        doc.text(`Field Report - ${memberName}`, 14, 16);
+        doc.setFontSize(10);
+        doc.text(`Membership: ${membershipNumber} | View: ${viewType} | Generated: ${new Date().toLocaleString()}`, 14, 24);
+
+        const fields = getFieldsByView(member, viewType);
+        const body = fields.map((key, idx) => {
+            const raw = getValueByPath(member, key);
+            return [
+                idx + 1,
+                FIELD_MAP[key] || key,
+                formatValuePlain(raw, key) || "—"
+            ];
+        });
+
+        autoTable(doc, {
+            startY: 36,
+            head: [["S. No", "Field", "Value"]],
+            body,
+            styles: { fontSize: 9, cellPadding: 3 },
+            headStyles: { fillColor: [25, 118, 210], textColor: 255, fontSize: 10 },
+            columnStyles: {
+                0: { cellWidth: 12 },
+                1: { cellWidth: 60 },
+                2: { cellWidth: 'auto' }
+            },
+            theme: 'grid'
+        });
+
+        const fileName = `${memberName.replace(/\s+/g, "_")}_Fields_${viewType}_${Date.now()}.pdf`;
+        doc.save(fileName);
+    };
+
+    // Export Excel then generate PDF
+    const exportMemberThenDownload = (member, viewType = "all") => {
+        if (!member) return;
+        // try {
+        //     exportMemberToExcel(member, viewType);
+        // } catch (e) {
+        //     console.error("Excel export failed:", e);
+        // }
+        try {
+            generateMemberFieldsPDF(member, viewType);
+        } catch (e) {
+            console.error("PDF generation failed:", e);
+        }
     };
 
     if (loading) {
@@ -724,7 +980,7 @@ const MemberDetails = () => {
                     <Button
                         variant={viewType === 'all' ? "contained" : "outlined"}
                         startIcon={<PictureAsPdfIcon />}
-                        onClick={() => navigate(`/member-pdf/${id}?viewType=all`)}
+                        onClick={() => exportMemberThenDownload(selectedMember, 'all')}
                         color="primary"
                     >
                         All PDF
@@ -732,7 +988,7 @@ const MemberDetails = () => {
                     <Button
                         variant={viewType === 'filled' ? "contained" : "outlined"}
                         startIcon={<CheckCircleOutlineIcon />}
-                        onClick={() => navigate(`/member-pdf/${id}?viewType=filled`)}
+                        onClick={() => exportMemberThenDownload(selectedMember, 'filled')}
                         color="success"
                     >
                         Filled PDF
@@ -740,7 +996,7 @@ const MemberDetails = () => {
                     <Button
                         variant={viewType === 'missing' ? "contained" : "outlined"}
                         startIcon={<ErrorOutlineIcon />}
-                        onClick={() => navigate(`/member-pdf/${id}?viewType=missing`)}
+                        onClick={() => exportMemberThenDownload(selectedMember, 'missing')}
                         color="error"
                     >
                         Missing PDF
@@ -816,12 +1072,17 @@ const MemberDetails = () => {
                     const isImageField = imageFields.includes(fieldKey);
                     const hasImage = isImageField && value && (value.includes('cloudinary') || value.includes('http'));
 
-                    // Check if it's a special field that needs more space
+                    // Check if it's a special field that needs more space - UPDATED
                     const isSpecialField = fieldKey === 'guaranteeDetails.ourSociety' ||
                         fieldKey === 'guaranteeDetails.otherSociety' ||
                         fieldKey === 'loanDetails' ||
                         fieldKey === 'addressDetails.permanentAddress' ||
-                        fieldKey === 'addressDetails.currentResidentalAddress';
+                        fieldKey === 'addressDetails.currentResidentalAddress' ||
+                        fieldKey === 'referenceDetails' ||
+                        fieldKey === 'addressDetails.previousCurrentAddress' ||
+                        fieldKey.startsWith('professionalDetails.serviceDetails.') ||
+                        fieldKey.startsWith('professionalDetails.businessDetails.') ||
+                        fieldKey.startsWith('nomineeDetails.');
 
                     const displayValue = formatValue(value, fieldKey);
 
