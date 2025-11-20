@@ -22,7 +22,6 @@ import PersonalInfoForm from "../components/form/PersonalInfoForm";
 import AddressForm from "../components/form/AddressForm";
 import IdentityVerificationForm from "../components/form/IdentityVerificationForm";
 import ProfessionalFamilyForm from "../components/form/ProfessionalFamilyForm";
-import BankGuaranteeForm from "../components/form/BankGuaranteeForm";
 import RemarksForm from "../components/form/RemarksForm";
 import { useDispatch, useSelector } from "react-redux";
 import { createMember, clearMemberState } from "../features/member/memberSlice";
@@ -131,15 +130,6 @@ const MemberDossierForm = () => {
       ],
     },
 
-    bankDetails: [
-      {
-        bankName: "",
-        branch: "",
-        accountNumber: "",
-        ifscCode: "",
-      },
-    ],
-
     nomineeDetails: {
       nomineeName: "",
       relationWithApplicant: "",
@@ -162,7 +152,6 @@ const MemberDossierForm = () => {
     { label: "Address & Contact", icon: "🏠" },
     { label: "Identity Proof", icon: "🆔" },
     { label: "Professional & Family", icon: "💼" },
-    { label: "Bank & Guarantee", icon: "🏦" },
     { label: "Remarks", icon: "📝" }
   ];
 
@@ -415,16 +404,6 @@ const MemberDossierForm = () => {
       }
 
       /* -----------------------------------------
-         BANK DETAILS
-      ----------------------------------------- */
-      const bank = values.bankDetails || {};
-      Object.entries(bank).forEach(([key, value]) => {
-        if (value) {
-          formDataToSend.append(`bankDetails[${key}]`, value.toString());
-        }
-      });
-
-      /* -----------------------------------------
          LOAN DETAILS
       ----------------------------------------- */
       (values.remarks || []).forEach((remark, index) => {
@@ -536,8 +515,6 @@ const MemberDossierForm = () => {
       case 3:
         return <ProfessionalFamilyForm {...commonProps} />;
       case 4:
-        return <BankGuaranteeForm {...commonProps} />;
-      case 5:
         return <RemarksForm {...commonProps} />;
       default:
         return null;

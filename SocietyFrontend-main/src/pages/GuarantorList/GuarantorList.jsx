@@ -82,6 +82,11 @@ const GuarantorList = () => {
     const myGuarantors = guarantorRelations?.myGuarantors || [];
     const forWhomIAmGuarantor = guarantorRelations?.forWhomIAmGuarantor || [];
 
+    // Helper function to get membership number from guarantor object
+    const getMembershipNumber = (guarantor) => {
+        return guarantor.membershipNumber || guarantor.membershipNo || 'N/A';
+    };
+
     return (
         <Card
             sx={{
@@ -170,6 +175,9 @@ const GuarantorList = () => {
                                             S.No
                                         </TableCell>
                                         <TableCell sx={{ color: "white", fontWeight: "bold" }}>
+                                            Membership No.
+                                        </TableCell>
+                                        <TableCell sx={{ color: "white", fontWeight: "bold" }}>
                                             Name
                                         </TableCell>
                                         <TableCell sx={{ color: "white", fontWeight: "bold" }}>
@@ -187,6 +195,7 @@ const GuarantorList = () => {
                                     {forWhomIAmGuarantor.map((item, index) => (
                                         <TableRow key={index} hover>
                                             <TableCell>{index + 1}</TableCell>
+                                            <TableCell>{getMembershipNumber(item)}</TableCell>
                                             <TableCell>{item.name}</TableCell>
                                             <TableCell>₹ {parseInt(item.amountOfLoan).toLocaleString()}</TableCell>
                                             <TableCell>{item.typeOfLoan}</TableCell>
@@ -224,6 +233,9 @@ const GuarantorList = () => {
                                             S.No
                                         </TableCell>
                                         <TableCell sx={{ color: "white", fontWeight: "bold" }}>
+                                            Membership No.
+                                        </TableCell>
+                                        <TableCell sx={{ color: "white", fontWeight: "bold" }}>
                                             Name
                                         </TableCell>
                                         <TableCell sx={{ color: "white", fontWeight: "bold" }}>
@@ -241,6 +253,7 @@ const GuarantorList = () => {
                                     {myGuarantors.map((item, index) => (
                                         <TableRow key={index} hover>
                                             <TableCell>{index + 1}</TableCell>
+                                            <TableCell>{getMembershipNumber(item)}</TableCell>
                                             <TableCell>{item.name}</TableCell>
                                             <TableCell>₹ {parseInt(item.amountOfLoan).toLocaleString()}</TableCell>
                                             <TableCell>{item.typeOfLoan}</TableCell>
@@ -297,7 +310,7 @@ const GuarantorList = () => {
                                             Membership Number
                                         </Typography>
                                         <Typography variant="body1" fontWeight="bold">
-                                            {selectedGuarantor.membershipNumber}
+                                            {getMembershipNumber(selectedGuarantor)}
                                         </Typography>
                                     </Box>
 
