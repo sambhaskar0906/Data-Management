@@ -24,11 +24,12 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
+import AddIcon from '@mui/icons-material/Add';
 
 import { useDispatch, useSelector } from "react-redux";
-
+import { useNavigate } from "react-router-dom";
 import MemberView from "./MemberView";
-import MemberEditPage from "./MemberEdit";
+import MemberEditPage from "./MemberEdit.jsx";
 import { generateMembersListPDF } from "./MemberDetailsPdf";
 
 import {
@@ -189,9 +190,53 @@ export const formatValueForUI = (value) => {
     return String(value);
 };
 
+export const handleAddressUpdate = () => {
+    const currentFormData = { ...formData };
+
+    // Get current address (jo ab previous banega)
+    const currentAddress = getValueByPath(currentFormData, 'addressDetails.currentResidentalAddress');
+
+    // Get existing previous addresses
+    const previousAddresses = getValueByPath(currentFormData, 'addressDetails.previousCurrentAddress') || [];
+
+    // Check if current address is not empty and different from the last previous address
+    if (currentAddress &&
+        Object.keys(currentAddress).some(key => currentAddress[key]) &&
+        !isAddressEqual(currentAddress, previousAddresses[0])) {
+
+        // Add current address to previous addresses (at beginning)
+        const updatedPreviousAddresses = [currentAddress, ...previousAddresses];
+
+        // Update form data with new previous addresses
+        currentFormData.addressDetails.previousCurrentAddress = updatedPreviousAddresses;
+
+        // Set form data
+        setFormData(currentFormData);
+
+        // Show success message
+        alert('Current address moved to previous addresses! Now you can enter new current address.');
+    } else {
+        alert('Current address is empty or same as previous address. No changes made.');
+    }
+};
+
+// Helper function to compare two addresses
+const isAddressEqual = (addr1, addr2) => {
+    if (!addr1 || !addr2) return false;
+
+    const keys = ['flatHouseNo', 'areaStreetSector', 'locality', 'landmark', 'city', 'country', 'state', 'pincode'];
+    return keys.every(key => addr1[key] === addr2[key]);
+};
+
+
 const MemberDetailsPage = () => {
     const dispatch = useDispatch();
     const { members = [], loading, error, successMessage } = useSelector((state) => state.members);
+
+    const navigate = useNavigate();
+    const handleAddMember = () => {
+        navigate('/addmember')
+    }
 
     // Search + pagination
     const [query, setQuery] = useState("");
@@ -295,8 +340,20 @@ const MemberDetailsPage = () => {
                     variant="contained"
                     startIcon={<DownloadIcon />}
                     onClick={() => generateMembersListPDF(filteredMembers)}
+                    disabled={loading || filteredMembers.length === 0}
+                    sx={{ whiteSpace: 'nowrap', minWidth: 'auto' }}
                 >
-                    Dowenload
+                    Download PDF
+                </Button>
+
+
+                <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={handleAddMember}
+                    sx={{ whiteSpace: 'nowrap', minWidth: 'auto' }}
+                >
+                    Member
                 </Button>
             </Box>
 

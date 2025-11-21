@@ -634,6 +634,7 @@ const ProfessionalForm = ({ formData, handleChange }) => {
                     <MenuItem value="PARTNERSHIP">Partnership</MenuItem>
                     <MenuItem value="LLP">LLP</MenuItem>
                     <MenuItem value="PVT_LTD">Private Limited</MenuItem>
+                    <MenuItem value="LTD">Limited</MenuItem>
                   </StyledTextField>
                 </Grid>
 

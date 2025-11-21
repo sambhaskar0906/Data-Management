@@ -47,7 +47,7 @@ const AddressForm = ({ formData, handleChange, handleNestedChange }) => {
         locality: "",
         landmark: "",
         city: "",
-        country: "",
+        country: "India",
         state: "",
         pincode: "",
         proofDocument: null,
@@ -77,7 +77,7 @@ const AddressForm = ({ formData, handleChange, handleNestedChange }) => {
         locality: "",
         landmark: "",
         city: "",
-        country: "",
+        country: "India",
         state: "",
         pincode: "",
         proofDocument: null,
@@ -206,32 +206,9 @@ const AddressForm = ({ formData, handleChange, handleNestedChange }) => {
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <StyledTextField
-            label="City"
-            name={`${addressType}.city`}
-            value={values.city || ""}
-            onChange={(e) => handleAddressFieldChange(addressType, 'city', e.target.value)}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                backgroundColor: alpha(theme.palette.background.paper, 0.8),
-                transition: 'all 0.2s ease-in-out',
-                height: '56px',
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.background.paper, 0.9),
-                },
-                '&.Mui-focused': {
-                  backgroundColor: theme.palette.background.paper,
-                  boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-                }
-              }
-            }}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <StyledTextField
             label="Country"
             name={`${addressType}.country`}
-            value={values.country || ""}
+            value={values.country || "India"}
             onChange={(e) => handleAddressFieldChange(addressType, 'country', e.target.value)}
             sx={{
               '& .MuiOutlinedInput-root': {
@@ -256,6 +233,29 @@ const AddressForm = ({ formData, handleChange, handleNestedChange }) => {
             name={`${addressType}.state`}
             value={values.state || ""}
             onChange={(e) => handleAddressFieldChange(addressType, 'state', e.target.value)}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                backgroundColor: alpha(theme.palette.background.paper, 0.8),
+                transition: 'all 0.2s ease-in-out',
+                height: '56px',
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.background.paper, 0.9),
+                },
+                '&.Mui-focused': {
+                  backgroundColor: theme.palette.background.paper,
+                  boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                }
+              }
+            }}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <StyledTextField
+            label="City"
+            name={`${addressType}.city`}
+            value={values.city || ""}
+            onChange={(e) => handleAddressFieldChange(addressType, 'city', e.target.value)}
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: 2,

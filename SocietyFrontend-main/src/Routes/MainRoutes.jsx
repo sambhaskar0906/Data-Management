@@ -15,6 +15,9 @@ import MemberViewPage from '../pages/Member/MemberView.jsx';
 import MemberEditPage from '../pages/Member/MemberEdit.jsx';
 import NoticePage from '../pages/Notice/Notice.jsx'
 import Login from "../components/Login.jsx";
+import LoanForm from '../pages/Loan/LoanForm.jsx';
+import PDCDetails from '../pages/Loan/PdcDetail.jsx';
+import LoanView from '../pages/Loan/LoanView.jsx';
 
 const MainRoutes = () => {
   return (
@@ -23,8 +26,11 @@ const MainRoutes = () => {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route element={<DashboardLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/society" element={<MemberDossierForm />} />
+        <Route path="/addmember" element={<MemberDossierForm />} />
         <Route path="/report" element={<MissingMembersTable />} />
+        <Route path="/loan" element={<LoanForm />}></Route>
+        <Route path="/pdc" element={<PDCDetails />}></Route>
+        <Route path="/view-loan" element={<LoanView />}></Route>
         <Route path="/greeting" element={<FestivalGreetingPage />} />
         <Route path="/member-details/:id" element={<MemberDetails />} />
         <Route path="/member-pdf/:id" element={<MemberPDF />} />

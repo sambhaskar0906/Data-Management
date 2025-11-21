@@ -1,250 +1,281 @@
 import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useParams, useNavigate } from "react-router-dom";
 import {
-    Box,
-    Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
     Typography,
-    Stack,
-    Grid,
-    CircularProgress,
-    Alert,
+    IconButton,
     Accordion,
     AccordionSummary,
     AccordionDetails,
-    IconButton,
-    Snackbar,
-    Card,
-    CardContent
+    Grid,
+    Button,
+    CircularProgress,
+    Box,
+    TextField,
+    Select,
+    MenuItem,
+    FormControl,
+    Chip
 } from "@mui/material";
-import SaveIcon from "@mui/icons-material/Save";
-import CancelIcon from "@mui/icons-material/Cancel";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import SaveIcon from "@mui/icons-material/Save";
+import { useDispatch, useSelector } from "react-redux";
+import { updateMember } from "../../features/member/memberSlice";
+import { FIELD_MAP, getValueByPath, setValueByPath, isMissing } from "./MemberDetail";
 
-import {
-    fetchMemberById,
-    updateMember,
-    clearError,
-    clearSuccessMessage
-} from "../../features/member/memberSlice";
-
-// Aapka existing FIELD_MAP (same as above)
-const FIELD_MAP = {
-    // ... same FIELD_MAP as in ViewPage
-};
-
-const getValueByPath = (obj, path) => {
-    if (!path) return undefined;
-    const parts = path.split(".");
-    let cur = obj;
-    for (const p of parts) {
-        if (cur === undefined || cur === null) return undefined;
-        cur = cur[p];
-    }
-    return cur;
-};
-
-const setValueByPath = (obj, path, value) => {
-    const parts = path.split(".");
-    const newObj = JSON.parse(JSON.stringify(obj));
-    let current = newObj;
-
-    for (let i = 0; i < parts.length - 1; i++) {
-        if (!current[parts[i]]) {
-            current[parts[i]] = {};
-        }
-        current = current[parts[i]];
-    }
-
-    current[parts[parts.length - 1]] = value;
-    return newObj;
-};
-
-const isMissing = (value) => {
-    if (value === undefined || value === null) return true;
-    if (typeof value === "string") return value.trim() === "";
-    if (Array.isArray(value)) return value.length === 0;
-    if (typeof value === "object") return Object.keys(value).length === 0;
-    return false;
-};
-
-// Simple Editable Field Component
-const EditableField = ({ label, value, path, onUpdate, type = "text" }) => {
-    const [editValue, setEditValue] = useState(value || '');
-
-    const handleSave = () => {
-        onUpdate(path, editValue);
-    };
-
-    const handleChange = (e) => {
-        setEditValue(e.target.value);
-    };
-
-    return (
-        <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" color="primary" gutterBottom>
-                {label}
-            </Typography>
-            <input
-                type={type}
-                value={editValue}
-                onChange={handleChange}
-                onBlur={handleSave}
-                style={{
-                    width: '100%',
-                    padding: '8px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '14px'
-                }}
-            />
-        </Box>
-    );
-};
-
-export default function MemberEditPage() {
+export default function MemberEditPage({ open, member, onClose }) {
     const dispatch = useDispatch();
-    const navigate = useNavigate();
-    const { id } = useParams();
-
-    const { selectedMember, loading, error, successMessage, operationLoading } = useSelector(state => state.members);
-    const [formData, setFormData] = useState(null);
-    const [snackbarOpen, setSnackbarOpen] = useState(false);
+    const { loading } = useSelector((s) => s.members);
+    const [formData, setFormData] = useState(member);
 
     useEffect(() => {
-        if (id) {
-            dispatch(fetchMemberById(id));
-        }
-    }, [dispatch, id]);
-
-    useEffect(() => {
-        if (selectedMember) {
-            setFormData(selectedMember);
-        }
-    }, [selectedMember]);
-
-    useEffect(() => {
-        if (error || successMessage) {
-            setSnackbarOpen(true);
-        }
-    }, [error, successMessage]);
-
-    const handleSnackbarClose = () => {
-        setSnackbarOpen(false);
-        if (error) dispatch(clearError());
-        if (successMessage) dispatch(clearSuccessMessage());
-
-        if (successMessage) {
-            // Redirect to view page after successful update
-            setTimeout(() => {
-                navigate(`/member/view/${id}`);
-            }, 1000);
-        }
-    };
+        setFormData(member);
+    }, [member]);
 
     const handleFieldUpdate = (path, value) => {
         setFormData(prev => setValueByPath(prev, path, value));
     };
 
     const handleSave = () => {
-        if (formData) {
-            dispatch(updateMember({
-                id: formData._id,
-                formData: formData
-            }));
-        }
+        dispatch(updateMember({ id: member._id, formData })).then(() => {
+            onClose();
+        });
     };
 
-    const handleCancel = () => {
-        navigate(`/member/view/${id}`);
-    };
+    const EditableField = ({ label, value, path, onUpdate, type = "text", options = [] }) => {
+        const [isEditing, setIsEditing] = useState(false);
+        const [editValue, setEditValue] = useState(value);
 
-    const handleBack = () => {
-        navigate('/memberdetail');
-    };
+        useEffect(() => setEditValue(value), [value]);
 
-    if (loading && !formData) {
-        return (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-                <CircularProgress />
+        const saveField = () => {
+            onUpdate(path, editValue);
+            setIsEditing(false);
+        };
+
+        const cancelEdit = () => {
+            setEditValue(value);
+            setIsEditing(false);
+        };
+
+        const keyHandler = (e) => {
+            if (e.key === "Enter") saveField();
+            if (e.key === "Escape") cancelEdit();
+        };
+
+        const ViewMode = (
+            <Box
+                sx={{
+                    p: 1.5,
+                    borderRadius: 1,
+                    cursor: "pointer",
+                    border: "1px solid #e0e0e0",
+                    backgroundColor: isMissing(value) ? "#fff0f0" : "#fafafa",
+                    "&:hover": {
+                        border: "1px solid #1976d2",
+                        backgroundColor: "#f0f8ff"
+                    }
+                }}
+                onClick={() => setIsEditing(true)}
+            >
+                <Typography variant="body2" color={isMissing(value) ? "error" : "text.primary"}>
+                    {isMissing(value) ? "Missing" : (value || "Not provided")}
+                </Typography>
             </Box>
         );
-    }
 
-    if (!formData) {
+        const EditMode = (() => {
+            if (type === "select") {
+                return (
+                    <FormControl fullWidth size="small">
+                        <Select
+                            autoFocus
+                            value={editValue || ""}
+                            onBlur={saveField}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={keyHandler}
+                        >
+                            {options.map((o) => (
+                                <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                );
+            }
+
+            if (type === "date") {
+                return (
+                    <TextField
+                        autoFocus
+                        fullWidth
+                        size="small"
+                        type="date"
+                        value={editValue || ""}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={saveField}
+                        onKeyDown={keyHandler}
+                        InputLabelProps={{ shrink: true }}
+                    />
+                );
+            }
+
+            return (
+                <TextField
+                    autoFocus
+                    fullWidth
+                    size="small"
+                    type={type}
+                    value={editValue || ""}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={saveField}
+                    onKeyDown={keyHandler}
+                    placeholder={`Enter ${label.toLowerCase()}`}
+                />
+            );
+        })();
+
         return (
-            <Box p={3}>
-                <Alert severity="error">Member not found</Alert>
+            <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 600 }}>
+                    {label}
+                </Typography>
+                {isEditing ? EditMode : ViewMode}
             </Box>
         );
-    }
-
-    // Group fields by category
-    const fieldCategories = {
-        personal: Object.keys(FIELD_MAP).filter(f => f.startsWith('personalDetails')),
-        address: Object.keys(FIELD_MAP).filter(f => f.startsWith('addressDetails')),
-        reference: Object.keys(FIELD_MAP).filter(f => f.startsWith('referenceDetails')),
-        documents: Object.keys(FIELD_MAP).filter(f => f.startsWith('documents')),
-        professional: Object.keys(FIELD_MAP).filter(f => f.startsWith('professionalDetails')),
-        family: Object.keys(FIELD_MAP).filter(f => f.startsWith('familyDetails')),
-        bank: Object.keys(FIELD_MAP).filter(f => f.startsWith('bankDetails')),
-        guarantee: Object.keys(FIELD_MAP).filter(f => f.startsWith('guaranteeDetails')),
-        loan: Object.keys(FIELD_MAP).filter(f => f.startsWith('loanDetails')),
     };
+
+    const EditableObjectField = ({ label, value, path, onUpdate, fields }) => {
+        const updateInner = (key, val) => {
+            const newObj = { ...(value || {}), [key]: val };
+            onUpdate(path, newObj);
+        };
+
+        return (
+            <Box sx={{ mb: 3, p: 2, border: "1px solid #e0e0e0", borderRadius: 1 }}>
+                <Typography variant="h6" color="primary" gutterBottom sx={{ fontSize: "1.1rem", fontWeight: 600 }}>
+                    {label}
+                </Typography>
+                <Grid container spacing={2}>
+                    {fields.map((item) => (
+                        <Grid item xs={12} sm={6} key={item.key}>
+                            <EditableField
+                                label={item.label}
+                                value={value?.[item.key] || ""}
+                                path={item.key}
+                                type={item.type}
+                                onUpdate={updateInner}
+                            />
+                        </Grid>
+                    ))}
+                </Grid>
+            </Box>
+        );
+    };
+
+    const EditableArrayField = ({ label, values, path, onUpdate }) => {
+        const [isEditing, setIsEditing] = useState(false);
+        const [editValue, setEditValue] = useState(values?.join(", ") || "");
+
+        useEffect(() => {
+            setEditValue(values?.join(", ") || "");
+        }, [values]);
+
+        const saveField = () => {
+            const newArray = editValue.split(",").map(item => item.trim()).filter(item => item);
+            onUpdate(path, newArray);
+            setIsEditing(false);
+        };
+
+        const keyHandler = (e) => {
+            if (e.key === "Enter") saveField();
+            if (e.key === "Escape") setIsEditing(false);
+        };
+
+        return (
+            <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 600 }}>
+                    {label}
+                </Typography>
+                {isEditing ? (
+                    <TextField
+                        autoFocus
+                        fullWidth
+                        size="small"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={saveField}
+                        onKeyDown={keyHandler}
+                        placeholder="Enter values separated by commas"
+                    />
+                ) : (
+                    <Box
+                        sx={{
+                            p: 1.5,
+                            borderRadius: 1,
+                            cursor: "pointer",
+                            border: "1px solid #e0e0e0",
+                            backgroundColor: "#fafafa",
+                            "&:hover": {
+                                border: "1px solid #1976d2",
+                                backgroundColor: "#f0f8ff"
+                            }
+                        }}
+                        onClick={() => setIsEditing(true)}
+                    >
+                        {values?.length > 0 ? (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {values.map((item, index) => (
+                                    <Chip key={index} label={item} size="small" variant="outlined" />
+                                ))}
+                            </Box>
+                        ) : (
+                            <Typography variant="body2" color="text.secondary">
+                                Click to add values
+                            </Typography>
+                        )}
+                    </Box>
+                )}
+            </Box>
+        );
+    };
+
+    if (!member) return null;
+
+    const personalFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('personalDetails'));
+    const referenceFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('referenceDetails') && !f.includes('gurantorMno'));
+    const documentFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('documents'));
+    const bankFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('bankDetails'));
 
     return (
-        <Box p={3}>
-            {/* Header */}
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                <Box display="flex" alignItems="center" gap={2}>
-                    <IconButton onClick={handleBack} color="primary">
-                        <ArrowBackIcon />
+        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+            <DialogTitle sx={{ borderBottom: "1px solid #e0e0e0", pb: 2 }}>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        Edit Member: {getValueByPath(formData, "personalDetails.nameOfMember") || "Unknown"}
+                    </Typography>
+                    <IconButton onClick={onClose} disabled={loading}>
+                        <CloseIcon />
                     </IconButton>
-                    <Box>
-                        <Typography variant="h4" fontWeight="bold" color="primary">
-                            Edit Member: {getValueByPath(formData, "personalDetails.nameOfMember") || "Unknown"}
-                        </Typography>
-                        <Typography variant="subtitle1" color="text.secondary">
-                            Membership No: {getValueByPath(formData, "personalDetails.membershipNumber") || "N/A"}
-                        </Typography>
-                    </Box>
                 </Box>
-                <Stack direction="row" spacing={2}>
-                    <Button
-                        startIcon={<CancelIcon />}
-                        onClick={handleCancel}
-                        disabled={operationLoading.update}
-                        variant="outlined"
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        startIcon={operationLoading.update ? <CircularProgress size={16} /> : <SaveIcon />}
-                        variant="contained"
-                        onClick={handleSave}
-                        disabled={operationLoading.update}
-                    >
-                        {operationLoading.update ? 'Saving...' : 'Save Changes'}
-                    </Button>
-                </Stack>
-            </Box>
+            </DialogTitle>
 
-            {/* Edit Form with Accordions */}
-            <Grid container spacing={3}>
-                {/* Personal Details */}
-                <Grid item xs={12}>
-                    <Accordion defaultExpanded>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography variant="h6" color="primary">
-                                Personal Details
-                            </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Grid container spacing={2}>
-                                {fieldCategories.personal.map(fieldKey => (
-                                    <Grid item xs={12} sm={6} md={4} key={fieldKey}>
-                                        <Card variant="outlined" sx={{ p: 2 }}>
+            <DialogContent dividers sx={{ maxHeight: '70vh' }}>
+                <Grid container spacing={3}>
+                    {/* Personal Details */}
+                    <Grid item xs={12}>
+                        <Accordion defaultExpanded sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                    Personal Details
+                                </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <Grid container spacing={2}>
+                                    {personalFields.map(fieldKey => (
+                                        <Grid item xs={12} sm={6} md={4} key={fieldKey}>
                                             <EditableField
                                                 label={FIELD_MAP[fieldKey]}
                                                 value={getValueByPath(formData, fieldKey)}
@@ -252,113 +283,159 @@ export default function MemberEditPage() {
                                                 onUpdate={handleFieldUpdate}
                                                 type={fieldKey.includes('date') ? 'date' : 'text'}
                                             />
-                                        </Card>
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        </AccordionDetails>
-                    </Accordion>
-                </Grid>
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                            </AccordionDetails>
+                        </Accordion>
+                    </Grid>
 
-                {/* Address Details */}
-                <Grid item xs={12}>
-                    <Accordion>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography variant="h6" color="primary">
-                                Address Details
-                            </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Grid container spacing={2}>
-                                {fieldCategories.address.map(fieldKey => (
-                                    <Grid item xs={12} sm={6} md={4} key={fieldKey}>
-                                        <Card variant="outlined" sx={{ p: 2 }}>
+                    {/* Address Details */}
+                    <Grid item xs={12}>
+                        <Accordion defaultExpanded sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                    Address Details
+                                </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <EditableObjectField
+                                    label="Permanent Address"
+                                    value={getValueByPath(formData, 'addressDetails.permanentAddress')}
+                                    path="addressDetails.permanentAddress"
+                                    onUpdate={handleFieldUpdate}
+                                    fields={[
+                                        { key: 'flatHouseNo', label: 'Flat/House No' },
+                                        { key: 'areaStreetSector', label: 'Area/Street/Sector' },
+                                        { key: 'locality', label: 'Locality' },
+                                        { key: 'landmark', label: 'Landmark' },
+                                        { key: 'city', label: 'City' },
+                                        { key: 'country', label: 'Country' },
+                                        { key: 'state', label: 'State' },
+                                        { key: 'pincode', label: 'Pincode' },
+                                    ]}
+                                />
+
+                                <EditableObjectField
+                                    label="Current Residential Address"
+                                    value={getValueByPath(formData, 'addressDetails.currentResidentalAddress')}
+                                    path="addressDetails.currentResidentalAddress"
+                                    onUpdate={handleFieldUpdate}
+                                    fields={[
+                                        { key: 'flatHouseNo', label: 'Flat/House No' },
+                                        { key: 'areaStreetSector', label: 'Area/Street/Sector' },
+                                        { key: 'locality', label: 'Locality' },
+                                        { key: 'landmark', label: 'Landmark' },
+                                        { key: 'city', label: 'City' },
+                                        { key: 'country', label: 'Country' },
+                                        { key: 'state', label: 'State' },
+                                        { key: 'pincode', label: 'Pincode' },
+                                    ]}
+                                />
+                            </AccordionDetails>
+                        </Accordion>
+                    </Grid>
+
+                    {/* Reference Details */}
+                    <Grid item xs={12}>
+                        <Accordion sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                    Reference & Guarantor Details
+                                </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <Grid container spacing={2}>
+                                    {referenceFields.map(fieldKey => (
+                                        <Grid size={{ xs: 12, }} key={fieldKey}>
                                             <EditableField
                                                 label={FIELD_MAP[fieldKey]}
                                                 value={getValueByPath(formData, fieldKey)}
                                                 path={fieldKey}
                                                 onUpdate={handleFieldUpdate}
                                             />
-                                        </Card>
+                                        </Grid>
+                                    ))}
+                                    <Grid item xs={12}>
+                                        <EditableArrayField
+                                            label="Guarantor Mobile Numbers"
+                                            values={getValueByPath(formData, 'referenceDetails.gurantorMno')}
+                                            path="referenceDetails.gurantorMno"
+                                            onUpdate={handleFieldUpdate}
+                                        />
                                     </Grid>
-                                ))}
-                            </Grid>
-                        </AccordionDetails>
-                    </Accordion>
-                </Grid>
+                                </Grid>
+                            </AccordionDetails>
+                        </Accordion>
+                    </Grid>
 
-                {/* Reference Details */}
-                <Grid item xs={12}>
-                    <Accordion>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography variant="h6" color="primary">
-                                Reference & Guarantor Details
-                            </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Grid container spacing={2}>
-                                {fieldCategories.reference.map(fieldKey => (
-                                    <Grid item xs={12} sm={6} key={fieldKey}>
-                                        <Card variant="outlined" sx={{ p: 2 }}>
+                    {/* Documents Section */}
+                    <Grid item xs={12}>
+                        <Accordion sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                    Document Details
+                                </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <Grid container spacing={2}>
+                                    {documentFields.map(fieldKey => (
+                                        <Grid item xs={12} sm={6} md={4} key={fieldKey}>
                                             <EditableField
                                                 label={FIELD_MAP[fieldKey]}
                                                 value={getValueByPath(formData, fieldKey)}
                                                 path={fieldKey}
                                                 onUpdate={handleFieldUpdate}
                                             />
-                                        </Card>
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        </AccordionDetails>
-                    </Accordion>
-                </Grid>
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                            </AccordionDetails>
+                        </Accordion>
+                    </Grid>
 
-                {/* Document Details */}
-                <Grid item xs={12}>
-                    <Accordion>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography variant="h6" color="primary">
-                                Document Details
-                            </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Grid container spacing={2}>
-                                {fieldCategories.documents.map(fieldKey => (
-                                    <Grid item xs={12} sm={6} md={4} key={fieldKey}>
-                                        <Card variant="outlined" sx={{ p: 2 }}>
+                    {/* Bank Details */}
+                    <Grid size={{ xs: 12, sm: 12, md: 12 }}>
+                        <Accordion sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                    Bank Details
+                                </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <Grid container spacing={2}>
+                                    {bankFields.map(fieldKey => (
+                                        <Grid item xs={12} sm={6} md={4} key={fieldKey}>
                                             <EditableField
                                                 label={FIELD_MAP[fieldKey]}
                                                 value={getValueByPath(formData, fieldKey)}
                                                 path={fieldKey}
                                                 onUpdate={handleFieldUpdate}
+                                                type={fieldKey.includes('civilScore') ? 'number' : 'text'}
                                             />
-                                        </Card>
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        </AccordionDetails>
-                    </Accordion>
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                            </AccordionDetails>
+                        </Accordion>
+                    </Grid>
                 </Grid>
+            </DialogContent>
 
-                {/* Add more sections for other categories... */}
-
-            </Grid>
-
-            <Snackbar
-                open={snackbarOpen}
-                autoHideDuration={6000}
-                onClose={handleSnackbarClose}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            >
-                <Alert
-                    onClose={handleSnackbarClose}
-                    severity={error ? 'error' : 'success'}
-                    sx={{ width: '100%' }}
+            <DialogActions sx={{ borderTop: "1px solid #e0e0e0", p: 2 }}>
+                <Button onClick={onClose} disabled={loading} sx={{ minWidth: 100 }}>
+                    Cancel
+                </Button>
+                <Button
+                    variant="contained"
+                    startIcon={loading ? <CircularProgress size={16} /> : <SaveIcon />}
+                    disabled={loading}
+                    onClick={handleSave}
+                    sx={{ minWidth: 120 }}
                 >
-                    {error || successMessage}
-                </Alert>
-            </Snackbar>
-        </Box>
+                    {loading ? 'Saving...' : 'Save'}
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
 }

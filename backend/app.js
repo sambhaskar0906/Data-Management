@@ -57,11 +57,13 @@ app.use(cookieParser());
 import memberRouter from "./src/router/member.router.js";
 import bulkMailRouter from "./src/router/bulkMail.router.js";
 import noticeRouter from "./src/router/notice.router.js";
+import loanRouter from "./src/router/loan.router.js";
 
 // ✅ API Routes
 app.use("/api/v1/members", memberRouter);
 app.use("/api/v1/bulk", bulkMailRouter);
 app.use("/api/v1/notice", noticeRouter);
+app.use("/api/v1/loans", loanRouter);
 
 // ✅ Default Route
 app.get("/", (req, res) => {
