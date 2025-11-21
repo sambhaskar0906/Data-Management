@@ -23,10 +23,9 @@ const Sidebar = () => {
         { label: "Dashboard", route: "/dashboard", icon: <DashboardIcon /> },
         { label: "Member", route: "/memberdetail", icon: <People /> },
         { label: "Report", route: "/report", icon: <AssessmentIcon /> },
-        { label: "Loan", route: "/loan", icon: <RealEstateAgentIcon /> },
+        { label: "Loan", route: "/view-loan", icon: <RealEstateAgentIcon /> },
+        { label: "Guarantor", route: "/guarantorList", icon: <People /> },
         { label: "Greeting", route: "/greeting", icon: <EventSeatIcon /> },
-        { label: "Guarantor", route: "/guarantor", icon: <People /> },
-        { label: "Guarantor List", route: "/guarantorList", icon: <People /> },
         { label: "Notice", route: "/notice", icon: <AssessmentIcon /> }
     ];
 

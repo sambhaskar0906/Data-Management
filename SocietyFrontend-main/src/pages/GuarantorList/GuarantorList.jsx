@@ -25,11 +25,14 @@ import {
     PictureAsPdf as PdfIcon,
     Visibility as ViewIcon,
 } from "@mui/icons-material";
+import AddIcon from '@mui/icons-material/Add';
 import { useFormik } from "formik";
 import { useDispatch, useSelector } from "react-redux";
 import SectionHeader from "../../layout/SectionHeader";
 import StyledTextField from "../../ui/StyledTextField";
 import { GuarantorPdf } from "./GuarantorPdf.jsx";
+import { useNavigate } from "react-router-dom";
+
 import {
     fetchGuarantorRelations,
     fetchAllMembers,
@@ -54,6 +57,12 @@ const GuarantorList = () => {
         },
         onSubmit: () => { },
     });
+
+    const navigate = useNavigate();
+
+    const handleAddGuarantor = () => {
+        navigate('/addguarantor')
+    }
 
     const handleMemberSelect = async (e) => {
         const membershipNumber = e.target.value;
@@ -150,6 +159,14 @@ const GuarantorList = () => {
                             </IconButton>
                         </Tooltip>
                     )}
+
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleAddGuarantor}
+                    >
+                        Gurantor
+                    </Button>
                 </Box>
 
                 {/* Loader */}

@@ -34,7 +34,7 @@ const MainRoutes = () => {
         <Route path="/greeting" element={<FestivalGreetingPage />} />
         <Route path="/member-details/:id" element={<MemberDetails />} />
         <Route path="/member-pdf/:id" element={<MemberPDF />} />
-        <Route path="/guarantor" element={<GuarantorPage />} />
+        <Route path="/addguarantor" element={<GuarantorPage />} />
         <Route path="/memberdetail" element={<MemberDetailsPage />} />
         <Route path="/guarantorList" element={<GuarantorList />} />
         <Route path="/member/view/:id" element={<MemberViewPage />} />

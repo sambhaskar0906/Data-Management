@@ -1,4 +1,3 @@
-// components/MemberDetails.jsx
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
@@ -15,12 +14,11 @@ import {
     Tabs,
     Tab,
     IconButton,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
+    FormControl,
     Snackbar,
-    TextField
+    InputLabel,
+    Select,
+    MenuItem
 } from "@mui/material";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
@@ -30,427 +28,31 @@ import EditIcon from "@mui/icons-material/Edit";
 import ImageIcon from "@mui/icons-material/Image";
 import { fetchMemberById, clearSelectedMember, updateMember } from "../../features/member/memberSlice";
 
-// ADD THESE IMPORTS
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
+// Import from the new PDF generator
+import {
+    FIELD_MAP,
+    getValueByPath,
+    isMissing,
+    generateMemberFieldsPDF,
+} from "./MemberCategoryPdf";
 
-const getValueByPath = (obj, path) => {
-    if (!path || !obj) return undefined;
-    const parts = path.split(".");
-    let cur = obj;
-    for (const p of parts) {
-        if (cur === undefined || cur === null) return undefined;
-        cur = cur[p];
-    }
-    return cur;
-};
+// Import components
+import ImageDisplay from "./ImageDisplay";
+import EditFieldDialog from "./MemberEdit";
 
-const deepClone = (obj) => {
-    if (obj === null || typeof obj !== "object") return obj;
-    if (obj instanceof Date) return new Date(obj.getTime());
-    if (obj instanceof Array) return obj.map(item => deepClone(item));
-    if (obj instanceof Object) {
-        const clonedObj = {};
-        for (const key in obj) {
-            if (obj.hasOwnProperty(key)) {
-                clonedObj[key] = deepClone(obj[key]);
-            }
-        }
-        return clonedObj;
-    }
-};
-
-const setValueByPath = (obj, path, value) => {
-    if (!path) return obj;
-
-    const newObj = deepClone(obj);
-    const parts = path.split(".");
-    let current = newObj;
-
-    for (let i = 0; i < parts.length - 1; i++) {
-        const part = parts[i];
-        if (current[part] === undefined || current[part] === null) {
-            current[part] = {};
-        }
-        current = current[part];
-    }
-
-    const lastPart = parts[parts.length - 1];
-    current[lastPart] = value;
-
-    return newObj;
-};
-
-const isMissing = (value) => {
-    if (value === undefined || value === null) return true;
-    if (typeof value === "string") return value.trim() === "";
-    if (Array.isArray(value)) return value.length === 0;
-    if (typeof value === "object") {
-        if (Object.keys(value).length === 0) return true;
-        return Object.values(value).every(val =>
-            val === undefined || val === null || val === "" ||
-            (typeof val === 'object' && Object.keys(val).length === 0)
-        );
-    }
-    return false;
-};
-
-const FIELD_MAP = {
-    // Personal
-    "personalDetails.title": "Title",
-    "personalDetails.nameOfMember": "Member Name",
-    "personalDetails.membershipNumber": "Membership No",
-    "personalDetails.minor": "Is Minor",
-    "personalDetails.nameOfFather": "Father's Name",
-    "personalDetails.nameOfMother": "Mother's Name",
-    "personalDetails.nameOfSpouse": "Spouse's Name",
-    "personalDetails.dateOfBirth": "Date of Birth",
-    "personalDetails.ageInYears": "Age (Years)",
-    "personalDetails.membershipDate": "Membership Date",
-    "personalDetails.amountInCredit": "Amount In Credit",
-    "personalDetails.gender": "Gender",
-    "personalDetails.maritalStatus": "Marital Status",
-    "personalDetails.religion": "Religion",
-    "personalDetails.caste": "Caste",
-    "personalDetails.phoneNo": "Phone No",
-    "personalDetails.alternatePhoneNo": "Alternate Phone",
-    "personalDetails.emailId": "Email",
-
-    // Address
-    "addressDetails.permanentAddress": "Permanent Address",
-    "addressDetails.permanentAddressBillPhoto": "Permanent Address Bill Photo",
-    "addressDetails.currentResidentalAddress": "Current Address",
-    "addressDetails.currentResidentalBillPhoto": "Current Address Bill Photo",
-    "addressDetails.previousCurrentAddress": "Previous Addresses",
-
-    // References
-    "referenceDetails": "References",
-
-    // Documents - Text Fields
-    "documents.panNo": "PAN No",
-    "documents.rationCard": "Ration Card",
-    "documents.drivingLicense": "Driving License",
-    "documents.aadhaarNo": "Aadhaar No",
-    "documents.voterId": "Voter ID",
-    "documents.passportNo": "Passport No",
-
-    // Documents - Image Fields
-    "documents.passportSize": "Passport Size Photo",
-    "documents.panNoPhoto": "PAN Card Photo",
-    "documents.rationCardPhoto": "Ration Card Photo",
-    "documents.drivingLicensePhoto": "Driving License Photo",
-    "documents.aadhaarNoPhoto": "Aadhaar Card Photo",
-    "documents.voterIdPhoto": "Voter ID Photo",
-    "documents.passportNoPhoto": "Passport Photo",
-
-    // Professional - Basic
-    "professionalDetails.qualification": "Qualification",
-    "professionalDetails.occupation": "Occupation",
-
-    // Professional - Employment Type
-    "professionalDetails.inCaseOfServiceGovt": "Government Service",
-    "professionalDetails.inCaseOfPrivate": "Private Service",
-    "professionalDetails.inCaseOfService": "Service",
-    "professionalDetails.serviceType": "Service Type",
-
-    // Professional - Service Details
-    "professionalDetails.serviceDetails.fullNameOfCompany": "Company Name",
-    "professionalDetails.serviceDetails.addressOfCompany": "Company Address",
-    "professionalDetails.serviceDetails.monthlyIncome": "Monthly Income",
-    "professionalDetails.serviceDetails.designation": "Designation",
-    "professionalDetails.serviceDetails.dateOfJoining": "Date of Joining",
-    "professionalDetails.serviceDetails.employeeCode": "Employee Code",
-    "professionalDetails.serviceDetails.dateOfRetirement": "Date of Retirement",
-    "professionalDetails.serviceDetails.officeNo": "Office Phone",
-
-    // Professional - Business
-    "professionalDetails.inCaseOfBusiness": "Business",
-    "professionalDetails.businessDetails.fullNameOfCompany": "Business Name",
-    "professionalDetails.businessDetails.addressOfCompany": "Business Address",
-    "professionalDetails.businessDetails.businessStructure": "Business Structure",
-    "professionalDetails.businessDetails.gstCertificate": "GST Certificate",
-
-    // Family
-    "familyDetails.familyMembersMemberOfSociety": "Family Members in Society",
-    "familyDetails.familyMember": "Family Member Names",
-    "familyDetails.familyMemberNo": "Family Member Phones",
-
-    // Bank
-    "bankDetails.bankName": "Bank Name",
-    "bankDetails.branch": "Bank Branch",
-    "bankDetails.accountNumber": "Account Number",
-    "bankDetails.ifscCode": "IFSC Code",
-
-    // Guarantee - Other Society
-    "guaranteeDetails.whetherMemberHasGivenGuaranteeInOtherSociety": "Guarantee Given in Other Society",
-    "guaranteeDetails.otherSociety": "Other Society Guarantees",
-
-    // Guarantee - Our Society
-    "guaranteeDetails.whetherMemberHasGivenGuaranteeInOurSociety": "Guarantee Given in Our Society",
-    "guaranteeDetails.ourSociety": "Our Society Guarantees",
-
-    // Loans
-    "loanDetails": "Loan Details",
-
-    // Nominee
-    "nomineeDetails.nomineeName": "Nominee Name",
-    "nomineeDetails.relationWithApplicant": "Relation with Applicant",
-    "nomineeDetails.introduceBy": "Introduced By",
-    "nomineeDetails.memberShipNo": "Membership No",
-};
-
-// Enhanced Image Display Component with Full Image View
-const ImageDisplay = ({ imageUrl, alt, height = 120 }) => {
-    const [imgError, setImgError] = useState(false);
-    const [showFullImage, setShowFullImage] = useState(false);
-
-    const handleImageClick = () => {
-        if (imageUrl && !imgError) {
-            setShowFullImage(true);
-        }
-    };
-
-    const handleCloseFullImage = () => {
-        setShowFullImage(false);
-    };
-
-    if (!imageUrl || imgError) {
-        return (
-            <Box
-                sx={{
-                    height: height,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: '#f5f5f5',
-                    borderRadius: 1,
-                    border: '1px dashed #ddd'
-                }}
-            >
-                <Typography variant="caption" color="text.secondary">
-                    No Image
-                </Typography>
-            </Box>
-        );
-    }
-
-    return (
-        <>
-            <Box
-                sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    '&:hover': {
-                        opacity: 0.8,
-                        transition: 'opacity 0.2s'
-                    }
-                }}
-                onClick={handleImageClick}
-                title="Click to view full image"
-            >
-                <img
-                    src={imageUrl}
-                    alt={alt}
-                    style={{
-                        maxWidth: '100%',
-                        height: height,
-                        objectFit: 'contain',
-                        borderRadius: '8px',
-                        border: '1px solid #e0e0e0'
-                    }}
-                    onError={() => setImgError(true)}
-                    onLoad={() => setImgError(false)}
-                />
-            </Box>
-
-            {/* Full Image Modal */}
-            <Dialog
-                open={showFullImage}
-                onClose={handleCloseFullImage}
-                maxWidth="lg"
-                fullWidth
-            >
-                <DialogTitle>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                        <Typography variant="h6">{alt}</Typography>
-                        <Button
-                            onClick={handleCloseFullImage}
-                            color="primary"
-                        >
-                            Close
-                        </Button>
-                    </Box>
-                </DialogTitle>
-                <DialogContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
-                        <img
-                            src={imageUrl}
-                            alt={alt}
-                            style={{
-                                maxWidth: '100%',
-                                maxHeight: '80vh',
-                                objectFit: 'contain',
-                                borderRadius: '8px'
-                            }}
-                        />
-                    </Box>
-                    <Box sx={{ mt: 2, textAlign: 'center' }}>
-                        <Button
-                            variant="outlined"
-                            href={imageUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            Open Image in New Tab
-                        </Button>
-                    </Box>
-                </DialogContent>
-            </Dialog>
-        </>
-    );
-};
-
-// Edit Field Dialog Component
-const EditFieldDialog = ({ open, onClose, fieldKey, fieldName, currentValue, onSave, loading, isImageField = false }) => {
-    const [value, setValue] = useState(currentValue || "");
-    const [file, setFile] = useState(null);
-    const [previewUrl, setPreviewUrl] = useState("");
-
-    useEffect(() => {
-        setValue(currentValue || "");
-        setFile(null);
-        setPreviewUrl("");
-    }, [currentValue, open]);
-
-    const handleFileChange = (e) => {
-        const selectedFile = e.target.files[0];
-        if (selectedFile) {
-            setFile(selectedFile);
-            setValue(selectedFile.name);
-            const objectUrl = URL.createObjectURL(selectedFile);
-            setPreviewUrl(objectUrl);
-        }
-    };
-
-    const handleSave = () => {
-        if (isImageField && file) {
-            onSave(fieldKey, file);
-        } else {
-            onSave(fieldKey, value);
-        }
-    };
-
-    const handleClose = () => {
-        setValue(currentValue || "");
-        setFile(null);
-        if (previewUrl) {
-            URL.revokeObjectURL(previewUrl);
-        }
-        onClose();
-    };
-
-    const isCloudinaryUrl = currentValue && currentValue.includes('cloudinary');
-
-    return (
-        <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-            <DialogTitle>
-                Edit {fieldName}
-            </DialogTitle>
-            <DialogContent>
-                <Box sx={{ mt: 2 }}>
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Field: {fieldName}
-                    </Typography>
-
-                    {isImageField ? (
-                        <>
-                            <Typography variant="body2" color="text.secondary" gutterBottom>
-                                Current File: {currentValue ? "Uploaded" : "No file uploaded"}
-                            </Typography>
-
-                            {currentValue && !file && (
-                                <Box sx={{ mb: 2 }}>
-                                    <Typography variant="body2" gutterBottom>
-                                        Current Image:
-                                    </Typography>
-                                    <ImageDisplay
-                                        imageUrl={currentValue}
-                                        alt="Current"
-                                        height={150}
-                                    />
-                                    {isCloudinaryUrl && (
-                                        <Typography variant="caption" color="success.main" display="block" sx={{ mt: 1 }}>
-                                            ✅ Cloudinary URL
-                                        </Typography>
-                                    )}
-                                </Box>
-                            )}
-
-                            <Box sx={{ mb: 2 }}>
-                                <Typography variant="body2" gutterBottom>
-                                    Upload New Image:
-                                </Typography>
-                                <input
-                                    type="file"
-                                    accept="image/*,.pdf,.doc,.docx"
-                                    onChange={handleFileChange}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px dashed #ccc',
-                                        borderRadius: '4px'
-                                    }}
-                                />
-                            </Box>
-
-                            {previewUrl && (
-                                <Box sx={{ mt: 2 }}>
-                                    <Typography variant="body2" gutterBottom>
-                                        New Image Preview:
-                                    </Typography>
-                                    <ImageDisplay
-                                        imageUrl={previewUrl}
-                                        alt="Preview"
-                                        height={150}
-                                    />
-                                </Box>
-                            )}
-                        </>
-                    ) : (
-                        <>
-                            <Typography variant="body2" color="text.secondary" gutterBottom>
-                                Current Value: {currentValue || "Empty"}
-                            </Typography>
-                            <TextField
-                                value={value}
-                                onChange={(e) => setValue(e.target.value)}
-                                fullWidth
-                                multiline
-                                rows={4}
-                                variant="outlined"
-                                placeholder={`Enter value for ${fieldName}`}
-                                sx={{ mt: 2 }}
-                            />
-                        </>
-                    )}
-                </Box>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={handleClose} disabled={loading}>Cancel</Button>
-                <Button
-                    onClick={handleSave}
-                    variant="contained"
-                    color="primary"
-                    disabled={loading || (isImageField && !file && !currentValue)}
-                >
-                    {loading ? <CircularProgress size={24} /> : "Save"}
-                </Button>
-            </DialogActions>
-        </Dialog>
-    );
-};
+// Image field names array
+const imageFields = [
+    'documents.passportSize',
+    'documents.panNoPhoto',
+    'documents.rationCardPhoto',
+    'documents.drivingLicensePhoto',
+    'documents.aadhaarNoPhoto',
+    'documents.voterIdPhoto',
+    'documents.passportNoPhoto',
+    'addressDetails.permanentAddressBillPhoto',
+    'addressDetails.currentResidentalBillPhoto',
+    'professionalDetails.businessDetails.gstCertificate'
+];
 
 const MemberDetails = () => {
     const { id } = useParams();
@@ -459,25 +61,12 @@ const MemberDetails = () => {
     const { selectedMember, loading, error, operationLoading } = useSelector((state) => state.members);
 
     const [viewType, setViewType] = useState('all');
+    const [category, setCategory] = useState('all');
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [selectedField, setSelectedField] = useState(null);
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-
-    // Image field names array - UPDATED
-    const imageFields = [
-        'documents.passportSize',
-        'documents.panNoPhoto',
-        'documents.rationCardPhoto',
-        'documents.drivingLicensePhoto',
-        'documents.aadhaarNoPhoto',
-        'documents.voterIdPhoto',
-        'documents.passportNoPhoto',
-        'addressDetails.permanentAddressBillPhoto',
-        'addressDetails.currentResidentalBillPhoto',
-        'professionalDetails.businessDetails.gstCertificate'
-    ];
 
     useEffect(() => {
         if (id) {
@@ -503,8 +92,6 @@ const MemberDetails = () => {
 
     const handleSaveField = async (fieldKey, newValue) => {
         try {
-            console.log('Updating field:', fieldKey, 'with value:', newValue);
-
             const isImageField = imageFields.includes(fieldKey);
             const formData = new FormData();
 
@@ -546,8 +133,6 @@ const MemberDetails = () => {
                 formData: formData
             })).unwrap();
 
-            console.log('Update successful:', result);
-
             setSnackbarMessage(`"${FIELD_MAP[fieldKey]}" updated successfully!`);
             setSnackbarSeverity('success');
             setSnackbarOpen(true);
@@ -570,11 +155,33 @@ const MemberDetails = () => {
         setSelectedField(null);
     };
 
-    const handleNavigateToEditForm = () => {
-        navigate(`/edit-member/${id}`);
+    const handleDownload = () => {
+        if (!selectedMember) return;
+
+        try {
+            generateMemberFieldsPDF(selectedMember, category, viewType);
+        } catch (e) {
+            console.error("PDF generation failed:", e);
+            setSnackbarMessage("Error generating PDF");
+            setSnackbarSeverity("error");
+            setSnackbarOpen(true);
+        }
     };
 
-    // Enhanced formatValue function to handle objects properly - UPDATED
+    const handleExcelDownload = () => {
+        if (!selectedMember) return;
+
+        try {
+            exportMemberToExcel(selectedMember, category, viewType);
+        } catch (e) {
+            console.error("Excel export failed:", e);
+            setSnackbarMessage("Error generating Excel");
+            setSnackbarSeverity("error");
+            setSnackbarOpen(true);
+        }
+    };
+
+    // Enhanced formatValue function
     const formatValue = (value, fieldKey) => {
         if (isMissing(value)) return <span style={{ color: "red", fontWeight: "bold" }}>Missing</span>;
 
@@ -657,7 +264,7 @@ const MemberDetails = () => {
             );
         }
 
-        // Handle Reference Details (array of objects)
+        // Handle Reference Details
         if (fieldKey === 'referenceDetails') {
             if (!value || value.length === 0) return "No references";
 
@@ -797,123 +404,47 @@ const MemberDetails = () => {
         return value || "No data";
     };
 
-    // Convert values to plain text suitable for Excel/PDF
-    const formatValuePlain = (value, fieldKey) => {
-        if (value === undefined || value === null) return "";
-        if (typeof value === "boolean") return value ? "Yes" : "No";
-        if (Array.isArray(value)) {
-            if (value.length === 0) return "";
-            // If array of objects, stringify each object concisely
-            if (typeof value[0] === "object") {
-                return value.map(v => {
-                    try { return Object.entries(v).map(([k, val]) => `${k}: ${formatValuePlain(val)}`).join("; "); }
-                    catch { return JSON.stringify(v); }
-                }).join(" | ");
-            }
-            return value.join(", ");
+    // Get filtered fields based on category and view type
+    const getFilteredFields = () => {
+        const allKeys = Object.keys(FIELD_MAP);
+
+        if (category === "all") {
+            return allKeys.filter(key => {
+                const value = getValueByPath(selectedMember, key);
+                const missing = isMissing(value);
+
+                if (viewType === "all") return true;
+                if (viewType === "filled") return !missing;
+                if (viewType === "missing") return missing;
+                return true;
+            });
         }
-        if (typeof value === "object") {
-            // For address objects, flatten commonly used keys
-            try {
-                return Object.entries(value).map(([k, v]) => `${k}: ${formatValuePlain(v)}`).join("; ");
-            } catch {
-                return JSON.stringify(value);
-            }
+
+        if (category === "filled") {
+            return allKeys.filter(key => {
+                const value = getValueByPath(selectedMember, key);
+                return !isMissing(value);
+            });
         }
-        // For image URLs, just show "Image URL" or the URL itself truncated
-        if (typeof value === "string") {
-            if (value.startsWith("http") || value.includes("cloudinary")) {
-                return value;
-            }
-            return value;
+
+        if (category === "missing") {
+            return allKeys.filter(key => {
+                const value = getValueByPath(selectedMember, key);
+                return isMissing(value);
+            });
         }
-        return String(value);
-    };
 
-    // Return list of field keys filtered by viewType
-    const getFieldsByView = (member, viewType) => {
-        const keys = Object.keys(FIELD_MAP);
-        if (viewType === "all") return keys;
-        if (viewType === "filled") return keys.filter(k => {
-            const v = getValueByPath(member, k);
-            return !isMissing(v);
+        // Specific category
+        return allKeys.filter(key => {
+            const value = getValueByPath(selectedMember, key);
+            const missing = isMissing(value);
+            const matchesCategory = key.startsWith(category);
+
+            if (viewType === "all") return matchesCategory;
+            if (viewType === "filled") return matchesCategory && !missing;
+            if (viewType === "missing") return matchesCategory && missing;
+            return matchesCategory;
         });
-        if (viewType === "missing") return keys.filter(k => {
-            const v = getValueByPath(member, k);
-            return isMissing(v);
-        });
-        return keys;
-    };
-
-    // Export member fields to Excel
-    const exportMemberToExcel = (member, viewType = "all") => {
-        if (!member) return;
-        const fields = getFieldsByView(member, viewType);
-        const rows = fields.map((key, idx) => ({
-            "S. No": idx + 1,
-            Field: FIELD_MAP[key] || key,
-            Value: formatValuePlain(getValueByPath(member, key), key)
-        }));
-        const ws = XLSX.utils.json_to_sheet(rows, { header: ["S. No", "Field", "Value"] });
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Member Report");
-        const name = (getValueByPath(member, "personalDetails.nameOfMember") || "Member").replace(/\s+/g, "_");
-        XLSX.writeFile(wb, `${name}_Fields_${viewType}_${Date.now()}.xlsx`);
-    };
-
-    // Generate PDF for member fields using jsPDF + autotable
-    const generateMemberFieldsPDF = (member, viewType = "all") => {
-        if (!member) return;
-        const doc = new jsPDF();
-        const memberName = getValueByPath(member, "personalDetails.nameOfMember") || "Member";
-        const membershipNumber = getValueByPath(member, "personalDetails.membershipNumber") || "N/A";
-
-        doc.setFontSize(16);
-        doc.text(`Field Report - ${memberName}`, 14, 16);
-        doc.setFontSize(10);
-        doc.text(`Membership: ${membershipNumber} | View: ${viewType} | Generated: ${new Date().toLocaleString()}`, 14, 24);
-
-        const fields = getFieldsByView(member, viewType);
-        const body = fields.map((key, idx) => {
-            const raw = getValueByPath(member, key);
-            return [
-                idx + 1,
-                FIELD_MAP[key] || key,
-                formatValuePlain(raw, key) || "—"
-            ];
-        });
-
-        autoTable(doc, {
-            startY: 36,
-            head: [["S. No", "Field", "Value"]],
-            body,
-            styles: { fontSize: 9, cellPadding: 3 },
-            headStyles: { fillColor: [25, 118, 210], textColor: 255, fontSize: 10 },
-            columnStyles: {
-                0: { cellWidth: 12 },
-                1: { cellWidth: 60 },
-                2: { cellWidth: 'auto' }
-            },
-            theme: 'grid'
-        });
-
-        const fileName = `${memberName.replace(/\s+/g, "_")}_Fields_${viewType}_${Date.now()}.pdf`;
-        doc.save(fileName);
-    };
-
-    // Export Excel then generate PDF
-    const exportMemberThenDownload = (member, viewType = "all") => {
-        if (!member) return;
-        // try {
-        //     exportMemberToExcel(member, viewType);
-        // } catch (e) {
-        //     console.error("Excel export failed:", e);
-        // }
-        try {
-            generateMemberFieldsPDF(member, viewType);
-        } catch (e) {
-            console.error("PDF generation failed:", e);
-        }
     };
 
     if (loading) {
@@ -951,16 +482,7 @@ const MemberDetails = () => {
         );
     }
 
-    const filteredFields = Object.keys(FIELD_MAP).filter(fieldKey => {
-        const value = getValueByPath(selectedMember, fieldKey);
-        const missing = isMissing(value);
-
-        if (viewType === 'all') return true;
-        if (viewType === 'missing') return missing;
-        if (viewType === 'filled') return !missing;
-        return true;
-    });
-
+    const filteredFields = getFilteredFields();
     const missingCount = Object.keys(FIELD_MAP).filter(f => isMissing(getValueByPath(selectedMember, f))).length;
     const filledCount = Object.keys(FIELD_MAP).length - missingCount;
 
@@ -975,32 +497,6 @@ const MemberDetails = () => {
                     <Typography variant="h4" sx={{ color: "primary.main", fontWeight: "bold" }}>
                         Member Details
                     </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Button
-                        variant={viewType === 'all' ? "contained" : "outlined"}
-                        startIcon={<PictureAsPdfIcon />}
-                        onClick={() => exportMemberThenDownload(selectedMember, 'all')}
-                        color="primary"
-                    >
-                        All PDF
-                    </Button>
-                    <Button
-                        variant={viewType === 'filled' ? "contained" : "outlined"}
-                        startIcon={<CheckCircleOutlineIcon />}
-                        onClick={() => exportMemberThenDownload(selectedMember, 'filled')}
-                        color="success"
-                    >
-                        Filled PDF
-                    </Button>
-                    <Button
-                        variant={viewType === 'missing' ? "contained" : "outlined"}
-                        startIcon={<ErrorOutlineIcon />}
-                        onClick={() => exportMemberThenDownload(selectedMember, 'missing')}
-                        color="error"
-                    >
-                        Missing PDF
-                    </Button>
                 </Box>
             </Box>
 
@@ -1035,6 +531,44 @@ const MemberDetails = () => {
                         />
                     </Box>
                 </CardContent>
+            </Card>
+
+            {/* Download Section */}
+            <Card sx={{ mb: 3, p: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <FormControl size="small" sx={{ minWidth: 180 }}>
+                        <InputLabel>Category Details</InputLabel>
+                        <Select
+                            value={category}
+                            label="Category Details"
+                            onChange={(e) => setCategory(e.target.value)}
+                            fullWidth
+                            size="small"
+                        >
+                            <MenuItem value="all">All</MenuItem>
+                            <MenuItem value="filled">Filled</MenuItem>
+                            <MenuItem value="missing">Missing</MenuItem>
+                            <MenuItem value="personalDetails">Personal</MenuItem>
+                            <MenuItem value="addressDetails">Address</MenuItem>
+                            <MenuItem value="documents">Document</MenuItem>
+                            <MenuItem value="professionalDetails">Professional</MenuItem>
+                            <MenuItem value="familyDetails">Family</MenuItem>
+                            <MenuItem value="bankDetails">Bank</MenuItem>
+                            <MenuItem value="referenceDetails">Reference</MenuItem>
+                            <MenuItem value="guaranteeDetails">Guarantee</MenuItem>
+                            <MenuItem value="loanDetails">Loan</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    <Button
+                        variant="contained"
+                        startIcon={<PictureAsPdfIcon />}
+                        onClick={handleDownload}
+                        color="primary"
+                    >
+                        Download PDF
+                    </Button>
+                </Box>
             </Card>
 
             {/* Tabs */}
@@ -1072,7 +606,6 @@ const MemberDetails = () => {
                     const isImageField = imageFields.includes(fieldKey);
                     const hasImage = isImageField && value && (value.includes('cloudinary') || value.includes('http'));
 
-                    // Check if it's a special field that needs more space - UPDATED
                     const isSpecialField = fieldKey === 'guaranteeDetails.ourSociety' ||
                         fieldKey === 'guaranteeDetails.otherSociety' ||
                         fieldKey === 'loanDetails' ||
