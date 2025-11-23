@@ -179,7 +179,7 @@ const IdentityVerificationForm = ({ formData, handleChange }) => {
               }}
             >
               <Typography variant="h6" sx={{ mb: 2, color: theme.palette.secondary.main, fontWeight: 600 }}>
-                Signed Photo with Digital Signature
+                Signed Photo
               </Typography>
 
               {/* Signature Upload */}

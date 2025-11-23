@@ -11,5 +11,5 @@ export const pdcSchema = new mongoose.Schema(
         chequeSeries: { type: String },
         seriesDate: { type: String },
     },
-    { _id: false } // IMPORTANT: No separate ID for subdocuments
+    { _id: false }
 );

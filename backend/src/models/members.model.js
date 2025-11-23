@@ -7,13 +7,26 @@ const memberSchema = new mongoose.Schema(
       title: { type: String },
       nameOfMember: { type: String },
       membershipNumber: { type: String },
-
       minor: {
         type: Boolean,
         default: false,
       },
+      guardianName: {
+        type: String,
+        required: function () {
+          return this.minor === true;
+        },
+      },
 
+      guardianRelation: {
+        type: String,
+        required: function () {
+          return this.minor === true;
+        },
+      },
+      fatherTitle: { type: String },
       nameOfFather: { type: String },
+      motherTitle: { type: String },
       nameOfMother: { type: String },
       nameOfSpouse: { type: String },
       dateOfBirth: { type: Date },
@@ -31,6 +44,10 @@ const memberSchema = new mongoose.Schema(
 
     // ===== ADDRESS DETAILS =====
     addressDetails: {
+      residenceType: {
+        type: String,
+        enum: ['Owned', 'Rented', 'Company Provided', 'Other'],
+      },
       permanentAddress: {
         flatHouseNo: { type: String },
         areaStreetSector: { type: String },
@@ -56,7 +73,17 @@ const memberSchema = new mongoose.Schema(
       },
 
       currentResidentalBillPhoto: { type: String },
-
+      companyProvidedAddress: {
+        flatHouseNo: { type: String },
+        areaStreetSector: { type: String },
+        locality: { type: String },
+        landmark: { type: String },
+        city: { type: String },
+        country: { type: String },
+        state: { type: String },
+        pincode: { type: String },
+      },
+      companyProvidedAddressBillPhoto: { type: String },
       previousCurrentAddress: [
         {
           flatHouseNo: String,
@@ -89,6 +116,7 @@ const memberSchema = new mongoose.Schema(
       voterId: { type: String },
       passportNo: { type: String },
 
+
       // PHOTOS
       panNoPhoto: { type: String },
       rationCardPhoto: { type: String },
@@ -96,13 +124,15 @@ const memberSchema = new mongoose.Schema(
       aadhaarNoPhoto: { type: String },
       voterIdPhoto: { type: String },
       passportNoPhoto: { type: String },
+      signedPhoto: { type: String },
     },
 
     // ===== EDUCATION & OCCUPATION =====
     professionalDetails: {
       qualification: { type: String },
+      qualificationRemark: { type: String },
       occupation: { type: String },
-
+      degreeNumber: { type: String },
       inCaseOfServiceGovt: { type: Boolean, default: false },
       inCaseOfPrivate: { type: Boolean, default: false },
       inCaseOfService: { type: Boolean, default: false },
@@ -111,18 +141,24 @@ const memberSchema = new mongoose.Schema(
       serviceDetails: {
         fullNameOfCompany: { type: String },
         addressOfCompany: { type: String },
+        department: { type: String },
         monthlyIncome: { type: String },
         designation: { type: String },
         dateOfJoining: { type: String },
         employeeCode: { type: String },
         dateOfRetirement: { type: String },
         officeNo: { type: String },
+        idCard: { type: String },
+        monthlySlip: { type: String },
+        bankStatement: { type: String },
+
       },
 
       inCaseOfBusiness: { type: Boolean, default: false },
       businessDetails: {
         fullNameOfCompany: { type: String },
         addressOfCompany: { type: String },
+        gstNumber: { type: String },
         businessStructure: { type: String },
         gstCertificate: { type: String },  // holds image/pdf URL
       },

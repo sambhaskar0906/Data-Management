@@ -18,6 +18,7 @@ import Login from "../components/Login.jsx";
 import LoanForm from '../pages/Loan/LoanForm.jsx';
 import PDCDetails from '../pages/Loan/PdcDetail.jsx';
 import LoanView from '../pages/Loan/LoanView.jsx';
+import LoanCreationWizard from '../pages/Loan/LoanCreationWizard.jsx';
 
 const MainRoutes = () => {
   return (
@@ -28,7 +29,7 @@ const MainRoutes = () => {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/addmember" element={<MemberDossierForm />} />
         <Route path="/report" element={<MissingMembersTable />} />
-        <Route path="/loan" element={<LoanForm />}></Route>
+        <Route path="/loan" element={<LoanCreationWizard />}></Route>
         <Route path="/pdc" element={<PDCDetails />}></Route>
         <Route path="/view-loan" element={<LoanView />}></Route>
         <Route path="/greeting" element={<FestivalGreetingPage />} />

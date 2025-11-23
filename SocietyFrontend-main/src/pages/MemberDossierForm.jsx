@@ -14,6 +14,7 @@ import {
   ArrowForward as ArrowForwardIcon,
   ArrowBack as ArrowBackIcon
 } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 // Import components
 import FormHeader from "../layout/FormHeader";
@@ -30,15 +31,21 @@ const MemberDossierForm = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
   const dispatch = useDispatch();
+  const navigate = useNavigate(); // Initialize navigate
 
   const { loading, successMessage, error, operationLoading } = useSelector((state) => state.members);
 
-  const [formData, setFormData] = useState({
+  // Initial form data state - extracted to a constant for reusability
+  const initialFormData = {
     personalInformation: {
       nameOfMember: "",
       title: "",
       minor: "",
       membershipNumber: "",
+      guardianName: "",
+      guardianRelation: "",
+      fatherTitle: "",
+      motherTitle: "",
       nameOfFather: "",
       nameOfMother: "",
       dateOfBirth: "",
@@ -56,6 +63,7 @@ const MemberDossierForm = () => {
     },
 
     Address: {
+      residenceType: "",
       permanentAddress: {
         flatHouseNo: "",
         areaStreetSector: "",
@@ -69,6 +77,17 @@ const MemberDossierForm = () => {
       },
       sameAsPermanent: false,
       currentResidentialAddress: {
+        flatHouseNo: "",
+        areaStreetSector: "",
+        locality: "",
+        landmark: "",
+        city: "",
+        country: "",
+        state: "",
+        pincode: "",
+        proofDocument: null,
+      },
+      companyProvidedAddress: {
         flatHouseNo: "",
         areaStreetSector: "",
         locality: "",
@@ -116,11 +135,13 @@ const MemberDossierForm = () => {
       passportNumber: "",
       passportPhoto: null,
       passportPreview: "",
+      signedPhoto: "",
     },
 
     professionalDetails: {
       qualification: "",
       occupation: "",
+      qualificationRemark: "",
       familyMemberMemberOfSociety: false,
       familyMembers: [
         {
@@ -144,8 +165,9 @@ const MemberDossierForm = () => {
         loanDate: "",
       },
     ],
-  });
+  };
 
+  const [formData, setFormData] = useState(initialFormData);
 
   const steps = [
     { label: "Personal Info", icon: "👤" },
@@ -220,6 +242,12 @@ const MemberDossierForm = () => {
     dispatch(clearMemberState());
   }, [dispatch]);
 
+  // Function to reset the form to initial state
+  const resetForm = useCallback(() => {
+    setFormData(initialFormData);
+    setActiveStep(0);
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -241,7 +269,12 @@ const MemberDossierForm = () => {
       /* -----------------------------------------
          ADDRESS DETAILS
       ----------------------------------------- */
-
+      if (values.Address?.residenceType) {
+        formDataToSend.append(
+          "addressDetails[residenceType]",
+          values.Address.residenceType
+        );
+      }
       // Permanent Address
       Object.entries(values.Address?.permanentAddress || {}).forEach(([key, value]) => {
         if (key !== "proofDocument" && value) {
@@ -279,7 +312,13 @@ const MemberDossierForm = () => {
           values.Address.currentResidentialAddress.proofDocument
         );
       }
+      if (values.Address?.companyProvidedAddress?.proofDocument instanceof File) {
+        formDataToSend.append(
+          "companyProvidedAddressBillPhoto",
+          values.Address.companyProvidedAddress.proofDocument
+        );
 
+      }
       /* -----------------------------------------
          DOCUMENTS (Identity Proofs)
       ----------------------------------------- */
@@ -310,6 +349,7 @@ const MemberDossierForm = () => {
         drivingFrontPhoto: "drivingLicensePhoto",
         voterFrontPhoto: "voterIdPhoto",
         passportPhoto: "passportNoPhoto",
+        signedPhoto: "signedPhoto",
       };
 
       Object.entries(photoMap).forEach(([formKey, dbKey]) => {
@@ -344,9 +384,19 @@ const MemberDossierForm = () => {
       }
 
       /* ------ SERVICE DETAILS ------- */
+      /* ------ SERVICE DETAILS (including files) ------- */
       if (pro.serviceDetails) {
         Object.entries(pro.serviceDetails).forEach(([key, value]) => {
-          if (value) {
+          if (!value) return;
+
+          if (value instanceof File) {
+            // File → append directly
+            formDataToSend.append(
+              `professionalDetails[serviceDetails][${key}]`,
+              value
+            );
+          } else {
+            // Normal text values
             formDataToSend.append(
               `professionalDetails[serviceDetails][${key}]`,
               value.toString()
@@ -479,7 +529,10 @@ const MemberDossierForm = () => {
       await dispatch(createMember(formDataToSend)).unwrap();
 
       showSnackbar("✅ Member created successfully!", "success");
-      setActiveStep(0);
+
+      // Reset form and navigate to memberdetail page
+      resetForm();
+      navigate("/memberdetail");
 
     } catch (err) {
       console.error("❌ Failed to create member:", err);

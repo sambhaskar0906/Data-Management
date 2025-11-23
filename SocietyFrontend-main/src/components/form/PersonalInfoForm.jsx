@@ -215,6 +215,27 @@ const PersonalInfoForm = ({ formData, handleChange }) => {
             />
           </Grid>
 
+          {/* Credit Amount */}
+          <Grid size={{ xs: 12, md: 3 }}>
+            <StyledTextField
+              label="Amount in Credit"
+              name="amountInCredit"
+              type="number"
+              value={personalInfo.amountInCredit || ""}
+              onChange={(e) =>
+                handleFieldChange("amountInCredit", e.target.value)
+              }
+              sx={textFieldStyles}
+              InputProps={{
+                startAdornment: (
+                  <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
+                    ₹
+                  </Box>
+                ),
+              }}
+            />
+          </Grid>
+
           {/* Title ComboBox */}
           <Grid size={{ xs: 12, md: 2 }}>
             <Box sx={{ position: 'relative' }}>

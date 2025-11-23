@@ -148,6 +148,24 @@ const ProfessionalForm = ({ formData, handleChange }) => {
                 />
               )}
             </Grid>
+
+            {/* Degree Number */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1, color: theme.palette.primary.main }}>
+                  Degree Number
+                </Typography>
+                <StyledTextField
+                  fullWidth
+                  label="Degree/Certificate Number"
+                  value={professionalDetails.degreeNumber || ""}
+                  onChange={(e) =>
+                    handleProfessionalFieldChange("degreeNumber", e.target.value)
+                  }
+                  sx={textFieldStyles}
+                />
+              </Box>
+            </Grid>
           </Grid>
 
           {/* ================= OCCUPATION TYPE SELECTION ================= */}
@@ -166,6 +184,7 @@ const ProfessionalForm = ({ formData, handleChange }) => {
                         if (e.target.checked) {
                           handleProfessionalFieldChange("inCaseOfPrivate", false);
                           handleProfessionalFieldChange("inCaseOfBusiness", false);
+                          handleProfessionalFieldChange("occupation", "GOVERNMENT_SERVICE");
                         }
                       }}
                       sx={{
@@ -190,6 +209,7 @@ const ProfessionalForm = ({ formData, handleChange }) => {
                         if (e.target.checked) {
                           handleProfessionalFieldChange("inCaseOfServiceGovt", false);
                           handleProfessionalFieldChange("inCaseOfBusiness", false);
+                          handleProfessionalFieldChange("occupation", "PRIVATE_SERVICE");
                         }
                       }}
                       sx={{
@@ -214,6 +234,7 @@ const ProfessionalForm = ({ formData, handleChange }) => {
                         if (e.target.checked) {
                           handleProfessionalFieldChange("inCaseOfServiceGovt", false);
                           handleProfessionalFieldChange("inCaseOfPrivate", false);
+                          handleProfessionalFieldChange("occupation", "BUSINESS");
                         }
                       }}
                       sx={{
@@ -249,7 +270,256 @@ const ProfessionalForm = ({ formData, handleChange }) => {
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <StyledTextField
-                    label="Full Name of Company/Department"
+                    label="Full Name of Company"
+                    value={professionalDetails.serviceDetails?.fullNameOfCompany || ""}
+                    onChange={(e) =>
+                      handleProfessionalFieldChange("serviceDetails", {
+                        ...professionalDetails.serviceDetails,
+                        fullNameOfCompany: e.target.value,
+                      })
+                    }
+                    sx={textFieldStyles}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <StyledTextField
+                    label="Department"
+                    value={professionalDetails.serviceDetails?.department || ""}
+                    onChange={(e) =>
+                      handleProfessionalFieldChange("serviceDetails", {
+                        ...professionalDetails.serviceDetails,
+                        department: e.target.value,
+                      })
+                    }
+                    sx={textFieldStyles}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <StyledTextField
+                    label="Address of Company"
+                    value={professionalDetails.serviceDetails?.addressOfCompany || ""}
+                    onChange={(e) =>
+                      handleProfessionalFieldChange("serviceDetails", {
+                        ...professionalDetails.serviceDetails,
+                        addressOfCompany: e.target.value,
+                      })
+                    }
+                    sx={textFieldStyles}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <StyledTextField
+                    label="Monthly Income"
+                    type="number"
+                    value={professionalDetails.serviceDetails?.monthlyIncome || ""}
+                    onChange={(e) =>
+                      handleProfessionalFieldChange("serviceDetails", {
+                        ...professionalDetails.serviceDetails,
+                        monthlyIncome: e.target.value,
+                      })
+                    }
+                    sx={textFieldStyles}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <StyledTextField
+                    label="Designation"
+                    value={professionalDetails.serviceDetails?.designation || ""}
+                    onChange={(e) =>
+                      handleProfessionalFieldChange("serviceDetails", {
+                        ...professionalDetails.serviceDetails,
+                        designation: e.target.value,
+                      })
+                    }
+                    sx={textFieldStyles}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <StyledTextField
+                    label="Employee Code"
+                    value={professionalDetails.serviceDetails?.employeeCode || ""}
+                    onChange={(e) =>
+                      handleProfessionalFieldChange("serviceDetails", {
+                        ...professionalDetails.serviceDetails,
+                        employeeCode: e.target.value,
+                      })
+                    }
+                    sx={textFieldStyles}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <StyledTextField
+                    label="Date of Joining"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                    value={professionalDetails.serviceDetails?.dateOfJoining || ""}
+                    onChange={(e) =>
+                      handleProfessionalFieldChange("serviceDetails", {
+                        ...professionalDetails.serviceDetails,
+                        dateOfJoining: e.target.value,
+                      })
+                    }
+                    sx={textFieldStyles}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <StyledTextField
+                    label="Date of Retirement"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                    value={professionalDetails.serviceDetails?.dateOfRetirement || ""}
+                    onChange={(e) =>
+                      handleProfessionalFieldChange("serviceDetails", {
+                        ...professionalDetails.serviceDetails,
+                        dateOfRetirement: e.target.value,
+                      })
+                    }
+                    sx={textFieldStyles}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <StyledTextField
+                    label="Office Number"
+                    value={professionalDetails.serviceDetails?.officeNo || ""}
+                    onChange={(e) =>
+                      handleProfessionalFieldChange("serviceDetails", {
+                        ...professionalDetails.serviceDetails,
+                        officeNo: e.target.value,
+                      })
+                    }
+                    sx={textFieldStyles}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    fullWidth
+                    startIcon={<UploadIcon />}
+                    sx={{
+                      height: '56px',
+                      borderRadius: 2,
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+                      '&:hover': {
+                        border: `1px solid ${theme.palette.primary.main}`,
+                        backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      }
+                    }}
+                  >
+                    {professionalDetails.serviceDetails?.bankStatement
+                      ? `Bank Statement Uploaded`
+                      : "Attach Bank Statement of 6 months"}
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/*,application/pdf"
+                      onChange={(e) =>
+                        handleProfessionalFieldChange("serviceDetails", {
+                          ...professionalDetails.serviceDetails,
+                          bankStatement: e.target.files[0],
+                        })
+                      }
+                    />
+                  </Button>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    fullWidth
+                    startIcon={<UploadIcon />}
+                    sx={{
+                      height: '56px',
+                      borderRadius: 2,
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+                      '&:hover': {
+                        border: `1px solid ${theme.palette.primary.main}`,
+                        backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      }
+                    }}
+                  >
+                    {professionalDetails.serviceDetails?.monthlySlip
+                      ? `Monthly Slip Uploaded`
+                      : "Attach Monthly slip of last 6 months"}
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/*,application/pdf"
+                      onChange={(e) =>
+                        handleProfessionalFieldChange("serviceDetails", {
+                          ...professionalDetails.serviceDetails,
+                          monthlySlip: e.target.files[0],
+                        })
+                      }
+                    />
+                  </Button>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    fullWidth
+                    startIcon={<UploadIcon />}
+                    sx={{
+                      height: '56px',
+                      borderRadius: 2,
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+                      '&:hover': {
+                        border: `1px solid ${theme.palette.primary.main}`,
+                        backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      }
+                    }}
+                  >
+                    {professionalDetails.serviceDetails?.idCard
+                      ? `Office ID Uploaded`
+                      : "Attach Office ID"}
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/*,application/pdf"
+                      onChange={(e) =>
+                        handleProfessionalFieldChange("serviceDetails", {
+                          ...professionalDetails.serviceDetails,
+                          idCard: e.target.files[0],
+                        })
+                      }
+                    />
+                  </Button>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+
+          {/* ================= PRIVATE SERVICE DETAILS ================= */}
+          {professionalDetails.inCaseOfPrivate && (
+            <Box sx={{
+              mt: 4,
+              p: 4,
+              borderRadius: 3,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.05)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
+              border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`
+            }}>
+              <SectionHeader
+                icon={<BusinessIcon />}
+                title="Private Service Details"
+                subtitle="Complete private job information"
+                sx={{ mb: 3 }}
+              />
+
+              <Grid container spacing={3}>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <StyledTextField
+                    label="Full Name of Company"
                     value={professionalDetails.serviceDetails?.fullNameOfCompany || ""}
                     onChange={(e) =>
                       handleProfessionalFieldChange("serviceDetails", {
@@ -373,10 +643,10 @@ const ProfessionalForm = ({ formData, handleChange }) => {
                     sx={{
                       height: '56px',
                       borderRadius: 2,
-                      border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+                      border: `1px solid ${alpha(theme.palette.secondary.main, 0.3)}`,
                       '&:hover': {
-                        border: `1px solid ${theme.palette.primary.main}`,
-                        backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                        border: `1px solid ${theme.palette.secondary.main}`,
+                        backgroundColor: alpha(theme.palette.secondary.main, 0.04),
                       }
                     }}
                   >
@@ -390,176 +660,6 @@ const ProfessionalForm = ({ formData, handleChange }) => {
                       onChange={(e) =>
                         handleProfessionalFieldChange("serviceDetails", {
                           ...professionalDetails.serviceDetails,
-                          idCard: e.target.files[0],
-                        })
-                      }
-                    />
-                  </Button>
-                </Grid>
-              </Grid>
-            </Box>
-          )}
-
-          {/* ================= PRIVATE SERVICE DETAILS ================= */}
-          {professionalDetails.inCaseOfPrivate && (
-            <Box sx={{
-              mt: 4,
-              p: 4,
-              borderRadius: 3,
-              background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.05)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
-              border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`
-            }}>
-              <SectionHeader
-                icon={<BusinessIcon />}
-                title="Private Service Details"
-                subtitle="Complete private job information"
-                sx={{ mb: 3 }}
-              />
-
-              <Grid container spacing={3}>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <StyledTextField
-                    label="Full Name of Company"
-                    value={professionalDetails.privateServiceDetails?.fullNameOfCompany || ""}
-                    onChange={(e) =>
-                      handleProfessionalFieldChange("privateServiceDetails", {
-                        ...professionalDetails.privateServiceDetails,
-                        fullNameOfCompany: e.target.value,
-                      })
-                    }
-                    sx={textFieldStyles}
-                  />
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <StyledTextField
-                    label="Address of Company"
-                    value={professionalDetails.privateServiceDetails?.addressOfCompany || ""}
-                    onChange={(e) =>
-                      handleProfessionalFieldChange("privateServiceDetails", {
-                        ...professionalDetails.privateServiceDetails,
-                        addressOfCompany: e.target.value,
-                      })
-                    }
-                    sx={textFieldStyles}
-                  />
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <StyledTextField
-                    label="Monthly Income"
-                    type="number"
-                    value={professionalDetails.privateServiceDetails?.monthlyIncome || ""}
-                    onChange={(e) =>
-                      handleProfessionalFieldChange("privateServiceDetails", {
-                        ...professionalDetails.privateServiceDetails,
-                        monthlyIncome: e.target.value,
-                      })
-                    }
-                    sx={textFieldStyles}
-                  />
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <StyledTextField
-                    label="Designation"
-                    value={professionalDetails.privateServiceDetails?.designation || ""}
-                    onChange={(e) =>
-                      handleProfessionalFieldChange("privateServiceDetails", {
-                        ...professionalDetails.privateServiceDetails,
-                        designation: e.target.value,
-                      })
-                    }
-                    sx={textFieldStyles}
-                  />
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <StyledTextField
-                    label="Employee Code"
-                    value={professionalDetails.privateServiceDetails?.employeeCode || ""}
-                    onChange={(e) =>
-                      handleProfessionalFieldChange("privateServiceDetails", {
-                        ...professionalDetails.privateServiceDetails,
-                        employeeCode: e.target.value,
-                      })
-                    }
-                    sx={textFieldStyles}
-                  />
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <StyledTextField
-                    label="Date of Joining"
-                    type="date"
-                    InputLabelProps={{ shrink: true }}
-                    value={professionalDetails.privateServiceDetails?.dateOfJoining || ""}
-                    onChange={(e) =>
-                      handleProfessionalFieldChange("privateServiceDetails", {
-                        ...professionalDetails.privateServiceDetails,
-                        dateOfJoining: e.target.value,
-                      })
-                    }
-                    sx={textFieldStyles}
-                  />
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <StyledTextField
-                    label="Date of Retirement"
-                    type="date"
-                    InputLabelProps={{ shrink: true }}
-                    value={professionalDetails.privateServiceDetails?.dateOfRetirement || ""}
-                    onChange={(e) =>
-                      handleProfessionalFieldChange("privateServiceDetails", {
-                        ...professionalDetails.privateServiceDetails,
-                        dateOfRetirement: e.target.value,
-                      })
-                    }
-                    sx={textFieldStyles}
-                  />
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <StyledTextField
-                    label="Office Number"
-                    value={professionalDetails.privateServiceDetails?.officeNo || ""}
-                    onChange={(e) =>
-                      handleProfessionalFieldChange("privateServiceDetails", {
-                        ...professionalDetails.privateServiceDetails,
-                        officeNo: e.target.value,
-                      })
-                    }
-                    sx={textFieldStyles}
-                  />
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Button
-                    variant="outlined"
-                    component="label"
-                    fullWidth
-                    startIcon={<UploadIcon />}
-                    sx={{
-                      height: '56px',
-                      borderRadius: 2,
-                      border: `1px solid ${alpha(theme.palette.secondary.main, 0.3)}`,
-                      '&:hover': {
-                        border: `1px solid ${theme.palette.secondary.main}`,
-                        backgroundColor: alpha(theme.palette.secondary.main, 0.04),
-                      }
-                    }}
-                  >
-                    {professionalDetails.privateServiceDetails?.idCard
-                      ? `ID Card Uploaded`
-                      : "Attach ID Card"}
-                    <input
-                      type="file"
-                      hidden
-                      accept="image/*,application/pdf"
-                      onChange={(e) =>
-                        handleProfessionalFieldChange("privateServiceDetails", {
-                          ...professionalDetails.privateServiceDetails,
                           idCard: e.target.files[0],
                         })
                       }
@@ -634,7 +734,6 @@ const ProfessionalForm = ({ formData, handleChange }) => {
                     <MenuItem value="PARTNERSHIP">Partnership</MenuItem>
                     <MenuItem value="LLP">LLP</MenuItem>
                     <MenuItem value="PVT_LTD">Private Limited</MenuItem>
-                    <MenuItem value="LTD">Limited</MenuItem>
                   </StyledTextField>
                 </Grid>
 

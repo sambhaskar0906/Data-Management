@@ -32,18 +32,29 @@ const upload = multer({
   }
 });
 
-// Updated: Include all possible file fields
 const fileFields = [
+  { name: "addressDetails[permanentAddressBillPhoto]", maxCount: 1 },
+  { name: "addressDetails[currentResidentalBillPhoto]", maxCount: 1 },
+  { name: "companyProvidedAddressBillPhoto", maxCount: 1 },
+
+  // Identity proofs
   { name: "passportSize", maxCount: 1 },
   { name: "panNoPhoto", maxCount: 1 },
-  { name: "aadhaarNoPhoto", maxCount: 2 },
-  { name: "rationCardPhoto", maxCount: 2 },
-  { name: "drivingLicensePhoto", maxCount: 2 },
-  { name: "voterIdPhoto", maxCount: 2 },
+  { name: "aadhaarNoPhoto", maxCount: 1 },
+  { name: "rationCardPhoto", maxCount: 1 },
+  { name: "drivingLicensePhoto", maxCount: 1 },
+  { name: "voterIdPhoto", maxCount: 1 },
   { name: "passportNoPhoto", maxCount: 1 },
-  { name: "permanentAddressBillPhoto", maxCount: 1 },
-  { name: "currentResidentalBillPhoto", maxCount: 1 }
+  { name: "signedPhoto", maxCount: 1 },
+  { name: "professionalDetails[serviceDetails][bankStatement]", maxCount: 1 },
+  { name: "professionalDetails[serviceDetails][idCard]", maxCount: 1 },
+  { name: "professionalDetails[serviceDetails][montlySlip]", maxCount: 1 },
+
+  // Business GST
+  { name: "professionalDetails[businessDetails][gstCertificate]", maxCount: 1 },
 ];
+
+
 
 router.post("/", upload.fields(fileFields), createMember);
 router.get("/", getAllMembers);

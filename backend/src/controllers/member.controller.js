@@ -1,8 +1,10 @@
-// member.controller.js
 import fs from "fs";
 import Member from "../models/members.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
+// ---------------------------------------------------------
+// SAFE JSON PARSE
+// ---------------------------------------------------------
 const safeParse = (value, fallback = {}) => {
   try {
     return typeof value === "string" ? JSON.parse(value) : value ?? fallback;
@@ -11,43 +13,72 @@ const safeParse = (value, fallback = {}) => {
   }
 };
 
-
+// ---------------------------------------------------------
+// CLOUDINARY UPLOAD + CLEANUP
+// ---------------------------------------------------------
 const tryUploadFile = async (file) => {
   if (!file) return "";
   try {
     const uploaded = await uploadOnCloudinary(file.path);
-    // remove local file if exists
-    try {
-      if (file.path && fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
-    } catch (unlinkErr) {
-      console.warn("Could not delete temp file:", unlinkErr.message);
+
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
     }
+
     return uploaded?.secure_url || "";
   } catch (err) {
     console.error("Cloudinary upload error:", err);
-    // attempt to delete file anyway
-    try {
-      if (file.path && fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
-    } catch (unlinkErr) {
-      // ignore
+
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
     }
+
     return "";
   }
 };
 
-// ======================================================
-//  ✔️ CREATE MEMBER
-// ======================================================
+// ---------------------------------------------------------
+// CANONICAL FIELD NAMES FOR MULTER + CONTROLLER
+// ---------------------------------------------------------
+const FILE_FIELD_KEYS = {
+  permanentAddressBillPhoto: "addressDetails[permanentAddressBillPhoto]",
+  currentResidentalBillPhoto: "addressDetails[currentResidentalBillPhoto]",
+  companyProvidedAddressBillPhoto: "companyProvidedAddressBillPhoto",
+
+  passportSize: "passportSize",
+  panNoPhoto: "panNoPhoto",
+  aadhaarNoPhoto: "aadhaarNoPhoto",
+  rationCardPhoto: "rationCardPhoto",
+  drivingLicensePhoto: "drivingLicensePhoto",
+  voterIdPhoto: "voterIdPhoto",
+  passportNoPhoto: "passportNoPhoto",
+  signedPhoto: "signedPhoto",
+  bankStatement: "professionalDetails[serviceDetails][bankStatement]",
+  idCard: "professionalDetails[serviceDetails][idCard]",
+  monthlySlip: "professionalDetails[serviceDetails][montlySlip]",
+  gstCertificate:
+    "professionalDetails[businessDetails][gstCertificate]",
+};
+
+const mapReqFilesToCloudinary = async (req) => {
+  const out = {};
+
+  for (const [key, multerField] of Object.entries(FILE_FIELD_KEYS)) {
+    const file = req.files?.[multerField]?.[0];
+    out[key] = await tryUploadFile(file);
+  }
+
+  return out;
+};
+
+// ---------------------------------------------------------
+// CREATE MEMBER
+// ---------------------------------------------------------
 export const createMember = async (req, res) => {
   try {
-    console.log("🟢 Raw Request Body:", req.body);
-    console.log("🟢 Request Files:", req.files ? Object.keys(req.files) : "none");
+    console.log("🟢 Raw Body:", req.body);
+    console.log("🟢 Files:", Object.keys(req.files || {}));
 
-    // Parse nested JSON fields (FormData sends them as strings)
     const personalDetails = safeParse(req.body.personalDetails, {});
     const addressDetails = safeParse(req.body.addressDetails, {});
     const familyDetails = safeParse(req.body.familyDetails, {});
@@ -59,99 +90,212 @@ export const createMember = async (req, res) => {
     const documents = safeParse(req.body.documents, {});
     const nomineeDetails = safeParse(req.body.nomineeDetails, {});
 
-    // Upload files (if any)
-    const fileFields = {};
+    const uploadedFiles = await mapReqFilesToCloudinary(req);
 
-    if (req.files && typeof req.files === "object") {
-      for (const [fieldname, files] of Object.entries(req.files)) {
-        // multer may give array per field
-        const file = Array.isArray(files) ? files[0] : files;
-        fileFields[fieldname] = await tryUploadFile(file);
-      }
-    }
-
-    // Build member object aligned with schema
     const memberData = {
-      personalDetails: {
-        ...personalDetails,
-      },
+      personalDetails,
 
       addressDetails: {
         ...addressDetails,
-        permanentAddressBillPhoto: fileFields.permanentAddressBillPhoto || addressDetails.permanentAddressBillPhoto || "",
-        currentResidentalBillPhoto: fileFields.currentResidentalBillPhoto || addressDetails.currentResidentalBillPhoto || "",
-        previousCurrentAddress: addressDetails.previousCurrentAddress || [],
+        permanentAddressBillPhoto:
+          uploadedFiles.permanentAddressBillPhoto ||
+          addressDetails.permanentAddressBillPhoto ||
+          "",
+        currentResidentalBillPhoto:
+          uploadedFiles.currentResidentalBillPhoto ||
+          addressDetails.currentResidentalBillPhoto ||
+          "",
+        companyProvidedAddressBillPhoto:
+          uploadedFiles.companyProvidedAddressBillPhoto ||
+          addressDetails.companyProvidedAddressBillPhoto ||
+          "",
       },
-
-      familyDetails: familyDetails || {},
-
-      loanDetails: Array.isArray(loanDetails) ? loanDetails : [],
-
-      referenceDetails: Array.isArray(referenceDetails) ? referenceDetails : referenceDetails ? [referenceDetails] : [],
-
-      guaranteeDetails: guaranteeDetails || {},
 
       documents: {
         ...documents,
-        passportSize: fileFields.passportSize || documents.passportSize || "",
-        panNoPhoto: fileFields.panNoPhoto || documents.panNoPhoto || "",
-        aadhaarNoPhoto: fileFields.aadhaarNoPhoto || documents.aadhaarNoPhoto || "",
-        rationCardPhoto: fileFields.rationCardPhoto || documents.rationCardPhoto || "",
-        drivingLicensePhoto: fileFields.drivingLicensePhoto || documents.drivingLicensePhoto || "",
-        voterIdPhoto: fileFields.voterIdPhoto || documents.voterIdPhoto || "",
-        passportNoPhoto: fileFields.passportNoPhoto || documents.passportNoPhoto || "",
+        passportSize:
+          uploadedFiles.passportSize || documents.passportSize || "",
+        panNoPhoto: uploadedFiles.panNoPhoto || documents.panNoPhoto || "",
+        aadhaarNoPhoto:
+          uploadedFiles.aadhaarNoPhoto || documents.aadhaarNoPhoto || "",
+        rationCardPhoto:
+          uploadedFiles.rationCardPhoto || documents.rationCardPhoto || "",
+        drivingLicensePhoto:
+          uploadedFiles.drivingLicensePhoto || documents.drivingLicensePhoto || "",
+        voterIdPhoto:
+          uploadedFiles.voterIdPhoto || documents.voterIdPhoto || "",
+        passportNoPhoto:
+          uploadedFiles.passportNoPhoto || documents.passportNoPhoto || "",
+        signedPhoto:
+          uploadedFiles.signedPhoto || documents.signedPhoto || "",
+
+
       },
+
+      familyDetails,
+      bankDetails,
+      nomineeDetails,
 
       professionalDetails: {
         ...professionalDetails,
-        inCaseOfService: professionalDetails.inCaseOfService ?? false,
-        inCaseOfBusiness: professionalDetails.inCaseOfBusiness ?? false,
-        serviceDetails: professionalDetails.serviceDetails || {},
+        qualification: professionalDetails.qualification || "",
+        qualificationRemark: professionalDetails.qualificationRemark || "",
+        occupation: professionalDetails.occupation || "",
+        degreeNumber: professionalDetails.degreeNumber || "",
+        inCaseOfServiceGovt: professionalDetails.inCaseOfServiceGovt || false,
+        inCaseOfPrivate: professionalDetails.inCaseOfPrivate || false,
+        inCaseOfService: professionalDetails.inCaseOfService || false,
+        serviceType: professionalDetails.serviceType || "",
+
+
+        serviceDetails: {
+          ...(professionalDetails.serviceDetails || {}),
+          fullNameOfCompany: professionalDetails.serviceDetails?.fullNameOfCompany || "",
+          addressOfCompany: professionalDetails.serviceDetails?.addressOfCompany || "",
+          department: professionalDetails.serviceDetails?.department || "",
+          monthlyIncome: professionalDetails.serviceDetails?.monthlyIncome || "",
+          designation: professionalDetails.serviceDetails?.designation || "",
+          dateOfJoining: professionalDetails.serviceDetails?.dateOfJoining || "",
+          employeeCode: professionalDetails.serviceDetails?.employeeCode || "",
+          dateOfRetirement: professionalDetails.serviceDetails?.dateOfRetirement || "",
+          officeNo: professionalDetails.serviceDetails?.officeNo || "",
+          idCard: uploadedFiles.idCard || professionalDetails.serviceDetails?.idCard || "",
+          monthlySlip: uploadedFiles.monthlySlip || professionalDetails.serviceDetails?.monthlySlip || "",
+          bankStatement: uploadedFiles.bankStatement || professionalDetails.serviceDetails?.bankStatement || "",
+        },
+
+
+        inCaseOfBusiness: professionalDetails.inCaseOfBusiness || false,
         businessDetails: {
           ...(professionalDetails.businessDetails || {}),
-          gstCertificate: fileFields.gstCertificate || (professionalDetails.businessDetails ? professionalDetails.businessDetails.gstCertificate : "") || "",
+          fullNameOfCompany: professionalDetails.businessDetails?.fullNameOfCompany || "",
+          addressOfCompany: professionalDetails.businessDetails?.addressOfCompany || "",
+          gstNumber: professionalDetails.businessDetails?.gstNumber || "",
+          businessStructure: professionalDetails.businessDetails?.businessStructure || "",
+          gstCertificate:
+            uploadedFiles.gstCertificate || professionalDetails.businessDetails?.gstCertificate || "",
         },
       },
 
-      bankDetails: bankDetails || {},
-      nomineeDetails: nomineeDetails || {},
+      loanDetails: Array.isArray(loanDetails) ? loanDetails : [],
+      referenceDetails: Array.isArray(referenceDetails)
+        ? referenceDetails
+        : referenceDetails
+          ? [referenceDetails]
+          : [],
+      guaranteeDetails,
     };
 
-    console.log("✅ Final data to save (create):", JSON.stringify(memberData, null, 2));
-
-    const newMember = new Member(memberData);
-    const savedMember = await newMember.save();
+    const member = new Member(memberData);
+    const saved = await member.save();
 
     return res.status(201).json({
       success: true,
       message: "Member created successfully",
-      data: savedMember,
+      data: saved,
     });
-  } catch (error) {
-    console.error("❌ Error creating member:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+  } catch (err) {
+    console.error("❌ createMember error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ======================================================
-//  ✔️ GET MEMBER BY ID
-// ======================================================
+// ---------------------------------------------------------
+// UPDATE MEMBER
+// ---------------------------------------------------------
+export const updateMember = async (req, res) => {
+  try {
+    console.log("🟢 Update Body:", req.body);
+    console.log("🟢 Update Files:", Object.keys(req.files || {}));
+
+    const member = await Member.findById(req.params.id);
+    if (!member)
+      return res.status(404).json({ success: false, message: "Member not found" });
+
+    const incoming = {
+      personalDetails: safeParse(req.body.personalDetails, {}),
+      addressDetails: safeParse(req.body.addressDetails, {}),
+      familyDetails: safeParse(req.body.familyDetails, {}),
+      loanDetails: safeParse(req.body.loanDetails, []),
+      referenceDetails: safeParse(req.body.referenceDetails, []),
+      guaranteeDetails: safeParse(req.body.guaranteeDetails, {}),
+      professionalDetails: safeParse(req.body.professionalDetails, {}),
+      bankDetails: safeParse(req.body.bankDetails, {}),
+      documents: safeParse(req.body.documents, {}),
+    };
+
+    const uploadedFiles = await mapReqFilesToCloudinary(req);
+
+    Object.assign(member, incoming); // soft merge
+
+    // Merge file uploads
+    Object.assign(member.addressDetails, {
+      permanentAddressBillPhoto:
+        uploadedFiles.permanentAddressBillPhoto ||
+        member.addressDetails?.permanentAddressBillPhoto,
+      currentResidentalBillPhoto:
+        uploadedFiles.currentResidentalBillPhoto ||
+        member.addressDetails?.currentResidentalBillPhoto,
+      companyProvidedAddressBillPhoto:
+        uploadedFiles.companyProvidedAddressBillPhoto ||
+        member.addressDetails?.companyProvidedAddressBillPhoto,
+    });
+
+    const docFields = [
+      "passportSize",
+      "panNoPhoto",
+      "aadhaarNoPhoto",
+      "rationCardPhoto",
+      "drivingLicensePhoto",
+      "voterIdPhoto",
+      "passportNoPhoto",
+      "signedPhoto",
+    ];
+
+    member.documents = member.documents || {};
+    for (const k of docFields) {
+      if (uploadedFiles[k]) member.documents[k] = uploadedFiles[k];
+    }
+
+    if (uploadedFiles.gstCertificate) {
+      member.professionalDetails.businessDetails =
+        member.professionalDetails.businessDetails || {};
+      member.professionalDetails.businessDetails.gstCertificate =
+        uploadedFiles.gstCertificate;
+    }
+
+    await member.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Member updated successfully",
+      data: member,
+    });
+  } catch (err) {
+    console.error("❌ updateMember error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ---------------------------------------------------------
+// OTHER CONTROLLERS REMAIN SAME
+// ---------------------------------------------------------
 export const getMemberById = async (req, res) => {
   try {
     const member = await Member.findById(req.params.id);
-    if (!member) {
+    if (!member)
       return res.status(404).json({ success: false, message: "Member not found" });
-    }
+
     return res.status(200).json({ success: true, data: member });
-  } catch (error) {
-    console.error("❌ getMemberById error:", error);
-    return res.status(500).json({ success: false, message: error.message });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
+
+
+
+
+
 
 // ======================================================
 //  ✔️ GET ALL MEMBERS
@@ -170,141 +314,7 @@ export const getAllMembers = async (req, res) => {
   }
 };
 
-// ======================================================
-//  ✔️ UPDATE MEMBER (supports files + JSON fields)
-//     - uses findById + Object.assign + save so pre('save') runs
-// ======================================================
-export const updateMember = async (req, res) => {
-  try {
-    console.log("🟢 updateMember body:", req.body);
-    console.log("🟢 updateMember files:", req.files ? Object.keys(req.files) : "none");
 
-    const member = await Member.findById(req.params.id);
-    if (!member) {
-      return res.status(404).json({ success: false, message: "Member not found" });
-    }
-
-    // Parse incoming fields (support partial)
-    const incomingPersonalDetails = req.body.personalDetails ? safeParse(req.body.personalDetails, {}) : undefined;
-    const incomingAddressDetails = req.body.addressDetails ? safeParse(req.body.addressDetails, {}) : undefined;
-    const incomingFamilyDetails = req.body.familyDetails ? safeParse(req.body.familyDetails, {}) : undefined;
-    const incomingLoanDetails = req.body.loanDetails ? safeParse(req.body.loanDetails, []) : undefined;
-    const incomingReferenceDetails = req.body.referenceDetails ? safeParse(req.body.referenceDetails, []) : undefined;
-    const incomingGuaranteeDetails = req.body.guaranteeDetails ? safeParse(req.body.guaranteeDetails, {}) : undefined;
-    const incomingProfessionalDetails = req.body.professionalDetails ? safeParse(req.body.professionalDetails, {}) : undefined;
-    const incomingBankDetails = req.body.bankDetails ? safeParse(req.body.bankDetails, {}) : undefined;
-    const incomingDocuments = req.body.documents ? safeParse(req.body.documents, {}) : undefined;
-
-    // Upload files (if any)
-    const fileFields = {};
-    if (req.files && typeof req.files === "object") {
-      for (const [fieldname, files] of Object.entries(req.files)) {
-        const file = Array.isArray(files) ? files[0] : files;
-        fileFields[fieldname] = await tryUploadFile(file);
-      }
-    }
-
-    // Merge updates carefully so nested objects are preserved
-    if (incomingPersonalDetails) {
-      member.personalDetails = { ...(member.personalDetails || {}), ...incomingPersonalDetails };
-    }
-
-    if (incomingAddressDetails) {
-      member.addressDetails = { ...(member.addressDetails || {}), ...incomingAddressDetails };
-
-      // merge photos if uploaded
-      if (fileFields.permanentAddressBillPhoto) member.addressDetails.permanentAddressBillPhoto = fileFields.permanentAddressBillPhoto;
-      if (fileFields.currentResidentalBillPhoto) member.addressDetails.currentResidentalBillPhoto = fileFields.currentResidentalBillPhoto;
-    } else {
-      // still allow replacing photos even if no address JSON provided
-      if (fileFields.permanentAddressBillPhoto) {
-        member.addressDetails = { ...(member.addressDetails || {}), permanentAddressBillPhoto: fileFields.permanentAddressBillPhoto };
-      }
-      if (fileFields.currentResidentalBillPhoto) {
-        member.addressDetails = { ...(member.addressDetails || {}), currentResidentalBillPhoto: fileFields.currentResidentalBillPhoto };
-      }
-    }
-
-    if (incomingFamilyDetails) {
-      member.familyDetails = { ...(member.familyDetails || {}), ...incomingFamilyDetails };
-    }
-
-    if (incomingLoanDetails !== undefined) {
-      member.loanDetails = Array.isArray(incomingLoanDetails) ? incomingLoanDetails : member.loanDetails;
-    }
-
-    if (incomingReferenceDetails !== undefined) {
-      member.referenceDetails = Array.isArray(incomingReferenceDetails) ? incomingReferenceDetails : member.referenceDetails;
-    }
-
-    if (incomingGuaranteeDetails) {
-      member.guaranteeDetails = { ...(member.guaranteeDetails || {}), ...incomingGuaranteeDetails };
-    }
-
-    if (incomingDocuments) {
-      member.documents = { ...(member.documents || {}), ...incomingDocuments };
-      // map file uploads to documents
-      const docFields = [
-        "passportSize",
-        "panNoPhoto",
-        "aadhaarNoPhoto",
-        "rationCardPhoto",
-        "drivingLicensePhoto",
-        "voterIdPhoto",
-        "passportNoPhoto",
-      ];
-      for (const df of docFields) {
-        if (fileFields[df]) member.documents[df] = fileFields[df];
-      }
-    } else {
-      // even if no documents JSON, still set uploaded files
-      const docFields = [
-        "passportSize",
-        "panNoPhoto",
-        "aadhaarNoPhoto",
-        "rationCardPhoto",
-        "drivingLicensePhoto",
-        "voterIdPhoto",
-        "passportNoPhoto",
-      ];
-      member.documents = member.documents || {};
-      for (const df of docFields) {
-        if (fileFields[df]) member.documents[df] = fileFields[df];
-      }
-    }
-
-    if (incomingProfessionalDetails) {
-      member.professionalDetails = { ...(member.professionalDetails || {}), ...incomingProfessionalDetails };
-
-      // handle GST certificate upload
-      member.professionalDetails.businessDetails = member.professionalDetails.businessDetails || {};
-      if (fileFields.gstCertificate) {
-        member.professionalDetails.businessDetails.gstCertificate = fileFields.gstCertificate;
-      } else if (incomingProfessionalDetails?.businessDetails?.gstCertificate) {
-        member.professionalDetails.businessDetails.gstCertificate = incomingProfessionalDetails.businessDetails.gstCertificate;
-      }
-    } else if (fileFields.gstCertificate) {
-      member.professionalDetails = member.professionalDetails || {};
-      member.professionalDetails.businessDetails = { ...(member.professionalDetails.businessDetails || {}), gstCertificate: fileFields.gstCertificate };
-    }
-
-    if (incomingBankDetails) {
-      member.bankDetails = { ...(member.bankDetails || {}), ...incomingBankDetails };
-    }
-
-    // Save (triggers pre('save') that tracks previous address)
-    await member.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Member updated successfully",
-      data: member,
-    });
-  } catch (error) {
-    console.error("❌ updateMember error:", error);
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
 
 // ======================================================
 //  ✔️ DELETE MEMBER
@@ -411,6 +421,7 @@ export const getMissingFieldsForMember = async (req, res) => {
         aadhaarNoPhoto: "",
         voterIdPhoto: "",
         passportNoPhoto: "",
+        signedPhoto: "",
       },
       professionalDetails: {
         qualification: "",

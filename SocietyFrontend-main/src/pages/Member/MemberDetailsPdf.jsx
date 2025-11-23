@@ -39,6 +39,23 @@ const formatValueForPDF = (value) => {
     return value.toString();
 };
 
+// helper to add "Page X of Y" footer to all pages
+const addPageNumbers = (doc) => {
+    try {
+        const pageCount = doc.getNumberOfPages();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const footerY = pageHeight - 10;
+        doc.setFontSize(9);
+        doc.setTextColor(100);
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, footerY, { align: 'center' });
+        }
+    } catch (err) {
+        console.error("Failed to add page numbers:", err);
+    }
+};
 
 export const generateMemberPDF = (member) => {
     const doc = new jsPDF();
@@ -132,7 +149,8 @@ export const generateMemberPDF = (member) => {
     const loanFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('loanDetails'));
     addSection('Loan Details', loanFields, member);
 
-    // Save the PDF
+    // Save the PDF (add page numbers first)
+    addPageNumbers(doc);
     doc.save(`Member_${membershipNumber}_${memberName.replace(/\s+/g, '_')}.pdf`);
 };
 
@@ -196,7 +214,7 @@ export const generateMembersListPDF = (members) => {
     });
 
     // Add summary section
-    const finalY = doc.lastAutoTable.finalY + 10;
+    const finalY = doc.lastAutoTable ? (doc.lastAutoTable.finalY + 10) : 30;
     doc.setFontSize(10);
     doc.setTextColor(40, 53, 147);
     doc.text('Summary:', 14, finalY);
@@ -210,6 +228,7 @@ export const generateMembersListPDF = (members) => {
         doc.text(`Average Civil Score: ${avgScore}`, 14, finalY + 14);
     }
 
-    // Save the PDF
+    // Add page numbers then save
+    addPageNumbers(doc);
     doc.save(`Members_List_${new Date().toISOString().split('T')[0]}.pdf`);
 };

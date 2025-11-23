@@ -23,7 +23,7 @@ export const FIELD_MAP = {
     "personalDetails.emailId": "Email",
     "personalDetails.nameOfSpouse": "Spouse's Name",
     "personalDetails.amountInCredit": "Amount In Credit",
-
+  
 
     // Address
     "addressDetails.permanentAddress": "Permanent Address",
@@ -109,7 +109,7 @@ export const FIELD_MAP = {
 // Category mapping
 export const CATEGORY_MAP = {
     personalDetails: "Personal Details",
-    addressDetails: "Address Details",
+    addressDetails: "Address Details", 
     documents: "Documents",
     professionalDetails: "Professional Details",
     familyDetails: "Family Details",
@@ -145,17 +145,46 @@ export const isMissing = (value) => {
     return false;
 };
 
+// Format date to DD/MM/YYYY
+const formatDate = (dateValue) => {
+    if (!dateValue) return "";
+    
+    try {
+        const date = new Date(dateValue);
+        // Check if date is valid
+        if (isNaN(date.getTime())) return String(dateValue);
+        
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        
+        return `${day}/${month}/${year}`;
+    } catch (error) {
+        console.warn("Date formatting error:", error);
+        return String(dateValue);
+    }
+};
+
 export const formatValuePlain = (value, fieldKey) => {
     if (value === undefined || value === null) return "";
+    
+    // Handle date fields specifically
+    if (fieldKey === "personalDetails.dateOfBirth" || 
+        fieldKey === "personalDetails.membershipDate" ||
+        fieldKey === "professionalDetails.serviceDetails.dateOfJoining" ||
+        fieldKey === "professionalDetails.serviceDetails.dateOfRetirement") {
+        return formatDate(value);
+    }
+    
     if (typeof value === "boolean") return value ? "Yes" : "No";
     if (Array.isArray(value)) {
         if (value.length === 0) return "";
         if (typeof value[0] === "object") {
             return value.map(v => {
-                try {
-                    return Object.entries(v).map(([k, val]) => `${k}: ${formatValuePlain(val)}`).join("; ");
-                } catch {
-                    return JSON.stringify(v);
+                try { 
+                    return Object.entries(v).map(([k, val]) => `${k}: ${formatValuePlain(val)}`).join("; "); 
+                } catch { 
+                    return JSON.stringify(v); 
                 }
             }).join(" | ");
         }
@@ -180,39 +209,39 @@ export const formatValuePlain = (value, fieldKey) => {
 // Get fields by category and view type
 export const getFieldsByCategory = (member, category, viewType = "all") => {
     const allKeys = Object.keys(FIELD_MAP);
-
+    
     if (category === "all") {
         return allKeys.filter(key => {
             const value = getValueByPath(member, key);
             const missing = isMissing(value);
-
+            
             if (viewType === "all") return true;
             if (viewType === "filled") return !missing;
             if (viewType === "missing") return missing;
             return true;
         });
     }
-
+    
     if (category === "filled") {
         return allKeys.filter(key => {
             const value = getValueByPath(member, key);
             return !isMissing(value);
         });
     }
-
+    
     if (category === "missing") {
         return allKeys.filter(key => {
             const value = getValueByPath(member, key);
             return isMissing(value);
         });
     }
-
+    
     // Specific category
     return allKeys.filter(key => {
         const value = getValueByPath(member, key);
         const missing = isMissing(value);
         const matchesCategory = key.startsWith(category);
-
+        
         if (viewType === "all") return matchesCategory;
         if (viewType === "filled") return matchesCategory && !missing;
         if (viewType === "missing") return matchesCategory && missing;
@@ -220,18 +249,43 @@ export const getFieldsByCategory = (member, category, viewType = "all") => {
     });
 };
 
-// Generate PDF
-export const generateMemberFieldsPDF = (member, category, viewType = "all") => {
-    if (!member) return;
+// Function to load image and convert to base64
+const loadImageAsBase64 = (url) => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                const dataURL = canvas.toDataURL('image/jpeg');
+                resolve(dataURL);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        img.onerror = () => {
+            reject(new Error('Failed to load image'));
+        };
+        img.src = url;
+    });
+};
 
+// Generate PDF
+export const generateMemberFieldsPDF = async (member, category, viewType = "all") => {
+    if (!member) return;
+    
     const doc = new jsPDF();
     const memberName = getValueByPath(member, "personalDetails.nameOfMember") || "Member";
     const membershipNumber = getValueByPath(member, "personalDetails.membershipNumber") || "N/A";
-
-    const categoryDisplay = category === "all" ? "All Fields" :
-        category === "filled" ? "Filled Fields" :
-            category === "missing" ? "Missing Fields" :
-                CATEGORY_MAP[category] || category;
+    
+    const categoryDisplay = category === "all" ? "All Fields" : 
+                           category === "filled" ? "Filled Fields" :
+                           category === "missing" ? "Missing Fields" : 
+                           CATEGORY_MAP[category] || category;
 
     // Add page number function
     const addPageNumbers = (doc) => {
@@ -239,7 +293,7 @@ export const generateMemberFieldsPDF = (member, category, viewType = "all") => {
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
             doc.setFontSize(8);
-            doc.setTextColor(100);
+            doc.setTextColor(0, 0, 0);
             doc.text(
                 `Page ${i} of ${pageCount}`,
                 doc.internal.pageSize.width / 2,
@@ -249,11 +303,66 @@ export const generateMemberFieldsPDF = (member, category, viewType = "all") => {
         }
     };
 
+    // Add society name at top center
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text("CA Co-Operative Thrift & Credit Society LTD", doc.internal.pageSize.width / 2, 15, { align: 'center' });
+    doc.setFont(undefined, 'normal');
+
+    // Get passport size photo URL
+    const passportPhotoUrl = getValueByPath(member, "documents.passportSize");
+    let startY = 35; // Start position for member info section
+
+    // Create member info section with photo and text side by side
+    if (passportPhotoUrl && (category === "personalDetails" || category === "all")) {
+        try {
+            const pageWidth = doc.internal.pageSize.width;
+            const photoWidth = 25;
+            const photoHeight = 25;
+            const photoX = pageWidth - 40; // Right side with margin
+            const photoY = startY;
+            
+            // Try to load and add the actual image
+            try {
+                const imageData = await loadImageAsBase64(passportPhotoUrl);
+                doc.addImage(imageData, 'JPEG', photoX, photoY, photoWidth, photoHeight);
+            } catch (imageError) {
+                console.warn("Could not load passport photo image, using placeholder:", imageError);
+                // Fallback to placeholder if image loading fails
+                doc.setFillColor(240, 240, 240);
+                doc.rect(photoX, photoY, photoWidth, photoHeight, 'F');
+                doc.setFontSize(6);
+                doc.setTextColor(100, 100, 100);
+                doc.text("Photo", photoX + photoWidth/2, photoY + photoHeight/2, { align: 'center' });
+            }
+            
+            // Add photo border
+            doc.setDrawColor(150);
+            doc.setLineWidth(0.5);
+            doc.rect(photoX, photoY, photoWidth, photoHeight);
+            
+        } catch (error) {
+            console.warn("Could not add passport photo to PDF:", error);
+        }
+    }
+
+    // Add member information on the left side (same line as photo)
+    const infoStartX = 14;
+    const infoStartY = startY;
+    
     doc.setFontSize(16);
-    doc.text(`Member Report - ${memberName}`, 14, 16);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Member Report - ${memberName}`, infoStartX, infoStartY);
+    
     doc.setFontSize(10);
-    doc.text(`Membership: ${membershipNumber} | Category: ${categoryDisplay} | View: ${viewType}`, 14, 24);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Membership: ${membershipNumber}`, infoStartX, infoStartY + 7);
+    doc.text(`Category: ${categoryDisplay} | View: ${viewType}`, infoStartX, infoStartY + 14);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, infoStartX, infoStartY + 21);
+
+    // Adjust startY for the table (below both photo and text)
+    startY += 35; // Increased space to accommodate the member info section
 
     const fields = getFieldsByCategory(member, category, viewType);
     const body = fields.map((key, idx) => {
@@ -266,21 +375,34 @@ export const generateMemberFieldsPDF = (member, category, viewType = "all") => {
     });
 
     autoTable(doc, {
-        startY: 36,
+        startY: startY,
         head: [["S. No", "Field", "Value"]],
         body,
-        styles: { fontSize: 9, cellPadding: 3 },
-        headStyles: { fillColor: [25, 118, 210], textColor: 255, fontSize: 10 },
+        styles: { 
+            fontSize: 9, 
+            cellPadding: 3,
+            textColor: [0, 0, 0],
+            fontStyle: 'normal'
+        },
+        headStyles: { 
+            fillColor: [25, 118, 210], 
+            textColor: 255,
+            fontSize: 10,
+            fontStyle: 'bold'
+        },
+        bodyStyles: {
+            textColor: [0, 0, 0]
+        },
+        alternateRowStyles: {
+            fillColor: [245, 245, 245],
+            textColor: [0, 0, 0]
+        },
         columnStyles: {
-            0: { cellWidth: 12 },
-            1: { cellWidth: 60 },
-            2: { cellWidth: 'auto' }
+            0: { cellWidth: 12, textColor: [0, 0, 0] },
+            1: { cellWidth: 60, textColor: [0, 0, 0] },
+            2: { cellWidth: 'auto', textColor: [0, 0, 0] }
         },
         theme: 'grid',
-        // Add page number after table is drawn
-        didDrawPage: (data) => {
-            // This will be called for each page, but we'll add all page numbers at the end
-        }
     });
 
     // Add page numbers after the table is completely drawn
