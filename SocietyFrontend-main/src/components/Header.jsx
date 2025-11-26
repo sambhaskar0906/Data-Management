@@ -28,7 +28,7 @@ const Header = () => {
                 Welcome to CA Co-Operative Thrift & Credit Society
             </Typography>
 
-            <Box display="flex" align   Items="center" gap={2}>
+            <Box display="flex" alignItems={'center'} gap={2}>
                 <Typography variant="body2">Hi, Admin</Typography>
 
                 <Avatar sx={{ bgcolor: "#3f51b5" }}>A</Avatar>

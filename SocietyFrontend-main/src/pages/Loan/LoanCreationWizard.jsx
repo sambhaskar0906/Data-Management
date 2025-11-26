@@ -22,7 +22,7 @@ import { createLoan, resetLoanState } from "../../features/loan/loanSlice";
 
 const steps = ["Loan Details", "Bank Details", "PDC Details", "Guarantor Details", "Confirmation"];
 
-// Validation Schema for Bank Details
+
 const bankDetailsValidationSchema = Yup.object({
     bankName: Yup.string().required('Bank Name is required'),
     branchName: Yup.string().required('Branch Name is required'),
@@ -69,18 +69,26 @@ const LoanCreationWizard = () => {
     };
 
     // Step 4: Collect Guarantor details
-    const handleGuarantorSubmit = (guarantorData) => {
-        setGuarantorDetails(guarantorData);
+    const handleGuarantorSubmit = (data) => {
+        setGuarantorDetails(data);
+
+        setLoanFormData(prev => ({
+            ...prev,
+            suretyGiven: data.suretyGiven
+        }));
+
         setActiveStep(4);
     };
 
+
     const handleFinalSubmit = async () => {
-        // Prepare final payload according to backend expectations
+
         const finalPayload = {
             typeOfLoan: loanFormData.loanType,
             membershipNumber: loanFormData.loanType === "LAF"
                 ? loanFormData.lafMembershipNumber
                 : loanFormData.membershipNumber,
+
             bankDetails: {
                 bankName: bankDetails.bankName,
                 branchName: bankDetails.branchName,
@@ -88,11 +96,28 @@ const LoanCreationWizard = () => {
                 ifscCode: bankDetails.ifscCode,
                 accountHolderName: bankDetails.accountHolderName
             },
-            guarantorDetails: guarantorDetails.guarantors || [],
-            pdcDetails: [] // Initialize as empty array
+
+            // ✅ REAL FIX HERE
+            suretyGiven: Array.isArray(guarantorDetails.guarantors)
+                ? guarantorDetails.guarantors.map(g => ({
+                    memberId: g.memberId,
+                    memberName: g.fullName,
+                    membershipNumber: g.membershipNumber,
+                    mobileNumber: g.mobileNumber,
+                    accountType: g.accountType,
+                    accountNumber: g.accountNumber,
+                    fileNumber: g.fileNumber,
+                    address: g.address
+                }))
+                : [],
+
+            pdcDetails: []
         };
 
-        // Add PDC details only if they exist and have data
+
+        // -----------------------------
+        // PDC DETAILS
+        // -----------------------------
         if (pdcDetails.chequeDetails && pdcDetails.chequeDetails.length > 0) {
             pdcDetails.chequeDetails.forEach((cheque, index) => {
                 const pdcItem = {
@@ -109,7 +134,6 @@ const LoanCreationWizard = () => {
                 finalPayload.pdcDetails.push(pdcItem);
             });
         } else {
-            // If no PDC details, still send empty array or basic structure
             finalPayload.pdcDetails = [{
                 bankName: bankDetails.bankName,
                 branchName: bankDetails.branchName,
@@ -123,34 +147,32 @@ const LoanCreationWizard = () => {
             }];
         }
 
-        // Add loan-specific fields
+        // -----------------------------
+        // LOAN FIELDS
+        // -----------------------------
         if (loanFormData.loanType === "Loan" || loanFormData.loanType === "LAP") {
             finalPayload.loanDate = loanFormData.loanDate;
             finalPayload.loanAmount = loanFormData.loanAmount;
             finalPayload.purposeOfLoan = loanFormData.purpose;
         }
 
-        // Add LAF-specific fields
+        // -----------------------------
+        // LAF FIELDS
+        // -----------------------------
         if (loanFormData.loanType === "LAF") {
             finalPayload.lafDate = loanFormData.lafDate;
             finalPayload.lafAmount = loanFormData.lafAmount;
             finalPayload.fdrAmount = loanFormData.fdrAmount;
-            finalPayload.fdrSchema = loanFormData.fdrScheme;
+            finalPayload.fdrScheme = loanFormData.fdrScheme;
         }
 
         console.log("🚀 FINAL PAYLOAD TO BE SENT:", JSON.stringify(finalPayload, null, 2));
 
         try {
-            // Dispatch the Redux action
             const result = await dispatch(createLoan(finalPayload)).unwrap();
-
-            // If successful, set the created loan ID
             setCreatedLoanId(result._id);
             setApiSuccess(true);
 
-            console.log("✅ Loan created successfully:", result);
-
-            // Auto navigate to view-loan after success
             setTimeout(() => {
                 navigate("/view-loan");
             }, 2000);
@@ -159,6 +181,7 @@ const LoanCreationWizard = () => {
             console.error("❌ Loan creation failed:", err);
         }
     };
+
 
     // Manual navigation to view-loan
     const handleViewLoan = () => {

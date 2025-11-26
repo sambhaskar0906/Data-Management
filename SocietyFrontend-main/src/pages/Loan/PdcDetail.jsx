@@ -1,11 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Box,
     Paper,
     TextField,
     Button,
     Typography,
-    Divider,
     Grid,
     Table,
     TableBody,
@@ -23,33 +22,102 @@ import { AddCircle, Delete, AccountBalance, Receipt, AttachMoney } from "@mui/ic
 
 const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
     const [numberOfCheques, setNumberOfCheques] = useState("");
+    const [startingChequeNumber, setStartingChequeNumber] = useState("");
     const [rows, setRows] = useState([]);
     const [submitted, setSubmitted] = useState(false);
+    const [globalAmount, setGlobalAmount] = useState("");
+    const [globalDate, setGlobalDate] = useState("");
 
-    // Generate rows with attractive design
+
+    const handleGlobalAmountChange = (value) => {
+        setGlobalAmount(value);
+        setRows(prev => prev.map(r => ({ ...r, amount: value })));
+    };
+
+    const handleGlobalDateChange = (value) => {
+        setGlobalDate(value);
+
+        if (!value) return;
+
+        const baseDate = new Date(value);
+
+        const updatedRows = rows.map((row, index) => {
+            let newDate = new Date(baseDate);
+            newDate.setMonth(baseDate.getMonth() + index);
+
+            // Fix overflow (28/29/30/31)
+            if (newDate.getDate() !== baseDate.getDate()) {
+                newDate.setDate(0);
+            }
+
+            return {
+                ...row,
+                chequeDate: newDate.toISOString().split("T")[0]
+            };
+        });
+
+        setRows(updatedRows);
+    };
+
+    // ------------------------------
+    // ✅ FUNCTION: Generate next alphanumeric cheque number
+    // ------------------------------
+    const generateNextChequeNumber = (cheque) => {
+        const match = cheque.match(/(\D*)(\d+)/);
+
+        if (!match) return cheque;
+
+        const prefix = match[1];
+        const numPart = match[2];
+
+        const nextNum = String(parseInt(numPart) + 1).padStart(numPart.length, '0');
+
+        return prefix + nextNum;
+    };
+
+    // ------------------------------
+    // ✅ Generate full series
+    // ------------------------------
     const generateSeries = () => {
         const total = Number(numberOfCheques);
+        let currentNum = startingChequeNumber.trim();
+
         if (!total || total <= 0) {
             alert("Please enter a valid number of cheques");
             return;
         }
 
-        const emptyRows = Array.from({ length: total }, (_, index) => ({
-            id: Date.now() + index,
-            bankName: bankDetails?.bankName || "",
-            branchName: bankDetails?.branchName || "",
-            accountNumber: bankDetails?.accountNumber || "",
-            ifscCode: bankDetails?.ifscCode || "",
-            chequeNumber: `CHQ${String(index + 1).padStart(3, '0')}`,
-            chequeDate: "",
-            amount: "",
-            seriesDate: new Date().toISOString().split('T')[0]
-        }));
+        if (!currentNum) {
+            alert("Please enter valid starting cheque number");
+            return;
+        }
 
-        setRows(emptyRows);
+        const emptyRows = [];
+
+        for (let i = 0; i < total; i++) {
+            emptyRows.push({
+                id: Date.now() + i,
+                bankName: bankDetails?.bankName || "",
+                branchName: bankDetails?.branchName || "",
+                accountNumber: bankDetails?.accountNumber || "",
+                ifscCode: bankDetails?.ifscCode || "",
+                chequeNumber: currentNum,
+                chequeDate: "",
+                amount: "",
+                seriesDate: new Date().toISOString().split("T")[0],
+            });
+
+            currentNum = generateNextChequeNumber(currentNum);
+        }
+
+        setRows(prev => [...prev, ...emptyRows]);
+        setStartingChequeNumber("");
+        setNumberOfCheques("");
     };
 
-    // Update row value
+    // ------------------------------
+    // Update row
+    // ------------------------------
     const updateRow = (id, field, value) => {
         const updated = rows.map(row =>
             row.id === id ? { ...row, [field]: value } : row
@@ -57,40 +125,39 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
         setRows(updated);
     };
 
-    // Add new row
-    const addRow = () => {
-        const newRow = {
-            id: Date.now(),
-            bankName: bankDetails?.bankName || "",
-            branchName: bankDetails?.branchName || "",
-            accountNumber: bankDetails?.accountNumber || "",
-            ifscCode: bankDetails?.ifscCode || "",
-            chequeNumber: `CHQ${String(rows.length + 1).padStart(3, '0')}`,
-            chequeDate: "",
-            amount: "",
-            seriesDate: new Date().toISOString().split('T')[0]
-        };
-        setRows([...rows, newRow]);
-        setNumberOfCheques(rows.length + 1);
-    };
-
+    // ------------------------------
     // Remove row
+    // ------------------------------
     const removeRow = (id) => {
         const updatedRows = rows.filter(row => row.id !== id);
         setRows(updatedRows);
         setNumberOfCheques(updatedRows.length);
     };
 
-    // Auto-generate cheque numbers when rows change
-    React.useEffect(() => {
-        const updatedRows = rows.map((row, index) => ({
-            ...row,
-            chequeNumber: `CHQ${String(index + 1).padStart(3, '0')}`
-        }));
-        setRows(updatedRows);
-    }, [rows.length]);
+    // ------------------------------
+    // Get END number for preview
+    // ------------------------------
+    const getEndNumber = () => {
+        if (!startingChequeNumber || !numberOfCheques) return "";
 
-    // Submit handler
+        let current = startingChequeNumber.trim();
+        for (let i = 1; i < Number(numberOfCheques); i++) {
+            current = generateNextChequeNumber(current);
+        }
+        return current;
+    };
+
+    // Convert yyyy-mm-dd → dd/mm/yyyy
+    const formatToDDMMYYYY = (dateStr) => {
+        if (!dateStr) return "";
+        const [year, month, day] = dateStr.split("-");
+        return `${day}/${month}/${year}`;
+    };
+
+
+    // ------------------------------
+    // Submit Handler
+    // ------------------------------
     const handleSubmit = () => {
         if (rows.length === 0) {
             alert("Please add at least one cheque detail");
@@ -114,7 +181,6 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
 
         setSubmitted(true);
 
-        // Transform data for backend
         const pdcPayload = {
             numberOfCheques: rows.length,
             chequeDetails: rows.map(row => ({
@@ -133,7 +199,9 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
         onPDCSubmit(pdcPayload);
     };
 
-    // Calculate total amount
+    // ------------------------------
+    // Total amount
+    // ------------------------------
     const totalAmount = rows.reduce((sum, row) => {
         const amount = parseFloat(row.amount) || 0;
         return sum + amount;
@@ -160,14 +228,25 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                 </Alert>
             )}
 
-            {/* Quick Generate Section */}
+            {/* Cheque Series Generator */}
             <Card sx={{ mb: 3, p: 3, border: '2px dashed #e0e0e0' }}>
                 <Typography variant="h6" fontWeight="bold" gutterBottom color="primary">
-                    <AddCircle sx={{ mr: 1, verticalAlign: 'middle' }} />
-                    Quick Generate Cheques
+                    <AddCircle sx={{ mr: 1 }} /> Generate Cheque Series
                 </Typography>
-                <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} md={4}>
+
+                <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, md: 3 }}>
+                        <TextField
+                            fullWidth
+                            label="Starting Cheque Number"
+                            size="small"
+                            value={startingChequeNumber}
+                            onChange={e => setStartingChequeNumber(e.target.value)}
+                            placeholder="e.g. CHQUE001"
+                        />
+                    </Grid>
+
+                    <Grid size={{ xs: 12, md: 3 }}>
                         <TextField
                             fullWidth
                             label="Number of Cheques"
@@ -175,90 +254,69 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                             size="small"
                             value={numberOfCheques}
                             onChange={e => setNumberOfCheques(e.target.value)}
-                            variant="outlined"
-                            InputProps={{ inputProps: { min: 1 } }}
                         />
                     </Grid>
-                    <Grid item xs={12} md={4}>
+
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <Button
                             variant="contained"
                             fullWidth
-                            sx={{ height: 40, background: 'linear-gradient(45deg, #FE6B8B 30%, #FF8E53 90%)' }}
+                            sx={{ height: 40 }}
                             onClick={generateSeries}
                             startIcon={<AddCircle />}
                         >
-                            Generate Cheques
-                        </Button>
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                        <Button
-                            variant="outlined"
-                            fullWidth
-                            sx={{ height: 40 }}
-                            onClick={addRow}
-                            startIcon={<AddCircle />}
-                        >
-                            Add Single Cheque
+                            Generate Cheque Series
                         </Button>
                     </Grid>
                 </Grid>
+
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    {startingChequeNumber && numberOfCheques && (
+                        <> Example: {startingChequeNumber} to {getEndNumber()} </>
+                    )}
+                </Typography>
             </Card>
 
-            {/* Cheque Details Table */}
+            {/* Table */}
             {rows.length > 0 && (
                 <Card sx={{ mb: 3 }}>
                     <CardContent>
-                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                        <Box display="flex" justifyContent="space-between" mb={2}>
                             <Typography variant="h6" fontWeight="bold" color="primary">
-                                <AccountBalance sx={{ mr: 1, verticalAlign: 'middle' }} />
-                                Cheque Details ({rows.length} cheques)
+                                Cheque Details ({rows.length})
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Fill all details for each cheque
+                            <Typography variant="body2">
+                                Series: {rows[0]?.chequeNumber} → {rows[rows.length - 1]?.chequeNumber}
                             </Typography>
                         </Box>
 
-                        <TableContainer component={Paper} elevation={2}>
+                        <TableContainer component={Paper}>
                             <Table>
-                                <TableHead sx={{ background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)' }}>
+                                <TableHead sx={{ background: "#2196F3" }}>
                                     <TableRow>
-                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>#</TableCell>
-                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Cheque Number</TableCell>
-                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Bank Name</TableCell>
-                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Branch</TableCell>
-                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>IFSC Code</TableCell>
-                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Account No</TableCell>
-                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Amount (₹)</TableCell>
-                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Cheque Date</TableCell>
-                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Action</TableCell>
+                                        <TableCell sx={{ color: 'white' }}>#</TableCell>
+                                        <TableCell sx={{ color: 'white' }}>Cheque Number</TableCell>
+                                        <TableCell sx={{ color: 'white' }}>Bank</TableCell>
+                                        <TableCell sx={{ color: 'white' }}>Branch</TableCell>
+                                        <TableCell sx={{ color: 'white' }}>IFSC</TableCell>
+                                        <TableCell sx={{ color: 'white' }}>Account</TableCell>
+                                        <TableCell sx={{ color: 'white' }}>Amount</TableCell>
+                                        <TableCell sx={{ color: 'white' }}>Date</TableCell>
+                                        <TableCell sx={{ color: 'white' }}>Action</TableCell>
                                     </TableRow>
                                 </TableHead>
 
                                 <TableBody>
                                     {rows.map((row, index) => (
-                                        <TableRow
-                                            key={row.id}
-                                            sx={{
-                                                '&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
-                                                '&:hover': { backgroundColor: '#f0f0f0' }
-                                            }}
-                                        >
-                                            <TableCell>
-                                                <Typography fontWeight="bold" color="primary">
-                                                    {index + 1}
-                                                </Typography>
-                                            </TableCell>
+                                        <TableRow key={row.id}>
+                                            <TableCell>{index + 1}</TableCell>
 
                                             <TableCell>
                                                 <TextField
                                                     size="small"
                                                     value={row.chequeNumber}
-                                                    onChange={e => updateRow(row.id, "chequeNumber", e.target.value)}
-                                                    placeholder="CHQ001"
-                                                    sx={{ minWidth: 130 }}
-                                                    InputProps={{
-                                                        readOnly: true,
-                                                    }}
+                                                    InputProps={{ readOnly: true }}
+                                                    sx={{ width: 150 }}
                                                 />
                                             </TableCell>
 
@@ -267,8 +325,7 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                                                     size="small"
                                                     value={row.bankName}
                                                     onChange={e => updateRow(row.id, "bankName", e.target.value)}
-                                                    placeholder="Bank name"
-                                                    sx={{ minWidth: 130 }}
+                                                    sx={{ width: 150 }}
                                                 />
                                             </TableCell>
 
@@ -277,8 +334,7 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                                                     size="small"
                                                     value={row.branchName}
                                                     onChange={e => updateRow(row.id, "branchName", e.target.value)}
-                                                    placeholder="Branch name"
-                                                    sx={{ minWidth: 130 }}
+                                                    sx={{ width: 150 }}
                                                 />
                                             </TableCell>
 
@@ -287,8 +343,7 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                                                     size="small"
                                                     value={row.ifscCode}
                                                     onChange={e => updateRow(row.id, "ifscCode", e.target.value)}
-                                                    placeholder="IFSC code"
-                                                    sx={{ minWidth: 130 }}
+                                                    sx={{ width: 150 }}
                                                 />
                                             </TableCell>
 
@@ -297,46 +352,37 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                                                     size="small"
                                                     value={row.accountNumber}
                                                     onChange={e => updateRow(row.id, "accountNumber", e.target.value)}
-                                                    placeholder="Account number"
-                                                    sx={{ minWidth: 140 }}
+                                                    sx={{ width: 150 }}
                                                 />
                                             </TableCell>
 
                                             <TableCell>
                                                 <TextField
-                                                    size="small"
+                                                    fullWidth
+                                                    label="Amount (same for all)"
                                                     type="number"
-                                                    value={row.amount}
-                                                    onChange={e => updateRow(row.id, "amount", e.target.value)}
-                                                    placeholder="0.00"
-                                                    sx={{ minWidth: 130 }}
-                                                    InputProps={{
-                                                        startAdornment: <AttachMoney sx={{ fontSize: 16, mr: 0.5, color: 'green' }} />,
-                                                    }}
+                                                    value={globalAmount}
+                                                    onChange={e => handleGlobalAmountChange(e.target.value)}
+                                                    sx={{ width: 150 }}
                                                 />
                                             </TableCell>
 
                                             <TableCell>
                                                 <TextField
-                                                    type="date"
                                                     size="small"
-                                                    value={row.chequeDate}
-                                                    onChange={e => updateRow(row.id, "chequeDate", e.target.value)}
+                                                    type="date"
+                                                    value={row.chequeDate || ""}
+                                                    onChange={(e) => handleGlobalDateChange(e.target.value)}
                                                     InputLabelProps={{ shrink: true }}
-                                                    sx={{ minWidth: 130 }}
+                                                    sx={{ width: 150 }}
                                                 />
+
                                             </TableCell>
 
                                             <TableCell>
-                                                <Tooltip title="Remove cheque">
-                                                    <IconButton
-                                                        color="error"
-                                                        onClick={() => removeRow(row.id)}
-                                                        size="small"
-                                                    >
-                                                        <Delete />
-                                                    </IconButton>
-                                                </Tooltip>
+                                                <IconButton onClick={() => removeRow(row.id)} color="error">
+                                                    <Delete />
+                                                </IconButton>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -345,43 +391,17 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                         </TableContainer>
 
                         {/* Summary */}
-                        <Box sx={{ mt: 2, p: 2, background: '#e3f2fd', borderRadius: 1 }}>
-                            <Grid container spacing={2}>
-                                <Grid item xs={12} md={6}>
-                                    <Typography variant="body2" color="primary" fontWeight="bold">
-                                        Total Cheques: {rows.length}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={12} md={6}>
-                                    <Typography variant="body2" color="green" fontWeight="bold">
-                                        Total Amount: ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </Typography>
-                                </Grid>
-                            </Grid>
+                        <Box mt={2}>
+                            <Typography fontWeight="bold">Total Amount: ₹{totalAmount}</Typography>
                         </Box>
                     </CardContent>
                 </Card>
             )}
 
-            {/* Submit Button */}
+            {/* Submit */}
             {rows.length > 0 && (
                 <Box textAlign="center" mt={4}>
-                    <Button
-                        variant="contained"
-                        color="success"
-                        size="large"
-                        onClick={handleSubmit}
-                        sx={{
-                            px: 6,
-                            py: 1.5,
-                            fontSize: '1.1rem',
-                            background: 'linear-gradient(45deg, #00C853 30%, #00E676 90%)',
-                            boxShadow: '0 3px 5px 2px rgba(0, 200, 83, .3)',
-                            '&:hover': {
-                                background: 'linear-gradient(45deg, #00E676 30%, #00C853 90%)',
-                            }
-                        }}
-                    >
+                    <Button variant="contained" color="success" size="large" onClick={handleSubmit}>
                         Submit PDC Details & Continue
                     </Button>
                 </Box>

@@ -16,7 +16,8 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions
+    DialogActions,
+    Stack
 } from "@mui/material";
 
 import SearchIcon from "@mui/icons-material/Search";
@@ -364,10 +365,10 @@ const MemberDetailsPage = () => {
                         <TableRow>
                             <TableCell sx={{ color: "white" }}>S.No</TableCell>
                             <TableCell sx={{ color: "white" }}>Member No</TableCell>
-                            <TableCell sx={{ color: "white" }}>Name</TableCell>
+                            <TableCell sx={{ color: "white" }}>Member Name</TableCell>
                             <TableCell sx={{ color: "white" }}>Phone</TableCell>
                             <TableCell sx={{ color: "white" }}>Email</TableCell>
-                            <TableCell sx={{ color: "white" }}>City</TableCell>
+                            <TableCell sx={{ color: "white" }}>Introduce By</TableCell>
                             <TableCell sx={{ color: "white" }}>Actions</TableCell>
                         </TableRow>
                     </TableHead>
@@ -380,25 +381,27 @@ const MemberDetailsPage = () => {
                                 <TableCell>{getValueByPath(m, "personalDetails.nameOfMember")}</TableCell>
                                 <TableCell>{getValueByPath(m, "personalDetails.phoneNo")}</TableCell>
                                 <TableCell>{getValueByPath(m, "personalDetails.emailId")}</TableCell>
-                                <TableCell>{getValueByPath(m, "addressDetails.currentResidentalAddress.city")}</TableCell>
+                                <TableCell>{getValueByPath(m, "nomineeDetails.introduceBy")}</TableCell>
 
                                 <TableCell>
-                                    <IconButton color="primary" onClick={() => handleView(m)}>
-                                        <VisibilityIcon />
-                                    </IconButton>
+                                    <Stack direction={'row'}>
+                                        <IconButton color="primary" onClick={() => handleView(m)}>
+                                            <VisibilityIcon />
+                                        </IconButton>
 
-                                    <IconButton color="secondary" onClick={() => handleEdit(m)}>
-                                        <EditIcon />
-                                    </IconButton>
+                                        <IconButton color="secondary" onClick={() => handleEdit(m)}>
+                                            <EditIcon />
+                                        </IconButton>
 
-                                    <IconButton
-                                        color="error"
-                                        onClick={() =>
-                                            setDeleteConfirm({ open: true, id: m._id })
-                                        }
-                                    >
-                                        <DeleteIcon />
-                                    </IconButton>
+                                        <IconButton
+                                            color="error"
+                                            onClick={() =>
+                                                setDeleteConfirm({ open: true, id: m._id })
+                                            }
+                                        >
+                                            <DeleteIcon />
+                                        </IconButton>
+                                    </Stack>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -448,7 +451,7 @@ const MemberDetailsPage = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
-        </Box>
+        </Box >
     );
 };
 

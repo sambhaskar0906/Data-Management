@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Box,
     Paper,
@@ -26,19 +26,17 @@ import {
 import { AddCircle, Delete, PersonAdd, Security } from "@mui/icons-material";
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
+import { fetchAllMembers } from "../../features/member/memberSlice";
+import { useDispatch, useSelector } from "react-redux";
 
 // Validation Schema for Guarantor
 const guarantorValidationSchema = Yup.object({
     accountType: Yup.string().required('Account Type is required'),
     accountNumber: Yup.string().required('Account Number is required'),
     fileNumber: Yup.string().required('File Number is required'),
-    accountName: Yup.string().required('Account Name is required'),
-    suretyOption: Yup.string().required('Surety Option is required'),
-    membershipNumber: Yup.string().when('suretyOption', {
-        is: 'given',
-        then: schema => schema.required('Membership Number is required for Given surety'),
-        otherwise: schema => schema.notRequired()
-    }),
+    //accountName: Yup.string().required('Account Name is required'),
+    memberId: Yup.string().required('Member selection is required'),
+    membershipNumber: Yup.string().required('Membership Number is required'),
     name: Yup.string().required('Name is required'),
     address: Yup.string().required('Address is required')
 });
@@ -46,26 +44,85 @@ const guarantorValidationSchema = Yup.object({
 const GuarantorDetails = ({ loanFormData, onGuarantorSubmit, guarantorDetails }) => {
     const [guarantors, setGuarantors] = useState(guarantorDetails.guarantors || []);
     const [submitted, setSubmitted] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const dispatch = useDispatch();
+
+    // Get members from Redux store with multiple possible state paths
+    const members = useSelector((state) =>
+        state.member?.members ||
+        state.members?.members ||
+        state.member?.data ||
+        state.members?.data ||
+        state.member?.list ||
+        state.members?.list ||
+        []
+    );
+
+    // Get loading state from Redux
+    const membersLoading = useSelector((state) =>
+        state.member?.loading ||
+        state.members?.loading ||
+        false
+    );
+
+    useEffect(() => {
+        const loadMembers = async () => {
+            setLoading(true);
+            try {
+                await dispatch(fetchAllMembers());
+            } catch (error) {
+                console.error("Error fetching members:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadMembers();
+    }, [dispatch]);
 
     const initialValues = {
         accountType: "",
         accountNumber: "",
         fileNumber: "",
         accountName: "",
-        suretyOption: "",
+        memberId: "",
         membershipNumber: "",
         name: "",
         address: ""
     };
 
     const handleAddGuarantor = (values, { resetForm }) => {
+        const selectedMember = members.find(
+            (member) => member.id === values.memberId || member._id === values.memberId
+        );
+
+        const pd = selectedMember?.personalDetails || {};
+
         const newGuarantor = {
             id: Date.now(),
-            ...values
+
+            // FROM FORM
+            accountType: values.accountType,
+            accountNumber: values.accountNumber,
+            fileNumber: values.fileNumber,
+
+            // REQUIRED FOR BACKEND
+            memberId: values.memberId,
+            membershipNumber: values.membershipNumber,
+            memberName: pd.nameOfMember || "",
+            mobileNumber: pd.phoneNo || "",
+
+            // UI fields
+            name: values.name,
+            address: values.address,
+
+            memberData: selectedMember
         };
+
         setGuarantors([...guarantors, newGuarantor]);
         resetForm();
     };
+
 
     const removeGuarantor = (id) => {
         setGuarantors(guarantors.filter(guarantor => guarantor.id !== id));
@@ -84,8 +141,73 @@ const GuarantorDetails = ({ loanFormData, onGuarantorSubmit, guarantorDetails })
         };
 
         console.log("📋 Guarantor Payload:", guarantorPayload);
-        onGuarantorSubmit(guarantorPayload);
+        onGuarantorSubmit({
+            guarantors: guarantors.map(g => ({
+                memberId: g.memberId,
+                membershipNumber: g.membershipNumber,
+                fullName: g.name,
+                mobileNumber: g.mobileNumber,
+                address: g.address,
+                fileNumber: g.fileNumber,
+                accountType: g.accountType,
+                accountNumber: g.accountNumber
+
+            }))
+        });
+
+
+
     };
+
+    // Handle member selection change
+    const handleMemberChange = (event, setFieldValue) => {
+        const memberId = event.target.value;
+        setFieldValue('memberId', memberId);
+
+        const selectedMember = members.find(
+            (member) => member.id === memberId || member._id === memberId
+        );
+
+        if (selectedMember) {
+            const pd = selectedMember.personalDetails || {};
+            const permanent = selectedMember.addressDetails?.permanentAddress || {};
+
+            // Convert object to single string
+            const addressString = [
+                permanent.flatHouseNo,
+                permanent.areaStreetSector,
+                permanent.locality,
+                permanent.landmark,
+                permanent.city,
+                permanent.state,
+                permanent.country,
+                permanent.pincode ? `- ${permanent.pincode}` : ""
+            ]
+                .filter(Boolean)
+                .join(", ");
+
+            setFieldValue("membershipNumber", pd.membershipNumber || "");
+            setFieldValue("name", pd.nameOfMember || "");
+            setFieldValue("address", addressString || "");
+        }
+    };
+
+
+
+    // Helper function to get member display name
+    const getMemberDisplayName = (member) => {
+        const pd = member.personalDetails || {};
+
+        const name = pd.nameOfMember || "Unknown Member";
+        const membershipNumber = pd.membershipNumber || "";
+
+        return `${name}${membershipNumber ? " - " + membershipNumber : ""}`;
+    };
+
+
+    // Helper function to get member ID
+    const getMemberId = (member) => member.id || member._id || "";
+
 
     return (
         <Box>
@@ -97,7 +219,7 @@ const GuarantorDetails = ({ loanFormData, onGuarantorSubmit, guarantorDetails })
                         GUARANTOR DETAILS
                     </Typography>
                     <Typography variant="h6">
-                        Guarantor Information & Surety Details
+                        Guarantor Information & Member Details
                     </Typography>
                 </CardContent>
             </Card>
@@ -105,6 +227,13 @@ const GuarantorDetails = ({ loanFormData, onGuarantorSubmit, guarantorDetails })
             {submitted && (
                 <Alert severity="success" sx={{ mb: 2 }}>
                     Guarantor Details Submitted Successfully!
+                </Alert>
+            )}
+
+            {/* Debug Info */}
+            {process.env.NODE_ENV === 'development' && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                    Members loaded: {members.length} | Loading: {loading.toString()}
                 </Alert>
             )}
 
@@ -120,8 +249,10 @@ const GuarantorDetails = ({ loanFormData, onGuarantorSubmit, guarantorDetails })
                     validationSchema={guarantorValidationSchema}
                     onSubmit={handleAddGuarantor}
                 >
-                    {({ values, errors, touched, handleChange, handleBlur, handleSubmit, isSubmitting }) => (
-                        <Form>
+                    {({ values, errors, touched, handleChange, handleBlur, handleSubmit: formikSubmit, setFieldValue }) => (
+                        <Form onSubmit={formikSubmit}>
+
+
                             <Grid container spacing={2}>
                                 {/* Account Type */}
                                 <Grid size={{ xs: 12, md: 6 }}>
@@ -168,7 +299,7 @@ const GuarantorDetails = ({ loanFormData, onGuarantorSubmit, guarantorDetails })
                                 </Grid>
 
                                 {/* Account Name */}
-                                <Grid size={{ xs: 12, md: 6 }}>
+                                {/* <Grid size={{ xs: 12, md: 6 }}>
                                     <Field
                                         as={TextField}
                                         fullWidth
@@ -178,39 +309,57 @@ const GuarantorDetails = ({ loanFormData, onGuarantorSubmit, guarantorDetails })
                                         error={touched.accountName && Boolean(errors.accountName)}
                                         helperText={touched.accountName && errors.accountName}
                                     />
-                                </Grid>
+                                </Grid> */}
 
-                                {/* Surety Option */}
+                                {/* Member List Dropdown */}
                                 <Grid size={{ xs: 12, md: 6 }}>
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel>Surety Option</InputLabel>
-                                        <Field
-                                            as={Select}
-                                            name="suretyOption"
-                                            label="Surety Option"
-                                            error={touched.suretyOption && Boolean(errors.suretyOption)}
+                                    <FormControl fullWidth size="small" error={touched.memberId && Boolean(errors.memberId)}>
+                                        <InputLabel>Select Member</InputLabel>
+                                        <Select
+                                            name="memberId"
+                                            value={values.memberId}
+                                            label="Select Member"
+                                            onChange={(e) => handleMemberChange(e, setFieldValue)}
+                                            onBlur={handleBlur}
                                         >
-                                            <MenuItem value="given">Given</MenuItem>
-                                            <MenuItem value="taken">Taken</MenuItem>
-                                        </Field>
-                                        <ErrorMessage name="suretyOption" component="div" className="error-message" />
+                                            {loading || membersLoading ? (
+                                                <MenuItem value="" disabled>Loading members...</MenuItem>
+                                            ) : members.length > 0 ? (
+                                                members.map((member) => {
+                                                    const memberId = getMemberId(member);
+                                                    const displayName = getMemberDisplayName(member);
+
+                                                    return (
+                                                        <MenuItem key={memberId} value={memberId}>
+                                                            {displayName || `Member ${memberId}`}
+                                                        </MenuItem>
+                                                    );
+                                                })
+                                            ) : (
+                                                <MenuItem value="" disabled>
+                                                    No members available
+                                                </MenuItem>
+                                            )}
+                                        </Select>
+                                        <ErrorMessage name="memberId" component="div" className="error-message" />
                                     </FormControl>
                                 </Grid>
 
-                                {/* Membership Number (conditionally shown) */}
-                                {values.suretyOption === 'given' && (
-                                    <Grid size={{ xs: 12, md: 6 }}>
-                                        <Field
-                                            as={TextField}
-                                            fullWidth
-                                            size="small"
-                                            label="Membership Number"
-                                            name="membershipNumber"
-                                            error={touched.membershipNumber && Boolean(errors.membershipNumber)}
-                                            helperText={touched.membershipNumber && errors.membershipNumber}
-                                        />
-                                    </Grid>
-                                )}
+                                {/* Membership Number */}
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <Field
+                                        as={TextField}
+                                        fullWidth
+                                        size="small"
+                                        label="Membership Number"
+                                        name="membershipNumber"
+                                        error={touched.membershipNumber && Boolean(errors.membershipNumber)}
+                                        helperText={touched.membershipNumber && errors.membershipNumber}
+                                        InputProps={{
+                                            readOnly: true,
+                                        }}
+                                    />
+                                </Grid>
 
                                 {/* Name */}
                                 <Grid size={{ xs: 12, md: 6 }}>
@@ -222,6 +371,9 @@ const GuarantorDetails = ({ loanFormData, onGuarantorSubmit, guarantorDetails })
                                         name="name"
                                         error={touched.name && Boolean(errors.name)}
                                         helperText={touched.name && errors.name}
+                                        InputProps={{
+                                            readOnly: true,
+                                        }}
                                     />
                                 </Grid>
 
@@ -237,6 +389,9 @@ const GuarantorDetails = ({ loanFormData, onGuarantorSubmit, guarantorDetails })
                                         rows={2}
                                         error={touched.address && Boolean(errors.address)}
                                         helperText={touched.address && errors.address}
+                                        InputProps={{
+                                            readOnly: true,
+                                        }}
                                     />
                                 </Grid>
 
@@ -247,8 +402,9 @@ const GuarantorDetails = ({ loanFormData, onGuarantorSubmit, guarantorDetails })
                                         variant="contained"
                                         startIcon={<AddCircle />}
                                         sx={{ mt: 1 }}
+                                        disabled={loading || membersLoading}
                                     >
-                                        Add Guarantor
+                                        {loading || membersLoading ? 'Loading Members...' : 'Add Guarantor'}
                                     </Button>
                                 </Grid>
                             </Grid>
@@ -275,8 +431,8 @@ const GuarantorDetails = ({ loanFormData, onGuarantorSubmit, guarantorDetails })
                                         <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Account Type</TableCell>
                                         <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Account No</TableCell>
                                         <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>File No</TableCell>
-                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Account Name</TableCell>
-                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Surety</TableCell>
+                                       // <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Account Name</TableCell>
+                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Member</TableCell>
                                         <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Membership No</TableCell>
                                         <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Name</TableCell>
                                         <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Address</TableCell>
@@ -302,11 +458,11 @@ const GuarantorDetails = ({ loanFormData, onGuarantorSubmit, guarantorDetails })
                                                 <Typography
                                                     variant="body2"
                                                     sx={{
-                                                        color: guarantor.suretyOption === 'given' ? 'green' : 'blue',
+                                                        color: 'green',
                                                         fontWeight: 'bold'
                                                     }}
                                                 >
-                                                    {guarantor.suretyOption?.toUpperCase()}
+                                                    {guarantor.memberName || 'N/A'}
                                                 </Typography>
                                             </TableCell>
                                             <TableCell>{guarantor.membershipNumber || '-'}</TableCell>

@@ -160,7 +160,7 @@ export default function MemberEditPage({ open, member, onClose }) {
                 </Typography>
                 <Grid container spacing={2}>
                     {fields.map((item) => (
-                        <Grid item xs={12} sm={6} key={item.key}>
+                        <Grid size={{ xs: 12, md: 6 }} key={item.key}>
                             <EditableField
                                 label={item.label}
                                 value={value?.[item.key] || ""}
@@ -265,7 +265,7 @@ export default function MemberEditPage({ open, member, onClose }) {
             <DialogContent dividers sx={{ maxHeight: '70vh' }}>
                 <Grid container spacing={3}>
                     {/* Personal Details */}
-                    <Grid item xs={12}>
+                    <Grid size={{ xs: 12 }}>
                         <Accordion defaultExpanded sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -275,7 +275,7 @@ export default function MemberEditPage({ open, member, onClose }) {
                             <AccordionDetails>
                                 <Grid container spacing={2}>
                                     {personalFields.map(fieldKey => (
-                                        <Grid item xs={12} sm={6} md={4} key={fieldKey}>
+                                        <Grid size={{ xs: 12, md: 6 }} md={4} key={fieldKey}>
                                             <EditableField
                                                 label={FIELD_MAP[fieldKey]}
                                                 value={getValueByPath(formData, fieldKey)}
@@ -291,7 +291,7 @@ export default function MemberEditPage({ open, member, onClose }) {
                     </Grid>
 
                     {/* Address Details */}
-                    <Grid item xs={12}>
+                    <Grid size={{ xs: 12 }}>
                         <Accordion defaultExpanded sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -337,7 +337,7 @@ export default function MemberEditPage({ open, member, onClose }) {
                     </Grid>
 
                     {/* Reference Details */}
-                    <Grid item xs={12}>
+                    <Grid size={{ xs: 12 }}>
                         <Accordion sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -356,7 +356,7 @@ export default function MemberEditPage({ open, member, onClose }) {
                                             />
                                         </Grid>
                                     ))}
-                                    <Grid item xs={12}>
+                                    <Grid size={{ xs: 12 }}>
                                         <EditableArrayField
                                             label="Guarantor Mobile Numbers"
                                             values={getValueByPath(formData, 'referenceDetails.gurantorMno')}
@@ -370,7 +370,7 @@ export default function MemberEditPage({ open, member, onClose }) {
                     </Grid>
 
                     {/* Documents Section */}
-                    <Grid item xs={12}>
+                    <Grid size={{ xs: 12 }}>
                         <Accordion sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -380,7 +380,7 @@ export default function MemberEditPage({ open, member, onClose }) {
                             <AccordionDetails>
                                 <Grid container spacing={2}>
                                     {documentFields.map(fieldKey => (
-                                        <Grid item xs={12} sm={6} md={4} key={fieldKey}>
+                                        <Grid size={{ xs: 12, md: 6 }} md={4} key={fieldKey}>
                                             <EditableField
                                                 label={FIELD_MAP[fieldKey]}
                                                 value={getValueByPath(formData, fieldKey)}
@@ -405,7 +405,7 @@ export default function MemberEditPage({ open, member, onClose }) {
                             <AccordionDetails>
                                 <Grid container spacing={2}>
                                     {bankFields.map(fieldKey => (
-                                        <Grid item xs={12} sm={6} md={4} key={fieldKey}>
+                                        <Grid size={{ xs: 12, md: 6 }} md={4} key={fieldKey}>
                                             <EditableField
                                                 label={FIELD_MAP[fieldKey]}
                                                 value={getValueByPath(formData, fieldKey)}

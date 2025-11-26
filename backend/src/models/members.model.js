@@ -40,6 +40,7 @@ const memberSchema = new mongoose.Schema(
       phoneNo: { type: String },
       alternatePhoneNo: { type: String },
       emailId: { type: String },
+      civilScore: { type: String },
     },
 
     // ===== ADDRESS DETAILS =====

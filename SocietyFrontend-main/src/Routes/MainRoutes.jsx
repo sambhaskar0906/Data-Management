@@ -19,6 +19,9 @@ import LoanForm from '../pages/Loan/LoanForm.jsx';
 import PDCDetails from '../pages/Loan/PdcDetail.jsx';
 import LoanView from '../pages/Loan/LoanView.jsx';
 import LoanCreationWizard from '../pages/Loan/LoanCreationWizard.jsx';
+import ExpPdf from '../pages/Exp/ExpPdf.jsx';
+import SuretyReport from '../pages/SuretyReport/SuretyReport.jsx';
+
 
 const MainRoutes = () => {
   return (
@@ -41,6 +44,8 @@ const MainRoutes = () => {
         <Route path="/member/view/:id" element={<MemberViewPage />} />
         <Route path="/member/edit/:id" element={<MemberEditPage />} />
         <Route path="/notice" element={<NoticePage />} />
+        <Route path="/exppdf/:membershipNumber" element={<ExpPdf />} />
+        <Route path="/surety-report" element={<SuretyReport />} />
       </Route>
     </Routes>
   )

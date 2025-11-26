@@ -375,6 +375,7 @@ export const getMissingFieldsForMember = async (req, res) => {
         phoneNo: "",
         alternatePhoneNo: "",
         emailId: "",
+        civilScore: "",
       },
       addressDetails: {
         permanentAddress: {

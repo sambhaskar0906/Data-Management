@@ -2,7 +2,6 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "../../utils/axios";
 
 
-
 // =============================
 // CREATE LOAN
 // =============================
@@ -64,6 +63,21 @@ export const getLoansByMemberId = createAsyncThunk(
 );
 
 // =============================
+// GET ALL LOANS BY MEMBERSHIP NUMBER
+// =============================
+export const getAllLoansByMembershipNumber = createAsyncThunk(
+    "loan/getAllLoansByMembershipNumber",
+    async (membershipNumber, { rejectWithValue }) => {
+        try {
+            const response = await axios.get(`/loans/membership/${membershipNumber}`);
+            return response.data.data;
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.message || error.message);
+        }
+    }
+);
+
+// =============================
 // UPDATE LOAN
 // =============================
 export const updateLoan = createAsyncThunk(
@@ -86,12 +100,44 @@ export const deleteLoan = createAsyncThunk(
     async (id, { rejectWithValue }) => {
         try {
             await axios.delete(`/loans/${id}`);
-            return id; // return deleted id
+            return id;
         } catch (error) {
             return rejectWithValue(error.response?.data?.message || error.message);
         }
     }
 );
+
+
+// =====================================================
+// ⭐ NEW API: GET GUARANTOR RELATION (my guarantors + whom I guaranteed)
+// =====================================================
+export const getGuarantorRelationsByMember = createAsyncThunk(
+    "loan/getGuarantorRelationsByMember",
+    async (search, { rejectWithValue }) => {
+        try {
+            const response = await axios.get(`/loans/guarantor-relations?search=${search}`);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.message || error.message);
+        }
+    }
+);
+
+// =====================================================
+// ⭐ GET SURETY SUMMARY BY MEMBERSHIP NUMBER
+// =====================================================
+export const getSuretySummaryByMember = createAsyncThunk(
+    "loan/getSuretySummaryByMember",
+    async (membershipNumber, { rejectWithValue }) => {
+        try {
+            const response = await axios.get(`/loans/surety-summary/${membershipNumber}`);
+            return response.data.data;
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.message || error.message);
+        }
+    }
+);
+
 
 // =============================
 // SLICE
@@ -102,7 +148,13 @@ const loanSlice = createSlice({
         loans: [],
         singleLoan: null,
         memberLoans: [],
+        membershipLoans: [], // ✅ NEW: for getAllLoansByMembershipNumber
+        guarantorRelations: null,
+        suretySummary: null, // ✅ NEW: for getSuretySummaryByMember
         loading: false,
+        guarantorLoading: false,
+        membershipLoading: false, // ✅ NEW: loading state for membership loans
+        suretyLoading: false, // ✅ NEW: loading state for surety summary
         error: null,
         success: false,
     },
@@ -111,6 +163,15 @@ const loanSlice = createSlice({
         resetLoanState: (state) => {
             state.success = false;
             state.error = null;
+        },
+        clearMembershipLoans: (state) => {
+            state.membershipLoans = [];
+        },
+        clearSuretySummary: (state) => {
+            state.suretySummary = null;
+        },
+        clearGuarantorRelations: (state) => {
+            state.guarantorRelations = null;
         },
     },
 
@@ -169,6 +230,19 @@ const loanSlice = createSlice({
                 state.error = action.payload;
             })
 
+            // ✅ NEW: GET ALL LOANS BY MEMBERSHIP NUMBER
+            .addCase(getAllLoansByMembershipNumber.pending, (state) => {
+                state.membershipLoading = true;
+            })
+            .addCase(getAllLoansByMembershipNumber.fulfilled, (state, action) => {
+                state.membershipLoading = false;
+                state.membershipLoans = action.payload;
+            })
+            .addCase(getAllLoansByMembershipNumber.rejected, (state, action) => {
+                state.membershipLoading = false;
+                state.error = action.payload;
+            })
+
             // UPDATE LOAN
             .addCase(updateLoan.pending, (state) => {
                 state.loading = true;
@@ -197,9 +271,40 @@ const loanSlice = createSlice({
             .addCase(deleteLoan.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
+            })
+
+            // ⭐ GUARANTOR RELATIONS
+            .addCase(getGuarantorRelationsByMember.pending, (state) => {
+                state.guarantorLoading = true;
+            })
+            .addCase(getGuarantorRelationsByMember.fulfilled, (state, action) => {
+                state.guarantorLoading = false;
+                state.guarantorRelations = action.payload;
+            })
+            .addCase(getGuarantorRelationsByMember.rejected, (state, action) => {
+                state.guarantorLoading = false;
+                state.error = action.payload;
+            })
+
+            // ✅ NEW: SURETY SUMMARY BY MEMBER
+            .addCase(getSuretySummaryByMember.pending, (state) => {
+                state.suretyLoading = true;
+            })
+            .addCase(getSuretySummaryByMember.fulfilled, (state, action) => {
+                state.suretyLoading = false;
+                state.suretySummary = action.payload;
+            })
+            .addCase(getSuretySummaryByMember.rejected, (state, action) => {
+                state.suretyLoading = false;
+                state.error = action.payload;
             });
     },
 });
 
-export const { resetLoanState } = loanSlice.actions;
+export const {
+    resetLoanState,
+    clearMembershipLoans,
+    clearSuretySummary,
+    clearGuarantorRelations
+} = loanSlice.actions;
 export default loanSlice.reducer;

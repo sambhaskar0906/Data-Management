@@ -551,7 +551,7 @@ const LoanView = () => {
                         startIcon={<Add />}
                         onClick={handleAddNewLoan}
                         sx={{ minWidth: 160 }}
-                        disabled={!selectedMember}
+
                     >
                         Add New Loan
                     </Button>
@@ -572,14 +572,6 @@ const LoanView = () => {
                                     : "Please select a member to view loan details"
                             }
                         </Typography>
-                        <Button
-                            variant="contained"
-                            onClick={handleAddNewLoan}
-                            startIcon={<Add />}
-                            disabled={!selectedMember}
-                        >
-                            Create New Loan
-                        </Button>
                     </CardContent>
                 </Card>
             ) : (

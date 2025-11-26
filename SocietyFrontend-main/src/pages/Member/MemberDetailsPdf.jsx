@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { FIELD_MAP } from "./MemberDetail";
-import { getValueByPath } from "./MemberDetail"
+import { getValueByPath } from "./MemberDetail";
 
 const truncateText = (text, maxLength) => {
     if (!text) return "N/A";
@@ -9,9 +9,9 @@ const truncateText = (text, maxLength) => {
 };
 
 const formatValueForPDF = (value) => {
-    if (isMissing(value)) return "Not Provided";
+    if (!value || value === undefined || value === null) return "Not Provided";
 
-    if (typeof value === "string" && (value.startsWith("http") || value.startsWith("https"))) {
+    if (typeof value === "string" && value.startsWith("http")) {
         return "Image Available";
     }
 
@@ -39,18 +39,19 @@ const formatValueForPDF = (value) => {
     return value.toString();
 };
 
-// helper to add "Page X of Y" footer to all pages
 const addPageNumbers = (doc) => {
     try {
         const pageCount = doc.getNumberOfPages();
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
         const footerY = pageHeight - 10;
+
         doc.setFontSize(9);
         doc.setTextColor(100);
+
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
-            doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, footerY, { align: 'center' });
+            doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, footerY, { align: "center" });
         }
     } catch (err) {
         console.error("Failed to add page numbers:", err);
@@ -59,21 +60,26 @@ const addPageNumbers = (doc) => {
 
 export const generateMemberPDF = (member) => {
     const doc = new jsPDF();
+
     const memberName = getValueByPath(member, 'personalDetails.nameOfMember') || 'Unknown';
     const membershipNumber = getValueByPath(member, 'personalDetails.membershipNumber') || 'N/A';
 
     // Title
     doc.setFontSize(16);
     doc.setTextColor(40, 53, 147);
-    doc.text(`Member Details - ${memberName}`, 105, 15, { align: 'center' });
+    doc.text(`Member Details - ${memberName}`, 105, 15, { align: "center" });
 
     doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Membership Number: ${membershipNumber} | Generated on: ${new Date().toLocaleDateString()}`, 105, 22, { align: 'center' });
+    doc.setTextColor(100);
+    doc.text(
+        `Membership Number: ${membershipNumber} | Generated on: ${new Date().toLocaleDateString()}`,
+        105,
+        22,
+        { align: "center" }
+    );
 
     let yPosition = 35;
 
-    // Function to add section
     const addSection = (title, fields, data) => {
         if (yPosition > 250) {
             doc.addPage();
@@ -85,14 +91,14 @@ export const generateMemberPDF = (member) => {
         doc.text(title, 14, yPosition);
         yPosition += 8;
 
-        doc.setDrawColor(200, 200, 200);
+        doc.setDrawColor(200);
         doc.line(14, yPosition, 196, yPosition);
         yPosition += 5;
 
         doc.setFontSize(9);
-        doc.setTextColor(80, 80, 80);
+        doc.setTextColor(80);
 
-        fields.forEach(fieldKey => {
+        fields.forEach((fieldKey) => {
             if (yPosition > 270) {
                 doc.addPage();
                 yPosition = 20;
@@ -103,9 +109,9 @@ export const generateMemberPDF = (member) => {
             const displayValue = formatValueForPDF(value);
 
             doc.text(`${fieldName}:`, 16, yPosition);
-            doc.setTextColor(20, 20, 20);
+            doc.setTextColor(20);
             doc.text(displayValue, 70, yPosition);
-            doc.setTextColor(80, 80, 80);
+            doc.setTextColor(80);
 
             yPosition += 6;
         });
@@ -113,47 +119,28 @@ export const generateMemberPDF = (member) => {
         yPosition += 10;
     };
 
-    // Personal Details
-    const personalFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('personalDetails'));
-    addSection('Personal Details', personalFields, member);
+    addSection("Personal Details", Object.keys(FIELD_MAP).filter(f => f.startsWith("personalDetails")), member);
+    addSection("Address Details", Object.keys(FIELD_MAP).filter(f => f.startsWith("addressDetails")), member);
+    addSection("Reference & Guarantor Details", Object.keys(FIELD_MAP).filter(f => f.startsWith("referenceDetails")), member);
+    addSection("Document Details", Object.keys(FIELD_MAP).filter(f => f.startsWith("documents")), member);
+    addSection("Professional Details", Object.keys(FIELD_MAP).filter(f => f.startsWith("professionalDetails")), member);
+    addSection("Family Details", Object.keys(FIELD_MAP).filter(f => f.startsWith("familyDetails")), member);
+    addSection("Bank Details", Object.keys(FIELD_MAP).filter(f => f.startsWith("bankDetails")), member);
+    addSection("Guarantee Details", Object.keys(FIELD_MAP).filter(f => f.startsWith("guaranteeDetails")), member);
+    addSection("Loan Details", Object.keys(FIELD_MAP).filter(f => f.startsWith("loanDetails")), member);
 
-    // Address Details
-    const addressFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('addressDetails'));
-    addSection('Address Details', addressFields, member);
-
-    // Reference Details
-    const referenceFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('referenceDetails'));
-    addSection('Reference & Guarantor Details', referenceFields, member);
-
-    // Document Details
-    const documentFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('documents'));
-    addSection('Document Details', documentFields, member);
-
-    // Professional Details
-    const professionalFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('professionalDetails'));
-    addSection('Professional Details', professionalFields, member);
-
-    // Family Details
-    const familyFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('familyDetails'));
-    addSection('Family Details', familyFields, member);
-
-    // Bank Details
-    const bankFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('bankDetails'));
-    addSection('Bank Details', bankFields, member);
-
-    // Guarantee Details
-    const guaranteeFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('guaranteeDetails'));
-    addSection('Guarantee Details', guaranteeFields, member);
-
-    // Loan Details
-    const loanFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('loanDetails'));
-    addSection('Loan Details', loanFields, member);
-
-    // Save the PDF (add page numbers first)
     addPageNumbers(doc);
-    doc.save(`Member_${membershipNumber}_${memberName.replace(/\s+/g, '_')}.pdf`);
-};
 
+    // ⭐ SAVE AS dialog using Blob
+    const pdfBlob = doc.output("blob");
+
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Member_${membershipNumber}_${memberName.replace(/\s+/g, "_")}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+};
 
 export const generateMembersListPDF = (members) => {
     const doc = new jsPDF();
@@ -161,74 +148,72 @@ export const generateMembersListPDF = (members) => {
     // Title
     doc.setFontSize(18);
     doc.setTextColor(40, 53, 147);
-    doc.text('Members List Report', 105, 15, { align: 'center' });
+    doc.text("Members List Report", 105, 15, { align: "center" });
 
     doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()} | Total Members: ${members.length}`, 105, 22, { align: 'center' });
+    doc.setTextColor(100);
+    doc.text(
+        `Generated on: ${new Date().toLocaleDateString()} | Total Members: ${members.length}`,
+        105,
+        22,
+        { align: "center" }
+    );
 
-    // Define table headers
-    const headers = [
-        'S.No',
-        'Member No',
-        'Name',
-        'Phone',
-        'Email',
-        'City',
-        'Civil Score',
-    ];
+    const headers = ["S.No", "Member No", "Name", "Phone", "Email", "Introduce By", "Civil Score"];
 
-    // Prepare table rows
     const rows = members.map((member, index) => {
-        const civilScore = getValueByPath(member, 'bankDetails.civilScore') || 'N/A';
+        const civilScore = getValueByPath(member, "bankDetails.civilScore") || "N/A";
 
         return [
             index + 1,
-            truncateText(getValueByPath(member, 'personalDetails.membershipNumber') || 'N/A', 10),
-            truncateText(getValueByPath(member, 'personalDetails.nameOfMember') || 'Unknown', 15),
-            truncateText(getValueByPath(member, 'personalDetails.phoneNo') || 'N/A', 12),
-            truncateText(getValueByPath(member, 'personalDetails.emailId') || 'N/A', 25),
-            truncateText(getValueByPath(member, 'addressDetails.currentResidentalAddress.city') || 'N/A', 12),
+            truncateText(getValueByPath(member, "personalDetails.membershipNumber") || "N/A", 10),
+            truncateText(getValueByPath(member, "personalDetails.nameOfMember") || "Unknown", 15),
+            truncateText(getValueByPath(member, "personalDetails.phoneNo") || "N/A", 12),
+            truncateText(getValueByPath(member, "personalDetails.emailId") || "N/A", 25),
+            truncateText(getValueByPath(member, "nomineeDetails.introduceBy") || "N/A", 12),
             civilScore.toString(),
         ];
     });
 
-    // Add table using autoTable
     doc.autoTable({
         head: [headers],
         body: rows,
         startY: 30,
-        styles: {
-            fontSize: 8,
-            cellPadding: 3,
-        },
+        styles: { fontSize: 8, cellPadding: 3 },
         headStyles: {
             fillColor: [40, 53, 147],
             textColor: [255, 255, 255],
-            fontStyle: 'bold',
-            textAlign: 'left',
+            fontStyle: "bold",
         },
-        alternateRowStyles: {
-            fillColor: [245, 245, 245],
-        },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
     });
 
-    // Add summary section
-    const finalY = doc.lastAutoTable ? (doc.lastAutoTable.finalY + 10) : 30;
+    const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 30;
+
     doc.setFontSize(10);
     doc.setTextColor(40, 53, 147);
-    doc.text('Summary:', 14, finalY);
-    doc.setTextColor(0, 0, 0);
+    doc.text("Summary:", 14, finalY);
+
+    doc.setTextColor(0);
     doc.text(`Total Members: ${members.length}`, 14, finalY + 7);
 
-    // Calculate average Civil Score
-    const scores = members.map(m => getValueByPath(m, 'bankDetails.civilScore')).filter(s => s && !isNaN(s));
+    const scores = members
+        .map(m => getValueByPath(m, "bankDetails.civilScore"))
+        .filter(s => s && !isNaN(s));
+
     if (scores.length > 0) {
-        const avgScore = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
-        doc.text(`Average Civil Score: ${avgScore}`, 14, finalY + 14);
+        const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
+        doc.text(`Average Civil Score: ${avg}`, 14, finalY + 14);
     }
 
-    // Add page numbers then save
     addPageNumbers(doc);
-    doc.save(`Members_List_${new Date().toISOString().split('T')[0]}.pdf`);
+
+    const pdfBlob = doc.output("blob");
+
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Members_List_${new Date().toISOString().split("T")[0]}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
 };

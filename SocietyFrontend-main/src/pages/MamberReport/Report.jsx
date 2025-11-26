@@ -27,8 +27,7 @@ import {
     Alert,
     Chip,
     Tabs,
-    Tab,
-    TablePagination
+    Tab
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
@@ -244,24 +243,6 @@ function TabPanel({ children, value, index, ...other }) {
     );
 }
 
-// helper to add "Page X of Y" footer to all pages
-const addPageNumbers = (doc) => {
-    try {
-        const pageCount = doc.getNumberOfPages();
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const footerY = pageHeight - 10;
-        doc.setFontSize(9);
-        doc.setTextColor(100);
-        for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, footerY, { align: 'center' });
-        }
-    } catch (err) {
-        console.error("Failed to add page numbers:", err);
-    }
-}
-
 // Main Component
 const MissingMembersTable = () => {
     const dispatch = useDispatch();
@@ -273,8 +254,6 @@ const MissingMembersTable = () => {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [memberToDelete, setMemberToDelete] = useState(null);
     const [tabValue, setTabValue] = useState(0);
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
 
     // Fetch members on component mount
     useEffect(() => {
@@ -315,9 +294,6 @@ const MissingMembersTable = () => {
             styles: { fontSize: 9, cellPadding: 3 },
             headStyles: { fillColor: [25, 118, 210], textColor: 255, fontSize: 10 },
         });
-
-        // add page numbers before saving
-        addPageNumbers(doc);
 
         doc.save(`${viewType}_${ALL_FIELDS[selectedField]}_Report_${Date.now()}.pdf`);
     };
@@ -422,7 +398,18 @@ const MissingMembersTable = () => {
                                 const name = (getValueByPath(m, "personalDetails.nameOfMember") || "").toLowerCase();
                                 const memNo = (getValueByPath(m, "personalDetails.membershipNumber") || "").toLowerCase();
                                 const phone = (getValueByPath(m, "personalDetails.phoneNo") || "").toLowerCase();
-                                return name.includes(searchTerm) || memNo.includes(searchTerm) || phone.includes(searchTerm);
+                                const email = (getValueByPath(m, "personalDetails.emailId") || "").toLowerCase();
+                                const caste = (getValueByPath(m, "personalDetails.caste") || "").toLowerCase();
+                                const religion = (getValueByPath(m, "personalDetails.religion") || "").toLowerCase();
+                                const occupation = (getValueByPath(m, "professionalDetails.occupation") || "").toLowerCase();
+
+                                return name.includes(searchTerm) ||
+                                    memNo.includes(searchTerm) ||
+                                    phone.includes(searchTerm) ||
+                                    email.includes(searchTerm) ||
+                                    caste.includes(searchTerm) ||
+                                    religion.includes(searchTerm) ||
+                                    occupation.includes(searchTerm);
                             });
                         }
 
@@ -447,12 +434,6 @@ const MissingMembersTable = () => {
                         return result;
                     }, [values.search, values.selectedField, values.viewType, values.civilScoreFilter, members]);
 
-                    // Paginated data
-                    const paginatedMembers = useMemo(() => {
-                        const startIndex = page * rowsPerPage;
-                        return filteredMembers.slice(startIndex, startIndex + rowsPerPage);
-                    }, [filteredMembers, page, rowsPerPage]);
-
                     const allMembersCount = useMemo(() => {
                         return members.filter(m => {
                             const searchTerm = values.search.trim().toLowerCase();
@@ -460,7 +441,18 @@ const MissingMembersTable = () => {
                                 const name = (getValueByPath(m, "personalDetails.nameOfMember") || "").toLowerCase();
                                 const memNo = (getValueByPath(m, "personalDetails.membershipNumber") || "").toLowerCase();
                                 const phone = (getValueByPath(m, "personalDetails.phoneNo") || "").toLowerCase();
-                                return name.includes(searchTerm) || memNo.includes(searchTerm) || phone.includes(searchTerm);
+                                const email = (getValueByPath(m, "personalDetails.emailId") || "").toLowerCase();
+                                const caste = (getValueByPath(m, "personalDetails.caste") || "").toLowerCase();
+                                const religion = (getValueByPath(m, "personalDetails.religion") || "").toLowerCase();
+                                const occupation = (getValueByPath(m, "professionalDetails.occupation") || "").toLowerCase();
+
+                                return name.includes(searchTerm) ||
+                                    memNo.includes(searchTerm) ||
+                                    phone.includes(searchTerm) ||
+                                    email.includes(searchTerm) ||
+                                    caste.includes(searchTerm) ||
+                                    religion.includes(searchTerm) ||
+                                    occupation.includes(searchTerm);
                             }
                             return true;
                         }).length;
@@ -476,7 +468,18 @@ const MissingMembersTable = () => {
                                 const name = (getValueByPath(m, "personalDetails.nameOfMember") || "").toLowerCase();
                                 const memNo = (getValueByPath(m, "personalDetails.membershipNumber") || "").toLowerCase();
                                 const phone = (getValueByPath(m, "personalDetails.phoneNo") || "").toLowerCase();
-                                if (!name.includes(searchTerm) && !memNo.includes(searchTerm) && !phone.includes(searchTerm)) {
+                                const email = (getValueByPath(m, "personalDetails.emailId") || "").toLowerCase();
+                                const caste = (getValueByPath(m, "personalDetails.caste") || "").toLowerCase();
+                                const religion = (getValueByPath(m, "personalDetails.religion") || "").toLowerCase();
+                                const occupation = (getValueByPath(m, "professionalDetails.occupation") || "").toLowerCase();
+
+                                if (!name.includes(searchTerm) &&
+                                    !memNo.includes(searchTerm) &&
+                                    !phone.includes(searchTerm) &&
+                                    !email.includes(searchTerm) &&
+                                    !caste.includes(searchTerm) &&
+                                    !religion.includes(searchTerm) &&
+                                    !occupation.includes(searchTerm)) {
                                     return false;
                                 }
                             }
@@ -512,7 +515,7 @@ const MissingMembersTable = () => {
                                 <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
                                     <TextField
                                         size="small"
-                                        placeholder="Search by name, membership no, or phone"
+                                        placeholder="Search by name, membership no, phone, email, caste, religion, or occupation"
                                         value={values.search}
                                         onChange={(e) => setFieldValue("search", e.target.value)}
                                         InputProps={{
@@ -522,7 +525,7 @@ const MissingMembersTable = () => {
                                                 </InputAdornment>
                                             ),
                                         }}
-                                        sx={{ width: 300 }}
+                                        sx={{ width: 400 }}
                                     />
 
                                     <FormControl size="small" sx={{ minWidth: 180 }}>
@@ -688,118 +691,133 @@ const MissingMembersTable = () => {
                                     No members match the current filters.
                                 </Alert>
                             ) : (
-                                <Paper>
-                                    <TableContainer sx={{ maxHeight: '70vh', overflow: 'auto' }}>
-                                        <Table stickyHeader size="small">
-                                            <TableHead>
-                                                <TableRow>
-                                                    <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>S. No</TableCell>
-                                                    <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Member Name</TableCell>
-                                                    <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Membership No</TableCell>
-                                                    <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Phone No</TableCell>
+                                <TableContainer component={Paper} sx={{ maxHeight: '70vh', overflow: 'auto' }}>
+                                    <Table stickyHeader size="small">
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>S. No</TableCell>
+                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Member Name</TableCell>
+                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Membership No</TableCell>
+                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Phone No</TableCell>
+                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>
+                                                    {ALL_FIELDS[values.selectedField]} Status
+                                                </TableCell>
+                                                {values.selectedField === "bankDetails.civilScore" && (
                                                     <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>
-                                                        {ALL_FIELDS[values.selectedField]} Status
+                                                        Civil Score Value
                                                     </TableCell>
-                                                    <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Actions</TableCell>
-                                                </TableRow>
-                                            </TableHead>
+                                                )}
+                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Actions</TableCell>
+                                            </TableRow>
+                                        </TableHead>
 
-                                            <TableBody>
-                                                {paginatedMembers.map((m, idx) => {
-                                                    const fieldValue = getValueByPath(m, values.selectedField);
-                                                    const isFieldMissing = isMissing(fieldValue);
-                                                    const civilScore = getValueByPath(m, "bankDetails.civilScore");
-                                                    const civilScoreStatus = getCivilScoreStatus(civilScore);
+                                        <TableBody>
+                                            {filteredMembers.map((m, idx) => {
+                                                const fieldValue = getValueByPath(m, values.selectedField);
+                                                const isFieldMissing = isMissing(fieldValue);
+                                                const civilScore = getValueByPath(m, "bankDetails.civilScore");
+                                                const civilScoreStatus = getCivilScoreStatus(civilScore);
 
-                                                    return (
-                                                        <TableRow
-                                                            key={m._id || idx}
-                                                            sx={{
-                                                                "&:nth-of-type(odd)": { backgroundColor: "#fafafa" },
-                                                                "&:hover": { backgroundColor: "#f0f0f0", cursor: "pointer" },
-                                                                backgroundColor: isFieldMissing ? "#ffebee" : "inherit"
-                                                            }}
-                                                            onClick={() => handleViewDetails(m)}
-                                                        >
-                                                            <TableCell>{page * rowsPerPage + idx + 1}</TableCell>
+                                                return (
+                                                    <TableRow
+                                                        key={m._id || idx}
+                                                        sx={{
+                                                            "&:nth-of-type(odd)": { backgroundColor: "#fafafa" },
+                                                            "&:hover": { backgroundColor: "#f0f0f0", cursor: "pointer" },
+                                                            backgroundColor: isFieldMissing ? "#ffebee" : "inherit"
+                                                        }}
+                                                        onClick={() => handleViewDetails(m)}
+                                                    >
+                                                        <TableCell>{idx + 1}</TableCell>
+                                                        <TableCell>
+                                                            {getValueByPath(m, "personalDetails.nameOfMember") || "—"}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {getValueByPath(m, "personalDetails.membershipNumber") || "—"}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {getValueByPath(m, "personalDetails.phoneNo") || "—"}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {values.selectedField === "bankDetails.civilScore" ? (
+                                                                <Chip
+                                                                    label={
+                                                                        civilScoreStatus === "missing" ? "MISSING" :
+                                                                            civilScoreStatus === "excellent" ? "EXCELLENT" :
+                                                                                civilScoreStatus === "good" ? "GOOD" :
+                                                                                    civilScoreStatus === "poor" ? "POOR" : "INVALID"
+                                                                    }
+                                                                    color={
+                                                                        civilScoreStatus === "missing" ? "default" :
+                                                                            civilScoreStatus === "excellent" ? "success" :
+                                                                                civilScoreStatus === "good" ? "warning" :
+                                                                                    civilScoreStatus === "poor" ? "error" : "error"
+                                                                    }
+                                                                    size="small"
+                                                                />
+                                                            ) : (
+                                                                <Chip
+                                                                    label={isFieldMissing ? "MISSING" : "AVAILABLE"}
+                                                                    color={isFieldMissing ? "error" : "success"}
+                                                                    size="small"
+                                                                />
+                                                            )}
+                                                        </TableCell>
+
+                                                        {/* Civil Score Value Column */}
+                                                        {values.selectedField === "bankDetails.civilScore" && (
                                                             <TableCell>
-                                                                {getValueByPath(m, "personalDetails.nameOfMember") || "—"}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {getValueByPath(m, "personalDetails.membershipNumber") || "—"}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {getValueByPath(m, "personalDetails.phoneNo") || "—"}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {values.selectedField === "bankDetails.civilScore" ? (
-                                                                    <Chip
-                                                                        label={
-                                                                            civilScoreStatus === "missing" ? "MISSING" :
-                                                                                civilScoreStatus === "excellent" ? "EXCELLENT" :
-                                                                                    civilScoreStatus === "good" ? "GOOD" :
-                                                                                        civilScoreStatus === "poor" ? "POOR" : "INVALID"
-                                                                        }
-                                                                        color={
-                                                                            civilScoreStatus === "missing" ? "default" :
-                                                                                civilScoreStatus === "excellent" ? "success" :
-                                                                                    civilScoreStatus === "good" ? "warning" :
-                                                                                        civilScoreStatus === "poor" ? "error" : "error"
-                                                                        }
-                                                                        size="small"
-                                                                    />
+                                                                {civilScore ? (
+                                                                    <Typography
+                                                                        variant="body2"
+                                                                        sx={{
+                                                                            fontWeight: 'bold',
+                                                                            color:
+                                                                                civilScoreStatus === "excellent" ? '#2e7d32' :
+                                                                                    civilScoreStatus === "good" ? '#ed6c02' :
+                                                                                        civilScoreStatus === "poor" ? '#d32f2f' : '#757575'
+                                                                        }}
+                                                                    >
+                                                                        {civilScore}
+                                                                    </Typography>
                                                                 ) : (
-                                                                    <Chip
-                                                                        label={isFieldMissing ? "MISSING" : "AVAILABLE"}
-                                                                        color={isFieldMissing ? "error" : "success"}
-                                                                        size="small"
-                                                                    />
+                                                                    <Typography variant="body2" color="text.secondary">
+                                                                        —
+                                                                    </Typography>
                                                                 )}
                                                             </TableCell>
+                                                        )}
 
-                                                            <TableCell>
-                                                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleViewDetails(m);
-                                                                        }}
-                                                                        title="View Details"
-                                                                        color="primary"
-                                                                    >
-                                                                        <VisibilityIcon />
-                                                                    </IconButton>
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        onClick={(e) => handleDeleteClick(m, e)}
-                                                                        title="Delete Member"
-                                                                        color="error"
-                                                                        disabled={operationLoading.delete}
-                                                                    >
-                                                                        <DeleteIcon />
-                                                                    </IconButton>
-                                                                </Box>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    );
-                                                })}
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                    <TablePagination
-                                        component="div"
-                                        count={filteredMembers.length}
-                                        page={page}
-                                        onPageChange={(e, newPage) => setPage(newPage)}
-                                        rowsPerPage={rowsPerPage}
-                                        onRowsPerPageChange={(e) => {
-                                            setRowsPerPage(parseInt(e.target.value, 10));
-                                            setPage(0);
-                                        }}
-                                        rowsPerPageOptions={[5, 10, 25, 50, 100]}
-                                    />
-                                </Paper>
+                                                        <TableCell>
+                                                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleViewDetails(m);
+                                                                    }}
+                                                                    title="View Details"
+                                                                    color="primary"
+                                                                >
+                                                                    <VisibilityIcon />
+                                                                </IconButton>
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={(e) => handleDeleteClick(m, e)}
+                                                                    title="Delete Member"
+                                                                    color="error"
+                                                                    disabled={operationLoading.delete}
+                                                                >
+                                                                    <DeleteIcon />
+                                                                </IconButton>
+                                                            </Box>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
                             )}
                         </Form>
                     );

@@ -24,9 +24,10 @@ const Sidebar = () => {
         { label: "Member", route: "/memberdetail", icon: <People /> },
         { label: "Report", route: "/report", icon: <AssessmentIcon /> },
         { label: "Loan", route: "/view-loan", icon: <RealEstateAgentIcon /> },
-        { label: "Guarantor", route: "/guarantorList", icon: <People /> },
+        // { label: "Guarantor", route: "/guarantorList", icon: <People /> },
+        { label: "Surety Report", route: "/surety-report", icon: <AssessmentIcon /> },
         { label: "Greeting", route: "/greeting", icon: <EventSeatIcon /> },
-        { label: "Notice", route: "/notice", icon: <AssessmentIcon /> }
+        { label: "Notice", route: "/notice", icon: <AssessmentIcon /> },
     ];
 
     return (
