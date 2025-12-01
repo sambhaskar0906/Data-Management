@@ -30,14 +30,19 @@ const PersonalInfoForm = ({ formData, handleChange }) => {
       return;
     }
 
-    if (numericScore >= 0 && numericScore <= 550) {
+    if (numericScore >= 300 && numericScore <= 550) {
       setCivilScoreText("Poor");
-    } else if (numericScore >= 41 && numericScore <= 650) {
+    } else if (numericScore >= 551 && numericScore <= 650) {
+      setCivilScoreText("Average");
+    } else if (numericScore >= 651 && numericScore <= 750) {
       setCivilScoreText("Good");
-    } else if (numericScore >= 71 && numericScore <= 750) {
+    } else if (numericScore >= 751 && numericScore <= 900) {
       setCivilScoreText("Excellent");
+    } else {
+      setCivilScoreText("Invalid Score");
     }
   };
+
 
   const ComboBox = ({ label, fieldName, value, options }) => {
     const [inputValue, setInputValue] = useState(value || "");

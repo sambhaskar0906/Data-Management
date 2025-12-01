@@ -51,7 +51,12 @@ function TabPanel({ children, value, index, ...other }) {
         </div>
     );
 }
-
+const statusOptions = [
+    { value: "clear", label: "Clear", color: "#4caf50" },
+    { value: "in_hand", label: "In Hand", color: "#2196f3" },
+    { value: "cheque_return", label: "Cheque Return", color: "#f44336" },
+    { value: "represent", label: "Represent", color: "#ff9800" }
+];
 const LoanView = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -185,6 +190,7 @@ const LoanView = () => {
                             chequeSeries: pdcItem.chequeSeries || '',
                             seriesDate: pdcItem.seriesDate || '',
                             numberOfCheques: pdcItem.numberOfCheques || 1,
+                            status: pdcItem.status || 'in_hand',
                             loanId: loan._id,
                             loanType: loan.typeOfLoan,
                             // Add these for PDF compatibility
@@ -207,7 +213,22 @@ const LoanView = () => {
         console.log("📋 Final Extracted PDC Data:", allPDC); // Debug log
         return allPDC;
     };
+    const getStatusChip = (status) => {
+        const statusOption = statusOptions.find(opt => opt.value === status) || statusOptions[1]; // Default to "in_hand"
 
+        return (
+            <Chip
+                label={statusOption.label}
+                size="small"
+                sx={{
+                    backgroundColor: statusOption.color,
+                    color: 'white',
+                    fontWeight: 'bold',
+                    minWidth: 100
+                }}
+            />
+        );
+    };
     // Add debug effect to monitor selectedLoanData changes
     useEffect(() => {
         if (selectedLoanData) {
@@ -284,7 +305,9 @@ const LoanView = () => {
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         doc.text(`Member: ${firstLoan.membershipNumber} - ${memberName}`, 14, 40);
-        doc.text(`Total Loans: ${selectedLoanData.loans.length}`, 14, 47);
+        doc.text(`Total Loans: ${selectedLoanData.loans.length}`, 14, 50);
+        const uniqueLoanTypes = [...new Set(selectedLoanData.loans.map(l => l.typeOfLoan))];
+        doc.text(`Loan Types: ${uniqueLoanTypes.join(", ")}`, 14, 58);
 
         // Create loan details table for PDF - FIXED VERSION
         const loanTableData = getLoanTableData();
@@ -299,25 +322,24 @@ const LoanView = () => {
         // Prepare table data - ensure all values are strings
         const loanData = loanTableData.map((row) => [
             row.sno.toString(),
-            row.loanType || 'N/A',
+            // row.loanType || 'N/A',
             row.membershipNumber || 'N/A',
-            row.amount ? `₹${Number(row.amount).toLocaleString('en-IN')}` : 'N/A',
+            row.amount ? `${Number(row.amount).toLocaleString('en-IN')}` : 'N/A',
             row.date ? new Date(row.date).toLocaleDateString('en-IN') : 'N/A',
-            row.purpose || 'N/A',
-            row.fdrAmount ? `₹${Number(row.fdrAmount).toLocaleString('en-IN')}` : 'N/A',
-            row.fdrScheme || 'N/A'
+            // row.purpose || 'N/A',
+            // row.fdrAmount ? `₹${Number(row.fdrAmount).toLocaleString('en-IN')}` : 'N/A',
+            // row.fdrScheme || 'N/A'
         ]);
 
         // Define table headers
         const headers = [
             { content: 'S.No', styles: { fillColor: [63, 81, 181], textColor: 255, fontStyle: 'bold' } },
-            { content: 'Loan Type', styles: { fillColor: [63, 81, 181], textColor: 255, fontStyle: 'bold' } },
             { content: 'Membership No', styles: { fillColor: [63, 81, 181], textColor: 255, fontStyle: 'bold' } },
             { content: 'Amount', styles: { fillColor: [63, 81, 181], textColor: 255, fontStyle: 'bold' } },
             { content: 'Date', styles: { fillColor: [63, 81, 181], textColor: 255, fontStyle: 'bold' } },
-            { content: 'Purpose', styles: { fillColor: [63, 81, 181], textColor: 255, fontStyle: 'bold' } },
-            { content: 'FDR Amount', styles: { fillColor: [63, 81, 181], textColor: 255, fontStyle: 'bold' } },
-            { content: 'FDR Scheme', styles: { fillColor: [63, 81, 181], textColor: 255, fontStyle: 'bold' } }
+            // { content: 'Purpose', styles: { fillColor: [63, 81, 181], textColor: 255, fontStyle: 'bold' } },
+            // { content: 'FDR Amount', styles: { fillColor: [63, 81, 181], textColor: 255, fontStyle: 'bold' } },
+            // { content: 'FDR Scheme', styles: { fillColor: [63, 81, 181], textColor: 255, fontStyle: 'bold' } }
         ];
 
         try {
@@ -342,13 +364,12 @@ const LoanView = () => {
                 tableWidth: 'auto',
                 columnStyles: {
                     0: { cellWidth: 15 }, // S.No
-                    1: { cellWidth: 25 }, // Loan Type
-                    2: { cellWidth: 30 }, // Membership No
-                    3: { cellWidth: 25 }, // Amount
-                    4: { cellWidth: 25 }, // Date
-                    5: { cellWidth: 40 }, // Purpose
-                    6: { cellWidth: 25 }, // FDR Amount
-                    7: { cellWidth: 30 }  // FDR Scheme
+                    1: { cellWidth: 'auto' }, // Membership No
+                    2: { cellWidth: "auto" }, // Amount
+                    3: { cellWidth: 'auto' }, // Date
+                    // 4: { cellWidth: 40 }, // Purpose
+                    // 5: { cellWidth: 25 }, // FDR Amount
+                    // 6: { cellWidth: 30 }  // FDR Scheme
                 }
             });
         } catch (error) {
@@ -374,6 +395,9 @@ const LoanView = () => {
     };
 
     // Function to download PDC PDF only
+    // Function to download PDC PDF only
+    // Function to download PDC PDF only
+    // Enhanced Function to download PDC PDF with prominent status count
     const handleDownloadPDCPDF = () => {
         if (!selectedLoanData || !selectedLoanData.pdc || selectedLoanData.pdc.length === 0) {
             alert("No PDC data available to download");
@@ -398,39 +422,90 @@ const LoanView = () => {
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
-        doc.text(`Member: ${firstLoan.membershipNumber} - ${memberName}`, 14, 40);
-        doc.text(`Total Cheques: ${selectedLoanData.pdc.length}`, 14, 47);
 
-        // Prepare PDC data - ensure all values are strings
+        // Member details section
+        doc.text(`Member Name: ${memberName}`, 14, 40);
+        doc.text(`Membership Number: ${firstLoan.membershipNumber}`, 14, 47);
+        doc.text(`Total Cheques: ${selectedLoanData.pdc.length}`, 14, 53);
+        // Display Loan Types List
+        const uniqueLoanTypes = [...new Set(selectedLoanData.loans.map(l => l.typeOfLoan))];
+        doc.text(`Loan Types: ${uniqueLoanTypes.join(", ")}`, 14, 58);
+
+        // Calculate status counts
+        const statusCounts = {};
+        selectedLoanData.pdc.forEach(pdc => {
+            const status = pdc.status || 'in_hand';
+            statusCounts[status] = (statusCounts[status] || 0) + 1;
+        });
+
+        // Display status summary in a box
+        const statusBoxY = 59;
+        doc.setDrawColor(156, 39, 176);
+        doc.setLineWidth(0.5);
+        doc.rect(14, statusBoxY, pageWidth - 40, 20);
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text("STATUS SUMMARY", 20, statusBoxY + 6);
+
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+
+        // Display status counts in two columns
+        const midPoint = pageWidth / 2;
+        let leftColumnY = statusBoxY + 12;
+        let rightColumnY = statusBoxY + 12;
+
+        statusOptions.forEach((status, index) => {
+            const count = statusCounts[status.value] || 0;
+            const percentage = ((count / selectedLoanData.pdc.length) * 100).toFixed(1);
+            const statusText = `${status.label}: ${count} `;
+
+            if (index < 2) {
+                // Left column
+                doc.setTextColor(0, 0, 0);
+                doc.text(statusText, 20, leftColumnY);
+                doc.setFillColor(status.color);
+                doc.rect(16, leftColumnY - 2, 2, 2, 'F');
+                leftColumnY += 4;
+            } else {
+                // Right column
+                doc.setTextColor(0, 0, 0);
+                doc.text(statusText, midPoint, rightColumnY);
+                doc.setFillColor(status.color);
+                doc.rect(midPoint - 2, rightColumnY - 2, 2, 2, 'F');
+                rightColumnY += 4;
+            }
+        });
+
+        // Prepare PDC data with status
         const pdcData = selectedLoanData.pdc.map((row, index) => [
             (index + 1).toString(),
             row.bankName || 'N/A',
+            row.branchName || 'N/A',
             row.ifscCode || 'N/A',
             row.accountNumber || 'N/A',
-            row.chequeSeries || 'N/A',
             row.seriesDate ? new Date(row.seriesDate).toLocaleDateString('en-IN') : 'N/A',
-            row.numberOfCheques?.toString() || '1',
-            row.loanType || 'N/A'
+            row.status ? statusOptions.find(s => s.value === row.status)?.label || row.status : 'In Hand'
         ]);
 
         try {
             doc.autoTable({
-                startY: 55,
+                startY: statusBoxY + 25, // Start table after status summary box
                 head: [[
                     'S.No',
                     'Bank Name',
+                    'Branch Name',
                     'IFSC Code',
                     'Account No',
-                    'Cheque Series',
                     'Series Date',
-                    'No. of Cheques',
-                    'Loan Type'
+                    'Status'
                 ]],
                 body: pdcData,
                 theme: 'grid',
                 styles: {
-                    fontSize: 7,
-                    cellPadding: 2,
+                    fontSize: 8,
+                    cellPadding: 3,
                     overflow: 'linebreak',
                     cellWidth: 'wrap'
                 },
@@ -440,23 +515,36 @@ const LoanView = () => {
                     fontStyle: 'bold'
                 },
                 alternateRowStyles: { fillColor: [245, 245, 245] },
-                margin: { top: 55 },
+                margin: { top: statusBoxY + 25 },
                 tableWidth: 'auto',
                 columnStyles: {
-                    0: { cellWidth: 12 }, // S.No
+                    0: { cellWidth: 15 }, // S.No
                     1: { cellWidth: 25 }, // Bank Name
                     2: { cellWidth: 25 }, // Branch Name
-                    3: { cellWidth: 25 }, // IFSC Code
+                    3: { cellWidth: 30 }, // IFSC Code
                     4: { cellWidth: 30 }, // Account No
-                    5: { cellWidth: 25 }, // Cheque Series
-                    6: { cellWidth: 20 }, // Series Date
-                    7: { cellWidth: 15 }, // No. of Cheques
-                    8: { cellWidth: 20 }  // Loan Type
+                    5: { cellWidth: 25 }, // Series Date
+                    6: { cellWidth: 20 }  // Status
+                },
+                // Add status color coding to table rows
+                didParseCell: function (data) {
+                    if (data.section === 'body' && data.column.index === 6) {
+                        const statusValue = selectedLoanData.pdc[data.row.index].status;
+                        const statusOption = statusOptions.find(s => s.value === statusValue);
+                        if (statusOption) {
+                            data.cell.styles.fillColor = [
+                                parseInt(statusOption.color.slice(1, 3), 16),
+                                parseInt(statusOption.color.slice(3, 5), 16),
+                                parseInt(statusOption.color.slice(5, 7), 16)
+                            ];
+                            data.cell.styles.textColor = 255;
+                        }
+                    }
                 }
             });
         } catch (error) {
             console.error("PDC PDF generation error:", error);
-            doc.text("Error generating PDC PDF", 14, 60);
+            doc.text("Error generating PDC PDF", 14, statusBoxY + 30);
         }
 
         // Footer
@@ -646,9 +734,9 @@ const LoanView = () => {
                                                 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Member Name</TableCell>
                                                 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Amount</TableCell>
                                                 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Date</TableCell>
-                                                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Purpose</TableCell>
-                                                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>FDR Amount</TableCell>
-                                                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>FDR Scheme</TableCell>
+                                                {/* <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Purpose</TableCell>
+                                                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>FDR Amount</TableCell> */}
+                                                {/* <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>FDR Scheme</TableCell> */}
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
@@ -692,21 +780,21 @@ const LoanView = () => {
                                                             {row.date ? new Date(row.date).toLocaleDateString('en-IN') : 'N/A'}
                                                         </Typography>
                                                     </TableCell>
-                                                    <TableCell>
+                                                    {/* <TableCell>
                                                         <Typography variant="body2" sx={{ maxWidth: 200 }}>
                                                             {row.purpose || 'N/A'}
                                                         </Typography>
-                                                    </TableCell>
-                                                    <TableCell>
+                                                    </TableCell> */}
+                                                    {/* <TableCell>
                                                         <Typography variant="body2" fontFamily="monospace">
                                                             {row.fdrAmount ? `₹${Number(row.fdrAmount).toLocaleString('en-IN')}` : 'N/A'}
                                                         </Typography>
                                                     </TableCell>
-                                                    <TableCell>
+                                                    {/* <TableCell>
                                                         <Typography variant="body2">
                                                             {row.fdrScheme || 'N/A'}
                                                         </Typography>
-                                                    </TableCell>
+                                                    </TableCell> */}
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -740,10 +828,11 @@ const LoanView = () => {
                                                         <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Branch Name</TableCell>
                                                         <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>IFSC Code</TableCell>
                                                         <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Account No</TableCell>
-                                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Cheque Series</TableCell>
+                                                        {/* <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Cheque Series</TableCell> */}
                                                         <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Series Date</TableCell>
-                                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>No. of Cheques</TableCell>
-                                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Loan Type</TableCell>
+                                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
+                                                        {/* <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>No. of Cheques</TableCell>
+                                                        <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Loan Type</TableCell> */}
                                                     </TableRow>
                                                 </TableHead>
                                                 <TableBody>
@@ -780,17 +869,17 @@ const LoanView = () => {
                                                                     {pdc.accountNumber || 'N/A'}
                                                                 </Typography>
                                                             </TableCell>
-                                                            <TableCell>
+                                                            {/* <TableCell>
                                                                 <Typography variant="body2" fontWeight="bold" color="secondary">
                                                                     {pdc.chequeSeries || 'N/A'}
                                                                 </Typography>
-                                                            </TableCell>
+                                                            </TableCell> */}
                                                             <TableCell>
                                                                 <Typography variant="body2">
                                                                     {pdc.seriesDate ? new Date(pdc.seriesDate).toLocaleDateString('en-IN') : 'N/A'}
                                                                 </Typography>
                                                             </TableCell>
-                                                            <TableCell>
+                                                            {/* <TableCell>
                                                                 <Chip
                                                                     label={pdc.numberOfCheques || 1}
                                                                     color="primary"
@@ -803,6 +892,9 @@ const LoanView = () => {
                                                                     color={pdc.loanType === 'LAF' ? 'secondary' : 'primary'}
                                                                     size="small"
                                                                 />
+                                                            </TableCell> */}
+                                                            <TableCell>
+                                                                {getStatusChip(pdc.status)}
                                                             </TableCell>
                                                         </TableRow>
                                                     ))}
@@ -830,3 +922,4 @@ const LoanView = () => {
 };
 
 export default LoanView;
+

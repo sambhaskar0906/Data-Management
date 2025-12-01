@@ -16,9 +16,12 @@ import {
     Card,
     CardContent,
     IconButton,
-    Tooltip
+    Tooltip,
+    MenuItem,
+    Select,
+    FormControl
 } from "@mui/material";
-import { AddCircle, Delete, AccountBalance, Receipt, AttachMoney } from "@mui/icons-material";
+import { AddCircle, Delete, AccountBalance, Receipt, AttachMoney, Edit } from "@mui/icons-material";
 
 const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
     const [numberOfCheques, setNumberOfCheques] = useState("");
@@ -27,7 +30,15 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
     const [submitted, setSubmitted] = useState(false);
     const [globalAmount, setGlobalAmount] = useState("");
     const [globalDate, setGlobalDate] = useState("");
+    const [manualMode, setManualMode] = useState(false);
 
+    // Status options
+    const statusOptions = [
+        { value: "clear", label: "Clear", color: "#4caf50" },
+        { value: "in_hand", label: "In Hand", color: "#2196f3" },
+        { value: "cheque_return", label: "Cheque Return", color: "#f44336" },
+        { value: "represent", label: "Represent", color: "#ff9800" }
+    ];
 
     const handleGlobalAmountChange = (value) => {
         setGlobalAmount(value);
@@ -104,6 +115,7 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                 chequeNumber: currentNum,
                 chequeDate: "",
                 amount: "",
+                status: "in_hand", // Default status
                 seriesDate: new Date().toISOString().split("T")[0],
             });
 
@@ -111,6 +123,50 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
         }
 
         setRows(prev => [...prev, ...emptyRows]);
+        setStartingChequeNumber("");
+        setNumberOfCheques("");
+        setManualMode(false);
+    };
+
+    // ------------------------------
+    // ✅ Manual Entry Mode
+    // ------------------------------
+    const handleManualEntry = () => {
+        const total = Number(numberOfCheques);
+
+        if (!total || total <= 0) {
+            alert("Please enter a valid number of cheques");
+            return;
+        }
+
+        if (!startingChequeNumber) {
+            alert("Please enter starting cheque number");
+            return;
+        }
+
+        let currentNum = startingChequeNumber.trim();
+        const emptyRows = [];
+
+        for (let i = 0; i < total; i++) {
+            emptyRows.push({
+                id: Date.now() + i,
+                bankName: bankDetails?.bankName || "",
+                branchName: bankDetails?.branchName || "",
+                accountNumber: bankDetails?.accountNumber || "",
+                ifscCode: bankDetails?.ifscCode || "",
+                chequeNumber: currentNum, // Pre-fill with generated numbers
+                chequeDate: "",
+                amount: "",
+                status: "in_hand",
+                seriesDate: new Date().toISOString().split("T")[0],
+            });
+
+            // Generate next number for the next row
+            currentNum = generateNextChequeNumber(currentNum);
+        }
+
+        setRows(emptyRows);
+        setManualMode(true);
         setStartingChequeNumber("");
         setNumberOfCheques("");
     };
@@ -135,6 +191,16 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
     };
 
     // ------------------------------
+    // Update status for a cheque
+    // ------------------------------
+    const updateStatus = (id, newStatus) => {
+        const updated = rows.map(row =>
+            row.id === id ? { ...row, status: newStatus } : row
+        );
+        setRows(updated);
+    };
+
+    // ------------------------------
     // Get END number for preview
     // ------------------------------
     const getEndNumber = () => {
@@ -153,7 +219,6 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
         const [year, month, day] = dateStr.split("-");
         return `${day}/${month}/${year}`;
     };
-
 
     // ------------------------------
     // Submit Handler
@@ -191,6 +256,7 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                 chequeNumber: row.chequeNumber,
                 chequeDate: row.chequeDate,
                 amount: row.amount,
+                status: row.status,
                 seriesDate: row.seriesDate
             }))
         };
@@ -235,7 +301,7 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                 </Typography>
 
                 <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid item xs={12} md={3}>
                         <TextField
                             fullWidth
                             label="Starting Cheque Number"
@@ -246,7 +312,7 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                         />
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid item xs={12} md={3}>
                         <TextField
                             fullWidth
                             label="Number of Cheques"
@@ -257,15 +323,29 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                         />
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid item xs={12} md={3}>
                         <Button
                             variant="contained"
                             fullWidth
                             sx={{ height: 40 }}
                             onClick={generateSeries}
                             startIcon={<AddCircle />}
+                            disabled={!startingChequeNumber || !numberOfCheques}
                         >
-                            Generate Cheque Series
+                            Auto Generate
+                        </Button>
+                    </Grid>
+
+                    <Grid item xs={12} md={3}>
+                        <Button
+                            variant="outlined"
+                            fullWidth
+                            sx={{ height: 40 }}
+                            onClick={handleManualEntry}
+                            startIcon={<Edit />}
+                            disabled={!startingChequeNumber || !numberOfCheques}
+                        >
+                            Manual Entry
                         </Button>
                     </Grid>
                 </Grid>
@@ -284,10 +364,13 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                         <Box display="flex" justifyContent="space-between" mb={2}>
                             <Typography variant="h6" fontWeight="bold" color="primary">
                                 Cheque Details ({rows.length})
+                                {manualMode && " - Manual Entry Mode"}
                             </Typography>
-                            <Typography variant="body2">
-                                Series: {rows[0]?.chequeNumber} → {rows[rows.length - 1]?.chequeNumber}
-                            </Typography>
+                            {rows[0]?.chequeNumber && rows[rows.length - 1]?.chequeNumber && (
+                                <Typography variant="body2">
+                                    Series: {rows[0]?.chequeNumber} → {rows[rows.length - 1]?.chequeNumber}
+                                </Typography>
+                            )}
                         </Box>
 
                         <TableContainer component={Paper}>
@@ -302,6 +385,7 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                                         <TableCell sx={{ color: 'white' }}>Account</TableCell>
                                         <TableCell sx={{ color: 'white' }}>Amount</TableCell>
                                         <TableCell sx={{ color: 'white' }}>Date</TableCell>
+                                        <TableCell sx={{ color: 'white' }}>Status</TableCell>
                                         <TableCell sx={{ color: 'white' }}>Action</TableCell>
                                     </TableRow>
                                 </TableHead>
@@ -315,8 +399,9 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                                                 <TextField
                                                     size="small"
                                                     value={row.chequeNumber}
-                                                    InputProps={{ readOnly: true }}
+                                                    onChange={e => updateRow(row.id, "chequeNumber", e.target.value)}
                                                     sx={{ width: 150 }}
+                                                    placeholder="Cheque number"
                                                 />
                                             </TableCell>
 
@@ -357,26 +442,77 @@ const PDCDetails = ({ loanFormData, onPDCSubmit, bankDetails }) => {
                                             </TableCell>
 
                                             <TableCell>
-                                                <TextField
-                                                    fullWidth
-                                                    label="Amount (same for all)"
-                                                    type="number"
-                                                    value={globalAmount}
-                                                    onChange={e => handleGlobalAmountChange(e.target.value)}
-                                                    sx={{ width: 150 }}
-                                                />
+                                                {manualMode ? (
+                                                    <TextField
+                                                        size="small"
+                                                        type="number"
+                                                        value={row.amount}
+                                                        onChange={e => updateRow(row.id, "amount", e.target.value)}
+                                                        placeholder="Amount"
+                                                        sx={{ width: 150 }}
+                                                    />
+                                                ) : (
+                                                    <TextField
+                                                        size="small"
+                                                        type="number"
+                                                        value={globalAmount}
+                                                        onChange={e => handleGlobalAmountChange(e.target.value)}
+                                                        placeholder="Amount (same for all)"
+                                                        sx={{ width: 150 }}
+                                                    />
+                                                )}
                                             </TableCell>
 
                                             <TableCell>
-                                                <TextField
-                                                    size="small"
-                                                    type="date"
-                                                    value={row.chequeDate || ""}
-                                                    onChange={(e) => handleGlobalDateChange(e.target.value)}
-                                                    InputLabelProps={{ shrink: true }}
-                                                    sx={{ width: 150 }}
-                                                />
+                                                {manualMode ? (
+                                                    <TextField
+                                                        size="small"
+                                                        type="date"
+                                                        value={row.chequeDate || ""}
+                                                        onChange={e => updateRow(row.id, "chequeDate", e.target.value)}
+                                                        InputLabelProps={{ shrink: true }}
+                                                        sx={{ width: 150 }}
+                                                    />
+                                                ) : (
+                                                    <TextField
+                                                        size="small"
+                                                        type="date"
+                                                        value={row.chequeDate || ""}
+                                                        onChange={(e) => handleGlobalDateChange(e.target.value)}
+                                                        InputLabelProps={{ shrink: true }}
+                                                        sx={{ width: 150 }}
+                                                    />
+                                                )}
+                                            </TableCell>
 
+                                            <TableCell>
+                                                <FormControl fullWidth size="small" sx={{ width: 150 }}>
+                                                    <Select
+                                                        value={row.status || "in_hand"}
+                                                        onChange={(e) => updateStatus(row.id, e.target.value)}
+                                                        sx={{
+                                                            backgroundColor: statusOptions.find(s => s.value === row.status)?.color + '15',
+                                                            borderColor: statusOptions.find(s => s.value === row.status)?.color
+                                                        }}
+                                                    >
+                                                        {statusOptions.map(status => (
+                                                            <MenuItem key={status.value} value={status.value}>
+                                                                <Box display="flex" alignItems="center">
+                                                                    <Box
+                                                                        sx={{
+                                                                            width: 8,
+                                                                            height: 8,
+                                                                            borderRadius: '50%',
+                                                                            backgroundColor: status.color,
+                                                                            mr: 1
+                                                                        }}
+                                                                    />
+                                                                    {status.label}
+                                                                </Box>
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
                                             </TableCell>
 
                                             <TableCell>

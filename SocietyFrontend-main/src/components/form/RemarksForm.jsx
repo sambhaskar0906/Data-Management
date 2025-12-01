@@ -27,7 +27,49 @@ const RemarksForm = ({ formData, handleChange }) => {
   const theme = useTheme();
 
   // Family Members - ensure it's always an array
-  const familyMembers = Array.isArray(formData.familyMembers) ? formData.familyMembers : [];
+
+  // Change this line - get familyMembers from professionalDetails
+  const familyMembers = Array.isArray(formData.professionalDetails?.familyMembers)
+    ? formData.professionalDetails.familyMembers
+    : [];
+
+  // Change this line - get hasFamilyMember from professionalDetails
+  const hasFamilyMember = formData.professionalDetails?.hasFamilyMember || "no";
+
+  // Update all handleChange calls to use professionalDetails
+  const handleFamilyMemberCheck = (value) => {
+    handleChange("professionalDetails", "hasFamilyMember", value);
+    if (value === "no") {
+      handleChange("professionalDetails", "familyMembers", []);
+    }
+  };
+
+  const handleFamilyMemberChange = (index, field, value) => {
+    const updatedFamilyMembers = [...familyMembers];
+    updatedFamilyMembers[index] = {
+      ...updatedFamilyMembers[index],
+      [field]: value,
+    };
+    handleChange("professionalDetails", "familyMembers", updatedFamilyMembers);
+  };
+
+  const addFamilyMember = () => {
+    const updatedFamilyMembers = [
+      ...familyMembers,
+      {
+        membershipNo: "",
+        name: "",
+        relationWithApplicant: ""
+      },
+    ];
+    handleChange("professionalDetails", "familyMembers", updatedFamilyMembers);
+  };
+
+  const deleteFamilyMember = (index) => {
+    const updatedFamilyMembers = familyMembers.filter((_, i) => i !== index);
+    handleChange("professionalDetails", "familyMembers", updatedFamilyMembers);
+  };
+
 
   // Nominee Details
   const nominee = formData.nomineeDetails || {
@@ -37,8 +79,6 @@ const RemarksForm = ({ formData, handleChange }) => {
     memberShipNo: "",
   };
 
-  // Family Member Check
-  const hasFamilyMember = formData.hasFamilyMember || "no";
 
   // Common text field styles
   const textFieldStyles = {
@@ -57,23 +97,9 @@ const RemarksForm = ({ formData, handleChange }) => {
     }
   };
 
-  // Handle family member checkbox change
-  const handleFamilyMemberCheck = (value) => {
-    handleChange("hasFamilyMember", null, value);
-    if (value === "no") {
-      handleChange("familyMembers", null, []);
-    }
-  };
 
-  // Handle changes for family member fields
-  const handleFamilyMemberChange = (index, field, value) => {
-    const updatedFamilyMembers = [...familyMembers];
-    updatedFamilyMembers[index] = {
-      ...updatedFamilyMembers[index],
-      [field]: value,
-    };
-    handleChange("familyMembers", null, updatedFamilyMembers);
-  };
+
+
 
   // Handle nominee changes
   const handleNomineeChange = (field, value) => {
@@ -84,24 +110,8 @@ const RemarksForm = ({ formData, handleChange }) => {
     handleChange("nomineeDetails", null, updatedNominee);
   };
 
-  // Add new family member
-  const addFamilyMember = () => {
-    const updatedFamilyMembers = [
-      ...familyMembers,
-      {
-        membershipNo: "",
-        name: "",
-        relationWithApplicant: ""
-      },
-    ];
-    handleChange("familyMembers", null, updatedFamilyMembers);
-  };
 
-  // Delete family member
-  const deleteFamilyMember = (index) => {
-    const updatedFamilyMembers = familyMembers.filter((_, i) => i !== index);
-    handleChange("familyMembers", null, updatedFamilyMembers);
-  };
+
 
   return (
     <Card sx={{

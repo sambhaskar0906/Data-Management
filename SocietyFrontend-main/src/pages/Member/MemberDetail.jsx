@@ -16,8 +16,7 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions,
-    Stack
+    DialogActions
 } from "@mui/material";
 
 import SearchIcon from "@mui/icons-material/Search";
@@ -81,12 +80,6 @@ export const FIELD_MAP = {
     "addressDetails.currentResidentalBillPhoto": "Current - Bill Photo",
     "addressDetails.previousCurrentAddress": "Previous Addresses",
 
-    // References & Guarantors
-    "referenceDetails.referenceName": "Reference Name",
-    "referenceDetails.referenceMno": "Reference Mobile",
-    "referenceDetails.guarantorName": "Guarantor Name",
-    "referenceDetails.gurantorMno": "Guarantor Mobile(s)",
-
     // Documents
     "documents.passportSize": "Passport Size Photo",
     "documents.panNo": "PAN No",
@@ -111,21 +104,6 @@ export const FIELD_MAP = {
     "familyDetails.familyMember": "Family Member Names",
     "familyDetails.familyMemberNo": "Family Member Phones",
 
-    // Bank Details
-    "bankDetails.bankName": "Bank Name",
-    "bankDetails.branch": "Bank Branch",
-    "bankDetails.accountNumber": "Account Number",
-    "bankDetails.ifscCode": "IFSC Code",
-    "bankDetails.civilScore": "Civil Score",
-
-    // Guarantee Details
-    "guaranteeDetails.whetherMemberHasGivenGuaranteeInOtherSociety": "Guarantee Given in Other Society",
-    "guaranteeDetails.otherSociety": "Other Society Guarantees",
-    "guaranteeDetails.whetherMemberHasGivenGuaranteeInOurSociety": "Guarantee Given in Our Society",
-    "guaranteeDetails.ourSociety": "Our Society Guarantees",
-
-    // Loan Details
-    "loanDetails": "Loan Details",
 };
 export const getValueByPath = (obj, path) => {
     if (!path) return undefined;
@@ -229,6 +207,30 @@ const isAddressEqual = (addr1, addr2) => {
     return keys.every(key => addr1[key] === addr2[key]);
 };
 
+export const getTitleForMember = (member) => {
+    if (!member) return "";
+    // Prefer explicit title from form if provided
+    const explicitTitle = (getValueByPath(member, "personalDetails.title") || "").toString().trim();
+    if (explicitTitle) return explicitTitle;
+
+    const gender = (getValueByPath(member, "personalDetails.gender") || "").toString().trim().toLowerCase();
+    const marital = (getValueByPath(member, "personalDetails.maritalStatus") || "").toString().trim().toLowerCase();
+
+    if (gender === "male" || gender === "m") return "Mr.";
+    if (gender === "female" || gender === "f") {
+        if (marital === "married") return "Mrs.";
+        return "Ms.";
+    }
+    return "";
+};
+
+// Add: format full display name including title when available
+export const formatMemberName = (member) => {
+    const name = getValueByPath(member, "personalDetails.nameOfMember") || "";
+    const title = getTitleForMember(member);
+    if (!name) return "—";
+    return title ? `${title} ${name}` : name;
+};
 
 const MemberDetailsPage = () => {
     const dispatch = useDispatch();
@@ -365,10 +367,10 @@ const MemberDetailsPage = () => {
                         <TableRow>
                             <TableCell sx={{ color: "white" }}>S.No</TableCell>
                             <TableCell sx={{ color: "white" }}>Member No</TableCell>
-                            <TableCell sx={{ color: "white" }}>Member Name</TableCell>
+                            <TableCell sx={{ color: "white" }}>Name</TableCell>
                             <TableCell sx={{ color: "white" }}>Phone</TableCell>
                             <TableCell sx={{ color: "white" }}>Email</TableCell>
-                            <TableCell sx={{ color: "white" }}>Introduce By</TableCell>
+                            <TableCell sx={{ color: "white" }}>City</TableCell>
                             <TableCell sx={{ color: "white" }}>Actions</TableCell>
                         </TableRow>
                     </TableHead>
@@ -378,30 +380,28 @@ const MemberDetailsPage = () => {
                             <TableRow key={m._id}>
                                 <TableCell>{page * rowsPerPage + index + 1}</TableCell>
                                 <TableCell>{getValueByPath(m, "personalDetails.membershipNumber")}</TableCell>
-                                <TableCell>{getValueByPath(m, "personalDetails.nameOfMember")}</TableCell>
+                                <TableCell>{formatMemberName(m)}</TableCell>
                                 <TableCell>{getValueByPath(m, "personalDetails.phoneNo")}</TableCell>
                                 <TableCell>{getValueByPath(m, "personalDetails.emailId")}</TableCell>
-                                <TableCell>{getValueByPath(m, "nomineeDetails.introduceBy")}</TableCell>
+                                <TableCell>{getValueByPath(m, "addressDetails.currentResidentalAddress.city")}</TableCell>
 
                                 <TableCell>
-                                    <Stack direction={'row'}>
-                                        <IconButton color="primary" onClick={() => handleView(m)}>
-                                            <VisibilityIcon />
-                                        </IconButton>
+                                    <IconButton color="primary" onClick={() => handleView(m)}>
+                                        <VisibilityIcon />
+                                    </IconButton>
 
-                                        <IconButton color="secondary" onClick={() => handleEdit(m)}>
-                                            <EditIcon />
-                                        </IconButton>
+                                    <IconButton color="secondary" onClick={() => handleEdit(m)}>
+                                        <EditIcon />
+                                    </IconButton>
 
-                                        <IconButton
-                                            color="error"
-                                            onClick={() =>
-                                                setDeleteConfirm({ open: true, id: m._id })
-                                            }
-                                        >
-                                            <DeleteIcon />
-                                        </IconButton>
-                                    </Stack>
+                                    <IconButton
+                                        color="error"
+                                        onClick={() =>
+                                            setDeleteConfirm({ open: true, id: m._id })
+                                        }
+                                    >
+                                        <DeleteIcon />
+                                    </IconButton>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -451,7 +451,7 @@ const MemberDetailsPage = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
-        </Box >
+        </Box>
     );
 };
 

@@ -131,6 +131,7 @@ const ALL_FIELDS = {
     // Professional Details
     "professionalDetails.qualification": "Qualification",
     "professionalDetails.occupation": "Occupation",
+    "professionalDetails.degreeNumber": "Degree Number",
 
     // Family Details
     "familyDetails.familyMembersMemberOfSociety": "Family in Society",
@@ -142,7 +143,7 @@ const ALL_FIELDS = {
     "bankDetails.branch": "Bank Branch",
     "bankDetails.accountNumber": "Account Number",
     "bankDetails.ifscCode": "IFSC Code",
-    "bankDetails.civilScore": "Civil Score", // ✅ Added Civil Score
+    "bankDetails.civilScore": "Civil Score",
 
     // Reference Details
     "referenceDetails.referenceName": "Reference Name",
@@ -383,9 +384,35 @@ const MissingMembersTable = () => {
                 search: "",
                 selectedField: "documents.aadhaarNo",
                 viewType: "all", // all, missing, available
-                civilScoreFilter: "all" // Civil score specific filter
+                civilScoreFilter: "all", // Civil score specific filter
+                occupationFilter: "all",
+                religionFilter: "all",
+                categoryFilter: "all"
             }} onSubmit={() => { }}>
                 {({ values, setFieldValue }) => {
+                    // Derived options for filters
+                    const occupationOptions = useMemo(() => {
+                        const set = new Set();
+                        (members || []).forEach(m => {
+                            const v = (getValueByPath(m, "professionalDetails.occupation") || "").toString().trim();
+                            if (v) set.add(v);
+                        });
+                        return ["all", ...Array.from(set)];
+                    }, [members]);
+
+                    const religionOptions = useMemo(() => {
+                        const set = new Set();
+                        (members || []).forEach(m => {
+                            const v = (getValueByPath(m, "personalDetails.religion") || "").toString().trim();
+                            if (v) set.add(v);
+                        });
+                        return ["all", ...Array.from(set)];
+                    }, [members]);
+
+                    const categoryOptions = useMemo(() => {
+                        return ["all", ...Object.keys(FIELD_GROUPS)];
+                    }, []);
+
                     const filteredMembers = useMemo(() => {
                         if (!members) return [];
 
@@ -395,13 +422,19 @@ const MissingMembersTable = () => {
                         const searchTerm = values.search.trim().toLowerCase();
                         if (searchTerm) {
                             result = result.filter(m => {
-                                const name = (getValueByPath(m, "personalDetails.nameOfMember") || "").toLowerCase();
                                 const memNo = (getValueByPath(m, "personalDetails.membershipNumber") || "").toLowerCase();
+                                const name = (getValueByPath(m, "personalDetails.nameOfMember") || "").toLowerCase();
                                 const phone = (getValueByPath(m, "personalDetails.phoneNo") || "").toLowerCase();
                                 const email = (getValueByPath(m, "personalDetails.emailId") || "").toLowerCase();
                                 const caste = (getValueByPath(m, "personalDetails.caste") || "").toLowerCase();
                                 const religion = (getValueByPath(m, "personalDetails.religion") || "").toLowerCase();
                                 const occupation = (getValueByPath(m, "professionalDetails.occupation") || "").toLowerCase();
+
+                                // qualification, degreeNumber, company name, designation
+                                const qualification = (getValueByPath(m, "professionalDetails.qualification") || "").toLowerCase();
+                                const degreeNumber = (getValueByPath(m, "professionalDetails.degreeNumber") || "").toLowerCase();
+                                const companyName = (getValueByPath(m, "professionalDetails.serviceDetails.fullNameOfCompany") || "").toLowerCase();
+                                const designation = (getValueByPath(m, "professionalDetails.serviceDetails.designation") || "").toLowerCase();
 
                                 return name.includes(searchTerm) ||
                                     memNo.includes(searchTerm) ||
@@ -409,11 +442,47 @@ const MissingMembersTable = () => {
                                     email.includes(searchTerm) ||
                                     caste.includes(searchTerm) ||
                                     religion.includes(searchTerm) ||
-                                    occupation.includes(searchTerm);
+                                    occupation.includes(searchTerm) ||
+                                    qualification.includes(searchTerm) ||
+                                    degreeNumber.includes(searchTerm) ||
+                                    companyName.includes(searchTerm) ||
+                                    designation.includes(searchTerm);
                             });
                         }
 
-                        // Filter by field status
+                        // Filter by occupation
+                        if (values.occupationFilter && values.occupationFilter !== "all") {
+                            const chosen = values.occupationFilter.toLowerCase();
+                            result = result.filter(m => {
+                                const occ = (getValueByPath(m, "professionalDetails.occupation") || "").toLowerCase();
+                                return occ === chosen;
+                            });
+                        }
+
+                        // Filter by religion
+                        if (values.religionFilter && values.religionFilter !== "all") {
+                            const chosen = values.religionFilter.toLowerCase();
+                            result = result.filter(m => {
+                                const rel = (getValueByPath(m, "personalDetails.religion") || "").toLowerCase();
+                                return rel === chosen;
+                            });
+                        }
+
+                        // Filter by category (keep members who have at least one non-missing field in that group)
+                        if (values.categoryFilter && values.categoryFilter !== "all") {
+                            const groupKey = values.categoryFilter;
+                            const fields = FIELD_GROUPS[groupKey]?.fields || [];
+                            if (fields.length > 0) {
+                                result = result.filter(m => {
+                                    return fields.some(fk => {
+                                        const fieldValue = getValueByPath(m, fk);
+                                        return !isMissing(fieldValue);
+                                    });
+                                });
+                            }
+                        }
+
+                        // Filter by field status (missing / available)
                         if (values.viewType !== "all") {
                             result = result.filter(m => {
                                 const fieldValue = getValueByPath(m, values.selectedField);
@@ -432,7 +501,7 @@ const MissingMembersTable = () => {
                         }
 
                         return result;
-                    }, [values.search, values.selectedField, values.viewType, values.civilScoreFilter, members]);
+                    }, [values.search, values.selectedField, values.viewType, values.civilScoreFilter, values.occupationFilter, values.religionFilter, values.categoryFilter, members]);
 
                     const allMembersCount = useMemo(() => {
                         return members.filter(m => {
@@ -445,6 +514,10 @@ const MissingMembersTable = () => {
                                 const caste = (getValueByPath(m, "personalDetails.caste") || "").toLowerCase();
                                 const religion = (getValueByPath(m, "personalDetails.religion") || "").toLowerCase();
                                 const occupation = (getValueByPath(m, "professionalDetails.occupation") || "").toLowerCase();
+                                const qualification = (getValueByPath(m, "professionalDetails.qualification") || "").toLowerCase();
+                                const degreeNumber = (getValueByPath(m, "professionalDetails.degreeNumber") || "").toLowerCase();
+                                const companyName = (getValueByPath(m, "professionalDetails.serviceDetails.fullNameOfCompany") || "").toLowerCase();
+                                const designation = (getValueByPath(m, "professionalDetails.serviceDetails.designation") || "").toLowerCase();
 
                                 return name.includes(searchTerm) ||
                                     memNo.includes(searchTerm) ||
@@ -452,7 +525,11 @@ const MissingMembersTable = () => {
                                     email.includes(searchTerm) ||
                                     caste.includes(searchTerm) ||
                                     religion.includes(searchTerm) ||
-                                    occupation.includes(searchTerm);
+                                    occupation.includes(searchTerm) ||
+                                    qualification.includes(searchTerm) ||
+                                    degreeNumber.includes(searchTerm) ||
+                                    companyName.includes(searchTerm) ||
+                                    designation.includes(searchTerm);
                             }
                             return true;
                         }).length;
@@ -472,6 +549,10 @@ const MissingMembersTable = () => {
                                 const caste = (getValueByPath(m, "personalDetails.caste") || "").toLowerCase();
                                 const religion = (getValueByPath(m, "personalDetails.religion") || "").toLowerCase();
                                 const occupation = (getValueByPath(m, "professionalDetails.occupation") || "").toLowerCase();
+                                const qualification = (getValueByPath(m, "professionalDetails.qualification") || "").toLowerCase();
+                                const degreeNumber = (getValueByPath(m, "professionalDetails.degreeNumber") || "").toLowerCase();
+                                const companyName = (getValueByPath(m, "professionalDetails.serviceDetails.fullNameOfCompany") || "").toLowerCase();
+                                const designation = (getValueByPath(m, "professionalDetails.serviceDetails.designation") || "").toLowerCase();
 
                                 if (!name.includes(searchTerm) &&
                                     !memNo.includes(searchTerm) &&
@@ -479,7 +560,12 @@ const MissingMembersTable = () => {
                                     !email.includes(searchTerm) &&
                                     !caste.includes(searchTerm) &&
                                     !religion.includes(searchTerm) &&
-                                    !occupation.includes(searchTerm)) {
+                                    !occupation.includes(searchTerm) &&
+                                    !qualification.includes(searchTerm) &&
+                                    !degreeNumber.includes(searchTerm) &&
+                                    !companyName.includes(searchTerm) &&
+                                    !designation.includes(searchTerm)
+                                ) {
                                     return false;
                                 }
                             }
@@ -515,7 +601,7 @@ const MissingMembersTable = () => {
                                 <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
                                     <TextField
                                         size="small"
-                                        placeholder="Search by name, membership no, phone, email, caste, religion, or occupation"
+                                        placeholder="Search by name, membership no, phone, email, caste, religion, occupation, qualification..."
                                         value={values.search}
                                         onChange={(e) => setFieldValue("search", e.target.value)}
                                         InputProps={{
@@ -525,10 +611,10 @@ const MissingMembersTable = () => {
                                                 </InputAdornment>
                                             ),
                                         }}
-                                        sx={{ width: 400 }}
+                                        sx={{ width: 420 }}
                                     />
 
-                                    <FormControl size="small" sx={{ minWidth: 180 }}>
+                                    <FormControl size="small" sx={{ minWidth: 140 }}>
                                         <InputLabel>View Type</InputLabel>
                                         <Select
                                             value={values.viewType}
@@ -538,6 +624,48 @@ const MissingMembersTable = () => {
                                             <MenuItem value="all">All Members</MenuItem>
                                             <MenuItem value="missing">Missing Only</MenuItem>
                                             <MenuItem value="available">Available Only</MenuItem>
+                                        </Select>
+                                    </FormControl>
+
+                                    {/* Occupation Filter */}
+                                    <FormControl size="small" sx={{ minWidth: 160 }}>
+                                        <InputLabel>Occupation</InputLabel>
+                                        <Select
+                                            value={values.occupationFilter}
+                                            label="Occupation"
+                                            onChange={(e) => setFieldValue("occupationFilter", e.target.value)}
+                                        >
+                                            {occupationOptions.map(opt => (
+                                                <MenuItem key={opt} value={opt}>{opt === "all" ? "All Occupations" : opt}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+
+                                    {/* Religion Filter */}
+                                    <FormControl size="small" sx={{ minWidth: 140 }}>
+                                        <InputLabel>Religion</InputLabel>
+                                        <Select
+                                            value={values.religionFilter}
+                                            label="Religion"
+                                            onChange={(e) => setFieldValue("religionFilter", e.target.value)}
+                                        >
+                                            {religionOptions.map(opt => (
+                                                <MenuItem key={opt} value={opt}>{opt === "all" ? "All Religions" : opt}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+
+                                    {/* Category (field group) Filter */}
+                                    <FormControl size="small" sx={{ minWidth: 160 }}>
+                                        <InputLabel>Category</InputLabel>
+                                        <Select
+                                            value={values.categoryFilter}
+                                            label="Category"
+                                            onChange={(e) => setFieldValue("categoryFilter", e.target.value)}
+                                        >
+                                            {categoryOptions.map(opt => (
+                                                <MenuItem key={opt} value={opt}>{opt === "all" ? "All Categories" : FIELD_GROUPS[opt]?.label || opt}</MenuItem>
+                                            ))}
                                         </Select>
                                     </FormControl>
 
@@ -600,7 +728,6 @@ const MissingMembersTable = () => {
                                                     label={ALL_FIELDS[fieldKey]}
                                                     onClick={() => {
                                                         setFieldValue("selectedField", fieldKey);
-                                                        // Reset civil score filter when switching away from civil score field
                                                         if (fieldKey !== "bankDetails.civilScore") {
                                                             setFieldValue("civilScoreFilter", "all");
                                                         }
@@ -682,6 +809,13 @@ const MissingMembersTable = () => {
                                         {values.selectedField === "bankDetails.civilScore" && values.civilScoreFilter !== "all" && (
                                             <span> | Filter: <strong>{CIVIL_SCORE_FILTERS[values.civilScoreFilter]}</strong></span>
                                         )}
+                                    </Typography>
+
+                                    {/* Active filters summary */}
+                                    <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                                        {values.occupationFilter !== "all" && <span>Occupation: <strong>{values.occupationFilter}</strong> &nbsp;</span>}
+                                        {values.religionFilter !== "all" && <span>Religion: <strong>{values.religionFilter}</strong> &nbsp;</span>}
+                                        {values.categoryFilter !== "all" && <span>Category: <strong>{FIELD_GROUPS[values.categoryFilter]?.label || values.categoryFilter}</strong></span>}
                                     </Typography>
                                 </Box>
                             </Stack>

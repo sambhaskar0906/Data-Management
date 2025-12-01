@@ -218,10 +218,10 @@ const MemberDetails = () => {
                     {value.map((guarantee, index) => (
                         <Card key={index} variant="outlined" sx={{ mb: 1, p: 1.5, backgroundColor: '#f8f9fa' }}>
                             <Typography variant="body2" gutterBottom>
+                                <Typography variant="body2" gutterBottom>
+                                    <strong>Membership No:</strong> {guarantee.membershipNo || 'N/A'}
+                                </Typography>
                                 <strong>Member:</strong> {guarantee.nameOfMember || 'N/A'}
-                            </Typography>
-                            <Typography variant="body2" gutterBottom>
-                                <strong>Membership No:</strong> {guarantee.membershipNo || 'N/A'}
                             </Typography>
                             <Typography variant="body2" gutterBottom>
                                 <strong>Loan Amount:</strong> ₹{guarantee.amountOfLoan || 'N/A'}

@@ -248,6 +248,7 @@ export default function MemberEditPage({ open, member, onClose }) {
     const referenceFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('referenceDetails') && !f.includes('gurantorMno'));
     const documentFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('documents'));
     const bankFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('bankDetails'));
+    const professionalFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('professionalDetails')); // ADDED PROFESSIONAL FIELDS
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
@@ -282,6 +283,31 @@ export default function MemberEditPage({ open, member, onClose }) {
                                                 path={fieldKey}
                                                 onUpdate={handleFieldUpdate}
                                                 type={fieldKey.includes('date') ? 'date' : 'text'}
+                                            />
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                            </AccordionDetails>
+                        </Accordion>
+                    </Grid>
+
+                    {/* Professional Details - ADDED THIS SECTION */}
+                    <Grid size={{ xs: 12 }}>
+                        <Accordion sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                    Professional Details
+                                </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <Grid container spacing={2}>
+                                    {professionalFields.map(fieldKey => (
+                                        <Grid size={{ xs: 12, md: 6 }} key={fieldKey}>
+                                            <EditableField
+                                                label={FIELD_MAP[fieldKey]}
+                                                value={getValueByPath(formData, fieldKey)}
+                                                path={fieldKey}
+                                                onUpdate={handleFieldUpdate}
                                             />
                                         </Grid>
                                     ))}
