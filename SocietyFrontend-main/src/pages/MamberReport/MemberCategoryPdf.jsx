@@ -2,7 +2,6 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
-// Field mapping (moved from MemberDetails)
 export const FIELD_MAP = {
     // Personal - Combined title and name
     "personalDetails.titleCombinedName": "Member Name",
@@ -18,18 +17,16 @@ export const FIELD_MAP = {
     "personalDetails.caste": "Caste",
     "personalDetails.maritalStatus": "Marital Status",
 
-    "personalDetails.amountInCredit": "Amount In Credit",
-
-
     "personalDetails.phoneNo": "Phone No",
     "personalDetails.alternatePhoneNo": "Alternate Phone",
-    "personalDetails.emailId": "Email",
+    "personalDetails.landlineNo": "Landline No",
+    "personalDetails.emailId": "Email 1",
+    "personalDetails.emailId2": "Email 2",
     "personalDetails.nameOfSpouse": "Spouse's Name",
 
-
     // Address
-    "addressDetails.permanentAddress": "Permanent Address",
     "addressDetails.currentResidentalAddress": "Current Address",
+    "addressDetails.permanentAddress": "Permanent Address",
     "addressDetails.previousCurrentAddress": "Previous Addresses",
 
     // Documents - Text Fields
@@ -43,12 +40,10 @@ export const FIELD_MAP = {
     // Professional - Basic
     "professionalDetails.qualification": "Qualification",
     "professionalDetails.occupation": "Occupation",
-    "professionalDetails.degreeNumber": "Degree Number",
+    "professionalDetails.degreeNumber": "Certificate of Membership",
 
     // Professional - Employment Type
     "professionalDetails.inCaseOfServiceGovt": "Government Service",
-    // "professionalDetails.inCaseOfPrivate": "Private Service",
-    // "professionalDetails.inCaseOfService": "Service",
     "professionalDetails.serviceType": "Service Type",
 
     // Professional - Service Details
@@ -70,17 +65,16 @@ export const FIELD_MAP = {
 
     // Family
     "familyDetails.familyMember": "Family Member Names",
-    "familyDetails.familyMemberNo": "Family MemberShip Number",
+    "familyDetails.familyMemberNo": "Family Membership Number",
     "familyDetails.relationWithApplicant": "Relation With Applicant",
 
-    // Nominee
+    // Nominee - केवल ये तीन fields
     "nomineeDetails.nomineeName": "Nominee Name",
     "nomineeDetails.relationWithApplicant": "Relation with Applicant",
-    "nomineeDetails.introduceBy": "Introduced By",
-    "nomineeDetails.memberShipNo": "Membership No",
+    "nomineeDetails.mobileNo": "Mobile No",
+    // Witness fields यहाँ नहीं हैं - वे अलग introductionDetails section में जाएंगे
 };
 
-// Category mapping
 export const CATEGORY_MAP = {
     personalDetails: "Personal Details",
     addressDetails: "Address Details",
@@ -88,6 +82,7 @@ export const CATEGORY_MAP = {
     professionalDetails: "Professional Details",
     familyDetails: "Family Details",
     nomineeDetails: "Nominee Details",
+    introductionDetails: "Introduction/Witness By",
 };
 
 // Helper functions
@@ -123,25 +118,19 @@ const formatAddressValue = (addressObj) => {
         if (addressObj.flatHouseNo) addressParts.push(addressObj.flatHouseNo);
         if (addressObj.areaStreetSector) addressParts.push(addressObj.areaStreetSector);
         if (addressObj.landmark) addressParts.push(addressObj.landmark);
-        if (addressObj.cityTown) addressParts.push(addressObj.cityTown);
+        if (addressObj.cityTown || addressObj.city) addressParts.push(addressObj.cityTown || addressObj.city);
         if (addressObj.district) addressParts.push(addressObj.district);
         if (addressObj.state) addressParts.push(addressObj.state);
         if (addressObj.country) addressParts.push(addressObj.country);
-        if (addressObj.pinCode) addressParts.push(`Pincode: ${addressObj.pinCode}`);
+        if (addressObj.pinCode || addressObj.pincode) addressParts.push(`Pincode: ${addressObj.pinCode || addressObj.pincode}`);
 
         return addressParts.join(", ");
     } catch (error) {
         console.warn("Address formatting error:", error);
-        // Fallback to original formatting if error occurs
-        try {
-            return Object.entries(addressObj).map(([k, v]) => `${k}: ${formatValuePlain(v)}`).join("; ");
-        } catch {
-            return JSON.stringify(addressObj);
-        }
+        return JSON.stringify(addressObj);
     }
 };
 
-// Update the formatValuePlain function to handle the virtual field properly
 export const formatValuePlain = (value, fieldKey, member) => {
     if (value === undefined || value === null) return "";
 
@@ -167,10 +156,12 @@ export const formatValuePlain = (value, fieldKey, member) => {
         return combined || "—";
     }
 
-    // Address fields
+    // Address fields - सभी address fields के लिए एक format
     if (
+        fieldKey === "addressDetails.currentAddress" ||
         fieldKey === "addressDetails.permanentAddress" ||
-        fieldKey === "addressDetails.currentResidentalAddress"
+        fieldKey === "addressDetails.previousAddresses" ||
+        fieldKey === "addressDetails.currentResidentalAddress" // पुराने field को भी support
     ) {
         return formatAddressValue(value);
     }
@@ -193,11 +184,7 @@ export const formatValuePlain = (value, fieldKey, member) => {
         if (value.length === 0) return "";
         if (typeof value[0] === "object") {
             return value
-                .map(v =>
-                    Object.entries(v)
-                        .map(([k, val]) => `${k}: ${formatValuePlain(val, k, member)}`)
-                        .join("; ")
-                )
+                .map(v => formatAddressValue(v)) // array में objects हों तो उन्हें भी format करें
                 .join(" | ");
         }
         return value.join(", ");
@@ -205,15 +192,12 @@ export const formatValuePlain = (value, fieldKey, member) => {
 
     // Object
     if (typeof value === "object") {
-        return Object.entries(value)
-            .map(([k, v]) => `${k}: ${formatValuePlain(v, k, member)}`)
-            .join("; ");
+        return formatAddressValue(value);
     }
 
     return String(value);
 };
 
-// Update the getValueByPath function to handle virtual fields
 export const getValueByPath = (obj, path) => {
     if (!path || !obj) return undefined;
 
@@ -345,9 +329,6 @@ export const filterFieldsByOccupation = (fields, member) => {
     });
 };
 
-// Get fields by category and view type
-
-// Get fields by category and view type with conditional logic
 export const getFieldsByCategory = (member, category, viewType = "all") => {
     const allKeys = Object.keys(FIELD_MAP);
 
@@ -361,8 +342,41 @@ export const getFieldsByCategory = (member, category, viewType = "all") => {
         return String(maritalStatus).toLowerCase() === "married";
     });
 
+    // Special handling for introduction details
+    if (category === "introductionDetails") {
+        const introFields = ["nomineeDetails.memberShipNo", "nomineeDetails.introduceBy"];
+        return introFields.filter(key => {
+            const value = getValueByPath(member, key);
+            if (viewType === "all") return true;
+            if (viewType === "filled") return !isMissing(value);
+            if (viewType === "missing") return isMissing(value);
+            return true;
+        });
+    }
+
+    // Special handling for nominee details - witness fields को exclude करें
+    if (category === "nomineeDetails") {
+        const nomineeFields = filteredKeys.filter(key =>
+            key.startsWith("nomineeDetails.") &&
+            !["nomineeDetails.memberShipNo", "nomineeDetails.introduceBy"].includes(key)
+        );
+
+        return nomineeFields.filter(key => {
+            const value = getValueByPath(member, key);
+            if (viewType === "all") return true;
+            if (viewType === "filled") return !isMissing(value);
+            if (viewType === "missing") return isMissing(value);
+            return true;
+        });
+    }
+
     if (category === "all") {
         const filtered = filteredKeys.filter(key => {
+            // witness fields को exclude करें
+            if (["nomineeDetails.memberShipNo", "nomineeDetails.introduceBy"].includes(key)) {
+                return false;
+            }
+
             const value = getValueByPath(member, key);
             const missing = isMissing(value);
 
@@ -378,6 +392,11 @@ export const getFieldsByCategory = (member, category, viewType = "all") => {
 
     if (category === "filled") {
         const filtered = filteredKeys.filter(key => {
+            // witness fields को exclude करें
+            if (["nomineeDetails.memberShipNo", "nomineeDetails.introduceBy"].includes(key)) {
+                return false;
+            }
+
             const value = getValueByPath(member, key);
             return !isMissing(value);
         });
@@ -386,6 +405,11 @@ export const getFieldsByCategory = (member, category, viewType = "all") => {
 
     if (category === "missing") {
         const filtered = filteredKeys.filter(key => {
+            // witness fields को exclude करें
+            if (["nomineeDetails.memberShipNo", "nomineeDetails.introduceBy"].includes(key)) {
+                return false;
+            }
+
             const value = getValueByPath(member, key);
             return isMissing(value);
         });
@@ -394,6 +418,11 @@ export const getFieldsByCategory = (member, category, viewType = "all") => {
 
     // Specific category
     const filtered = filteredKeys.filter(key => {
+        // witness fields को exclude करें
+        if (["nomineeDetails.memberShipNo", "nomineeDetails.introduceBy"].includes(key)) {
+            return false;
+        }
+
         const value = getValueByPath(member, key);
         const missing = isMissing(value);
         const matchesCategory = key.startsWith(category);
@@ -464,7 +493,6 @@ const getFamilyMembersTableData = (member) => {
     return tableData;
 };
 
-// Generate PDF
 export const generateMemberFieldsPDF = async (member, category, viewType = "all") => {
     if (!member) return;
 
@@ -494,9 +522,28 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
         }
     };
 
-    // Function to add category section
+    // Function to get introduction/witness data
+    const getIntroductionData = (member) => {
+        const memberShipNo = getValueByPath(member, "nomineeDetails.memberShipNo");
+        const introduceBy = getValueByPath(member, "nomineeDetails.introduceBy");
+
+        const data = [];
+
+        if (memberShipNo || introduceBy) {
+            if (memberShipNo) {
+                data.push(["1", "Membership No", memberShipNo || "—"]);
+            }
+            if (introduceBy) {
+                data.push(["2", "Introduced By", introduceBy || "—"]);
+            }
+        }
+
+        return data;
+    };
+
+    // Function to add category section (updated version with introduction section)
     const addCategorySection = (doc, categoryKey, categoryName, fields, startY) => {
-        if (fields.length === 0) return startY;
+        if (fields.length === 0 && categoryKey !== "introductionDetails") return startY;
 
         // Add category header
         doc.setFontSize(14);
@@ -548,6 +595,43 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
             }
 
             return doc.lastAutoTable.finalY + 10;
+        }
+
+        // Handle introduction/witness section
+        if (categoryKey === "introductionDetails") {
+            const introData = getIntroductionData(member);
+
+            if (introData.length > 0) {
+                autoTable(doc, {
+                    startY: startY + 5,
+                    head: [["S. No", "Particulars", "Details"]],
+                    body: introData,
+                    styles: {
+                        fontSize: 9,
+                        cellPadding: 3,
+                        textColor: [0, 0, 0],
+                    },
+                    headStyles: {
+                        fillColor: [25, 118, 210],
+                        textColor: 255,
+                        fontSize: 10,
+                        fontStyle: "bold"
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 25, fontStyle: "bold" },
+                        1: { cellWidth: 60, fontStyle: "bold" },
+                        2: { cellWidth: "auto" }
+                    },
+                    theme: "grid",
+                });
+                return doc.lastAutoTable.finalY + 10;
+            } else {
+                // No introduction data available
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
+                doc.text("No introduction/witness data available", 14, startY + 10);
+                return startY + 15;
+            }
         }
 
         // Prepare table data with serial numbers starting from 1 for each category
@@ -606,7 +690,6 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
 
             theme: "grid",
         });
-
 
         return doc.lastAutoTable.finalY + 10;
     };
@@ -674,7 +757,6 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
     doc.text(`Membership Number: ${membershipNumber}`, infoStartX, infoStartY + 7);
-    // doc.text(`Category: ${categoryDisplay} | View: ${viewType}`, infoStartX, infoStartY + 14);
     doc.text(`Generated: ${new Date().toLocaleString()}`, infoStartX, infoStartY + 21);
 
     // Adjust startY for the content (below both photo and text)
@@ -687,7 +769,7 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
         for (const categoryKey of categories) {
             const categoryFields = getFieldsByCategory(member, categoryKey, viewType);
 
-            if (categoryFields.length > 0) {
+            if (categoryFields.length > 0 || categoryKey === "introductionDetails") {
                 // Check if we need a new page
                 if (currentY > doc.internal.pageSize.height - 50) {
                     doc.addPage();
@@ -737,7 +819,7 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
             });
 
             autoTable(doc, {
-                startY: startY + 5,
+                startY: currentY,
                 head: [["S. No", "Particulars", "Member Details"]],
 
                 body: body,
@@ -756,15 +838,15 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                 },
 
                 columnStyles: {
-                    0: { cellWidth: 25, fontStyle: "bold" },  // ⭐ No Wrap + Bold
-                    1: { cellWidth: 60, fontStyle: "bold" },  // ⭐ Particulars Bold
+                    0: { cellWidth: 25, fontStyle: "bold" },
+                    1: { cellWidth: 60, fontStyle: "bold" },
                     2: { cellWidth: "auto" }
                 },
 
                 theme: "grid",
             });
 
-
+            currentY = doc.lastAutoTable.finalY + 10;
         }
     }
 
