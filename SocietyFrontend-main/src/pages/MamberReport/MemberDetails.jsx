@@ -168,18 +168,18 @@ const MemberDetails = () => {
         }
     };
 
-    const handleExcelDownload = () => {
-        if (!selectedMember) return;
+    // const handleExcelDownload = () => {
+    //     if (!selectedMember) return;
 
-        try {
-            exportMemberToExcel(selectedMember, category, viewType);
-        } catch (e) {
-            console.error("Excel export failed:", e);
-            setSnackbarMessage("Error generating Excel");
-            setSnackbarSeverity("error");
-            setSnackbarOpen(true);
-        }
-    };
+    //     try {
+    //         exportMemberToExcel(selectedMember, category, viewType);
+    //     } catch (e) {
+    //         console.error("Excel export failed:", e);
+    //         setSnackbarMessage("Error generating Excel");
+    //         setSnackbarSeverity("error");
+    //         setSnackbarOpen(true);
+    //     }
+    // };
 
     // Enhanced formatValue function
     const formatValue = (value, fieldKey) => {
@@ -333,6 +333,16 @@ const MemberDetails = () => {
                 <Box sx={{ mt: 1 }}>
                     <Typography variant="body2"><strong>Name:</strong> {value.nomineeName || 'N/A'}</Typography>
                     <Typography variant="body2"><strong>Relation:</strong> {value.relationWithApplicant || 'N/A'}</Typography>
+                    <Typography variant="body2"><strong>Membership No:</strong> {value.mobileNo || 'N/A'}</Typography>
+                </Box>
+            );
+        }
+
+        if (fieldKey.startsWith('witnessDetails.')) {
+            if (!value || typeof value !== 'object') return "No witness details";
+
+            return (
+                <Box sx={{ mt: 1 }}>
                     <Typography variant="body2"><strong>Introduced By:</strong> {value.introduceBy || 'N/A'}</Typography>
                     <Typography variant="body2"><strong>Membership No:</strong> {value.memberShipNo || 'N/A'}</Typography>
                 </Box>

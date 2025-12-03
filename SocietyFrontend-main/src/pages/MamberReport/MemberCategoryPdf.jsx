@@ -24,6 +24,7 @@ export const FIELD_MAP = {
     "personalDetails.emailId2": "Email 2",
     "personalDetails.nameOfSpouse": "Spouse's Name",
 
+
     // Address
     "addressDetails.currentResidentalAddress": "Current Address",
     "addressDetails.permanentAddress": "Permanent Address",
@@ -72,7 +73,7 @@ export const FIELD_MAP = {
     "nomineeDetails.nomineeName": "Nominee Name",
     "nomineeDetails.relationWithApplicant": "Relation with Applicant",
     "nomineeDetails.mobileNo": "Mobile No",
-    // Witness fields यहाँ नहीं हैं - वे अलग introductionDetails section में जाएंगे
+
 };
 
 export const CATEGORY_MAP = {
@@ -156,12 +157,26 @@ export const formatValuePlain = (value, fieldKey, member) => {
         return combined || "—";
     }
 
-    // Address fields - सभी address fields के लिए एक format
+    // Previous Addresses - अलग-अलग लाइनों में दिखाने के लिए
+    if (fieldKey === "addressDetails.previousCurrentAddress") {
+        if (Array.isArray(value)) {
+            if (value.length === 0) return "No previous addresses";
+
+            // हर address को अलग लाइन में दिखाएं
+            const formattedAddresses = value.map((addr, index) => {
+                const formatted = formatAddressValue(addr);
+                return `• Address ${index + 1}: ${formatted}`;
+            });
+
+            return formattedAddresses.join('\n'); // Single line spacing
+        }
+        return formatAddressValue(value);
+    }
+
+    // Current and Permanent Address fields
     if (
-        fieldKey === "addressDetails.currentAddress" ||
-        fieldKey === "addressDetails.permanentAddress" ||
-        fieldKey === "addressDetails.previousAddresses" ||
-        fieldKey === "addressDetails.currentResidentalAddress" // पुराने field को भी support
+        fieldKey === "addressDetails.currentResidentalAddress" ||
+        fieldKey === "addressDetails.permanentAddress"
     ) {
         return formatAddressValue(value);
     }
@@ -179,13 +194,14 @@ export const formatValuePlain = (value, fieldKey, member) => {
     // Boolean
     if (typeof value === "boolean") return value ? "Yes" : "No";
 
-    // Array
+    // Array (excluding previous addresses which is handled above)
     if (Array.isArray(value)) {
         if (value.length === 0) return "";
         if (typeof value[0] === "object") {
+            // For other object arrays, use line breaks
             return value
-                .map(v => formatAddressValue(v)) // array में objects हों तो उन्हें भी format करें
-                .join(" | ");
+                .map(v => formatAddressValue(v))
+                .join("\n");
         }
         return value.join(", ");
     }
@@ -546,7 +562,7 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
         if (fields.length === 0 && categoryKey !== "introductionDetails") return startY;
 
         // Add category header
-        doc.setFontSize(14);
+        doc.setFontSize(16); // Font size बड़ा किया (14 से 16)
         doc.setFont(undefined, 'bold');
         doc.setTextColor(0, 0, 0);
         doc.text(categoryName, 14, startY);
@@ -560,26 +576,28 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                     head: [["S. No", "Family Member's Name", "Family Membership Number", "Relation With Member"]],
                     body: familyTableData,
                     styles: {
-                        fontSize: 9,
-                        cellPadding: 3,
+                        fontSize: 11, // Font size बड़ा किया (9 से 11)
+                        cellPadding: 4, // Padding बड़ा किया (3 से 4)
                         textColor: [0, 0, 0],
-                        fontStyle: 'normal'
+                        fontStyle: 'normal',
+                        lineHeight: 1.3 // Line height बढ़ाया
                     },
                     headStyles: {
                         fillColor: [25, 118, 210],
                         textColor: 255,
-                        fontSize: 10,
+                        fontSize: 12, // Header font size बड़ा किया (10 से 12)
                         fontStyle: 'bold'
                     },
                     bodyStyles: {
-                        textColor: [0, 0, 0]
+                        textColor: [0, 0, 0],
+                        lineHeight: 1.3
                     },
                     alternateRowStyles: {
                         fillColor: [245, 245, 245],
                         textColor: [0, 0, 0]
                     },
                     columnStyles: {
-                        0: { cellWidth: 12, textColor: [0, 0, 0] },
+                        0: { cellWidth: 15, textColor: [0, 0, 0] },
                         1: { cellWidth: 'auto', textColor: [0, 0, 0] },
                         2: { cellWidth: 'auto', textColor: [0, 0, 0] },
                         3: { cellWidth: 'auto', textColor: [0, 0, 0] }
@@ -588,7 +606,7 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                 });
             } else {
                 // No family members data available
-                doc.setFontSize(10);
+                doc.setFontSize(11);
                 doc.setFont(undefined, 'normal');
                 doc.text("No family members data available", 14, startY + 10);
                 return startY + 15;
@@ -607,27 +625,28 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                     head: [["S. No", "Particulars", "Details"]],
                     body: introData,
                     styles: {
-                        fontSize: 9,
-                        cellPadding: 3,
+                        fontSize: 11, // Font size बड़ा किया
+                        cellPadding: 4,
                         textColor: [0, 0, 0],
+                        lineHeight: 1.3
                     },
                     headStyles: {
                         fillColor: [25, 118, 210],
                         textColor: 255,
-                        fontSize: 10,
+                        fontSize: 12, // Header font size बड़ा किया
                         fontStyle: "bold"
                     },
                     columnStyles: {
-                        0: { cellWidth: 25, fontStyle: "bold" },
-                        1: { cellWidth: 60, fontStyle: "bold" },
-                        2: { cellWidth: "auto" }
+                        0: { cellWidth: 25, fontStyle: "bold", cellPadding: 4 },
+                        1: { cellWidth: 60, fontStyle: "bold", cellPadding: 4 },
+                        2: { cellWidth: "auto", cellPadding: 4 }
                     },
                     theme: "grid",
                 });
                 return doc.lastAutoTable.finalY + 10;
             } else {
                 // No introduction data available
-                doc.setFontSize(10);
+                doc.setFontSize(11);
                 doc.setFont(undefined, 'normal');
                 doc.text("No introduction/witness data available", 14, startY + 10);
                 return startY + 15;
@@ -670,22 +689,24 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
             body: body,
 
             styles: {
-                fontSize: 9,
-                cellPadding: 3,
+                fontSize: 11, // Font size बड़ा किया (9 से 11)
+                cellPadding: 4, // Padding बड़ा किया (3 से 4)
                 textColor: [0, 0, 0],
+                lineHeight: 1.3, // Line height बढ़ाया
+                overflow: 'linebreak' // Multi-line support
             },
 
             headStyles: {
                 fillColor: [25, 118, 210],
                 textColor: 255,
-                fontSize: 10,
+                fontSize: 12, // Header font size बड़ा किया (10 से 12)
                 fontStyle: "bold"
             },
 
             columnStyles: {
-                0: { cellWidth: 25, fontStyle: "bold" },  // ⭐ No Wrap + Bold
-                1: { cellWidth: 60, fontStyle: "bold" },  // ⭐ Particulars Bold
-                2: { cellWidth: "auto" }
+                0: { cellWidth: 25, fontStyle: "bold", cellPadding: 4 },
+                1: { cellWidth: 60, fontStyle: "bold", cellPadding: 4 },
+                2: { cellWidth: "auto", cellPadding: 4, minCellHeight: 15 } // Minimum height for cells
             },
 
             theme: "grid",
@@ -696,7 +717,7 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
 
     // Add society name at top center
     doc.setTextColor(0, 0, 0);
-    doc.setFontSize(18);
+    doc.setFontSize(20); // Font size बड़ा किया (18 से 20)
     doc.setFont(undefined, 'bold');
     doc.text("CA Co-Operative Thrift & Credit Society LTD", doc.internal.pageSize.width / 2, 15, { align: 'center' });
     doc.setFont(undefined, 'normal');
@@ -709,9 +730,9 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
     if (category === "personalDetails" || category === "all") {
         try {
             const pageWidth = doc.internal.pageSize.width;
-            const photoWidth = 25;
-            const photoHeight = 25;
-            const photoX = pageWidth - 40; // Right side with margin
+            const photoWidth = 30; // Photo size बड़ा किया (25 से 30)
+            const photoHeight = 30; // Photo size बड़ा किया (25 से 30)
+            const photoX = pageWidth - 45; // Right side with margin
             const photoY = startY;
 
             // If a URL exists, try to load & draw it. If it fails, fall back to placeholder.
@@ -724,7 +745,7 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                     // Fallback to placeholder if image loading fails
                     doc.setFillColor(240, 240, 240);
                     doc.rect(photoX, photoY, photoWidth, photoHeight, 'F');
-                    doc.setFontSize(6);
+                    doc.setFontSize(8); // Font size बड़ा किया (6 से 8)
                     doc.setTextColor(100, 100, 100);
                     doc.text("Photo", photoX + (photoWidth / 2), photoY + (photoHeight / 2) + 1, { align: 'center' });
                 }
@@ -732,7 +753,7 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                 // No URL provided — draw placeholder box with "Photo"
                 doc.setFillColor(240, 240, 240);
                 doc.rect(photoX, photoY, photoWidth, photoHeight, 'F');
-                doc.setFontSize(6);
+                doc.setFontSize(8); // Font size बड़ा किया (6 से 8)
                 doc.setTextColor(100, 100, 100);
                 doc.text("Photo", photoX + (photoWidth / 2), photoY + (photoHeight / 2) + 1, { align: 'center' });
             }
@@ -750,14 +771,14 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
     const infoStartX = 14;
     const infoStartY = startY;
 
-    doc.setFontSize(16);
+    doc.setFontSize(18); // Font size बड़ा किया (16 से 18)
     doc.setFont(undefined, 'bold');
     doc.text(`Member Name - ${memberName}`, infoStartX, infoStartY);
 
-    doc.setFontSize(10);
+    doc.setFontSize(12); // Font size बड़ा किया (10 से 12)
     doc.setFont(undefined, 'normal');
-    doc.text(`Membership Number: ${membershipNumber}`, infoStartX, infoStartY + 7);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, infoStartX, infoStartY + 21);
+    doc.text(`Membership Number: ${membershipNumber}`, infoStartX, infoStartY + 8); // Spacing adjust किया
+    doc.text(`Generated: ${new Date().toLocaleString()}`, infoStartX, infoStartY + 24); // Spacing adjust किया
 
     // Adjust startY for the content (below both photo and text)
     let currentY = startY + 35;
@@ -825,22 +846,24 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                 body: body,
 
                 styles: {
-                    fontSize: 9,
-                    cellPadding: 3,
+                    fontSize: 11, // Font size बड़ा किया (9 से 11)
+                    cellPadding: 4, // Padding बड़ा किया (3 से 4)
                     textColor: [0, 0, 0],
+                    lineHeight: 1.3,
+                    overflow: 'linebreak'
                 },
 
                 headStyles: {
                     fillColor: [25, 118, 210],
                     textColor: 255,
-                    fontSize: 10,
+                    fontSize: 12, // Header font size बड़ा किया (10 से 12)
                     fontStyle: "bold"
                 },
 
                 columnStyles: {
-                    0: { cellWidth: 25, fontStyle: "bold" },
-                    1: { cellWidth: 60, fontStyle: "bold" },
-                    2: { cellWidth: "auto" }
+                    0: { cellWidth: 25, fontStyle: "bold", cellPadding: 4 },
+                    1: { cellWidth: 60, fontStyle: "bold", cellPadding: 4 },
+                    2: { cellWidth: "auto", cellPadding: 4, minCellHeight: 15 }
                 },
 
                 theme: "grid",

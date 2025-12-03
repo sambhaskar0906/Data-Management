@@ -24,6 +24,7 @@ import AddressForm from "../components/form/AddressForm";
 import IdentityVerificationForm from "../components/form/IdentityVerificationForm";
 import ProfessionalFamilyForm from "../components/form/ProfessionalFamilyForm";
 import RemarksForm from "../components/form/RemarksForm";
+import FinancialDetailsForm from "../components/form/FinancialDetails"; // Add this import
 import { useDispatch, useSelector } from "react-redux";
 import { createMember, clearMemberState } from "../features/member/memberSlice";
 
@@ -166,6 +167,13 @@ const MemberDossierForm = () => {
         loanDate: "",
       },
     ],
+
+    // Add financialDetails to initial form data
+    financialDetails: [{
+      shareCapital: "",
+      optionalDeposit: "",
+      compulsory: ""
+    }],
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -175,7 +183,8 @@ const MemberDossierForm = () => {
     { label: "Address & Contact", icon: "🏠" },
     { label: "Identity Proof", icon: "🆔" },
     { label: "Professional & Family", icon: "💼" },
-    { label: "Remarks", icon: "📝" }
+    { label: "Remarks", icon: "📝" },
+    { label: "Financial Details", icon: "💰" } // Added Financial Details step
   ];
 
   const handleChange = useCallback((section, field, value) => {
@@ -473,6 +482,23 @@ const MemberDossierForm = () => {
       });
 
       /* -----------------------------------------
+         FINANCIAL DETAILS
+      ----------------------------------------- */
+      const financialData = values.financialDetails?.[0] || {};
+
+      if (financialData.shareCapital) {
+        formDataToSend.append("financialDetails[shareCapital]", financialData.shareCapital);
+      }
+
+      if (financialData.optionalDeposit) {
+        formDataToSend.append("financialDetails[optionalDeposit]", financialData.optionalDeposit);
+      }
+
+      if (financialData.compulsory) {
+        formDataToSend.append("financialDetails[compulsory]", financialData.compulsory);
+      }
+
+      /* -----------------------------------------
          REFERENCES
       ----------------------------------------- */
       const ref = values.referenceDetails || {};
@@ -563,6 +589,8 @@ const MemberDossierForm = () => {
         return <ProfessionalFamilyForm {...commonProps} />;
       case 4:
         return <RemarksForm {...commonProps} />;
+      case 5:
+        return <FinancialDetailsForm {...commonProps} />; // Added Financial Details as last step
       default:
         return null;
     }

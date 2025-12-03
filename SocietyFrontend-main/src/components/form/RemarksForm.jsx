@@ -14,7 +14,6 @@ import {
   Typography
 } from "@mui/material";
 import {
-  Comment as RemarksIcon,
   FamilyRestroom as FamilyIcon,
   Person as NomineeIcon,
   Add as AddIcon,
@@ -26,17 +25,17 @@ import SectionHeader from "../../layout/SectionHeader";
 const RemarksForm = ({ formData, handleChange }) => {
   const theme = useTheme();
 
-  // Family Members - ensure it's always an array
+  /* ================= FAMILY MEMBERS ================= */
 
-  // Change this line - get familyMembers from professionalDetails
-  const familyMembers = Array.isArray(formData.professionalDetails?.familyMembers)
+  const familyMembers = Array.isArray(
+    formData.professionalDetails?.familyMembers
+  )
     ? formData.professionalDetails.familyMembers
     : [];
 
-  // Change this line - get hasFamilyMember from professionalDetails
-  const hasFamilyMember = formData.professionalDetails?.hasFamilyMember || "no";
+  const hasFamilyMember =
+    formData.professionalDetails?.hasFamilyMember || "no";
 
-  // Update all handleChange calls to use professionalDetails
   const handleFamilyMemberCheck = (value) => {
     handleChange("professionalDetails", "hasFamilyMember", value);
     if (value === "no") {
@@ -45,166 +44,160 @@ const RemarksForm = ({ formData, handleChange }) => {
   };
 
   const handleFamilyMemberChange = (index, field, value) => {
-    const updatedFamilyMembers = [...familyMembers];
-    updatedFamilyMembers[index] = {
-      ...updatedFamilyMembers[index],
-      [field]: value,
-    };
-    handleChange("professionalDetails", "familyMembers", updatedFamilyMembers);
+    const updated = [...familyMembers];
+    updated[index] = { ...updated[index], [field]: value };
+    handleChange("professionalDetails", "familyMembers", updated);
   };
 
   const addFamilyMember = () => {
-    const updatedFamilyMembers = [
+    handleChange("professionalDetails", "familyMembers", [
       ...familyMembers,
-      {
-        membershipNo: "",
-        name: "",
-        relationWithApplicant: ""
-      },
-    ];
-    handleChange("professionalDetails", "familyMembers", updatedFamilyMembers);
+      { membershipNo: "", name: "", relationWithApplicant: "" },
+    ]);
   };
 
   const deleteFamilyMember = (index) => {
-    const updatedFamilyMembers = familyMembers.filter((_, i) => i !== index);
-    handleChange("professionalDetails", "familyMembers", updatedFamilyMembers);
+    handleChange(
+      "professionalDetails",
+      "familyMembers",
+      familyMembers.filter((_, i) => i !== index)
+    );
   };
 
+  /* ================= NOMINEE ================= */
 
-  // Nominee Details
   const nominee = formData.nomineeDetails || {
     nomineeName: "",
     relationWithApplicant: "",
+    mobileNo: "",
+  };
+
+
+  const handleNomineeChange = (field, value) => {
+    handleChange("nomineeDetails", null, {
+      ...nominee,
+      [field]: value,
+    });
+  };
+
+  /* ------  Introduce details ------ */
+  const witness = formData.witnessDetails || {
     introduceBy: "",
     memberShipNo: "",
   };
 
+  const handleWitnessChange = (field, value) => {
+    handleChange("witnessDetails", null, {
+      ...witness,
+      [field]: value,
+    })
+  }
 
-  // Common text field styles
+  /* ================= COMMON STYLES ================= */
+
   const textFieldStyles = {
-    '& .MuiOutlinedInput-root': {
+    "& .MuiOutlinedInput-root": {
       borderRadius: 2,
       backgroundColor: alpha(theme.palette.background.paper, 0.8),
-      transition: 'all 0.2s ease-in-out',
-      height: '56px',
-      '&:hover': {
-        backgroundColor: alpha(theme.palette.background.paper, 0.9),
+      height: "56px",
+      "&.Mui-focused": {
+        boxShadow: `0 0 0 2px ${alpha(
+          theme.palette.primary.main,
+          0.2
+        )}`,
       },
-      '&.Mui-focused': {
-        backgroundColor: theme.palette.background.paper,
-        boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-      }
-    }
+    },
   };
-
-
-
-
-
-  // Handle nominee changes
-  const handleNomineeChange = (field, value) => {
-    const updatedNominee = {
-      ...nominee,
-      [field]: value,
-    };
-    handleChange("nomineeDetails", null, updatedNominee);
-  };
-
-
-
 
   return (
-    <Card sx={{
-      borderRadius: 4,
-      boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
-      background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${alpha(theme.palette.background.default, 0.8)} 100%)`,
-      border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-      overflow: 'hidden',
-      position: 'relative',
-      '&::before': {
-        content: '""',
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 4,
-        background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-      }
-    }}>
+    <Card
+      sx={{
+        borderRadius: 4,
+        boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
+        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+      }}
+    >
       <CardContent sx={{ p: 5 }}>
-        {/* ----------------------- */}
-        {/* Family Information Section */}
-        {/* ----------------------- */}
+        {/* ================= FAMILY INFORMATION ================= */}
         <Box sx={{ mb: 5 }}>
           <SectionHeader
             icon={<FamilyIcon />}
             title="Family Information"
             subtitle="Details of family members who are society members"
-            sx={{ mb: 3 }}
           />
 
-          {/* Family Member Check */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2, color: theme.palette.primary.main }}>
-              11. Any family member a member of the society?
-            </Typography>
-            <RadioGroup
-              row
-              value={hasFamilyMember}
-              onChange={(e) => handleFamilyMemberCheck(e.target.value)}
-            >
-              <FormControlLabel value="yes" control={<Radio />} label="Yes" />
-              <FormControlLabel value="no" control={<Radio />} label="No" />
-            </RadioGroup>
-          </Box>
+          <Typography fontWeight={600} sx={{ mb: 2 }}>
+            11. Any family member a member of the society?
+          </Typography>
 
-          {/* Family Members List - Only show if yes */}
+          <RadioGroup
+            row
+            value={hasFamilyMember}
+            onChange={(e) =>
+              handleFamilyMemberCheck(e.target.value)
+            }
+          >
+            <FormControlLabel value="yes" control={<Radio />} label="Yes" />
+            <FormControlLabel value="no" control={<Radio />} label="No" />
+          </RadioGroup>
+
           {hasFamilyMember === "yes" && (
-            <Box>
+            <Box sx={{ mt: 3 }}>
               {familyMembers.map((member, index) => (
                 <Box
                   key={index}
                   sx={{
-                    border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                    border: `1px solid ${alpha(
+                      theme.palette.primary.main,
+                      0.2
+                    )}`,
                     borderRadius: 3,
                     p: 3,
                     mb: 3,
-                    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
                   }}
                 >
                   <Grid container spacing={3}>
-                    {/* Membership No */}
                     <Grid size={{ xs: 12, md: 4 }}>
                       <StyledTextField
                         label="12. Membership No"
                         value={member.membershipNo || ""}
                         onChange={(e) =>
-                          handleFamilyMemberChange(index, "membershipNo", e.target.value)
+                          handleFamilyMemberChange(
+                            index,
+                            "membershipNo",
+                            e.target.value
+                          )
                         }
                         sx={textFieldStyles}
                       />
                     </Grid>
 
-                    {/* Name of Member */}
                     <Grid size={{ xs: 12, md: 4 }}>
                       <StyledTextField
                         label="13. Name of Member"
                         value={member.name || ""}
                         onChange={(e) =>
-                          handleFamilyMemberChange(index, "name", e.target.value)
+                          handleFamilyMemberChange(
+                            index,
+                            "name",
+                            e.target.value
+                          )
                         }
                         sx={textFieldStyles}
                       />
                     </Grid>
 
-                    {/* Relation with Applicant */}
                     <Grid size={{ xs: 12, md: 4 }}>
                       <StyledTextField
                         select
                         label="14. Relation with Applicant"
                         value={member.relationWithApplicant || ""}
                         onChange={(e) =>
-                          handleFamilyMemberChange(index, "relationWithApplicant", e.target.value)
+                          handleFamilyMemberChange(
+                            index,
+                            "relationWithApplicant",
+                            e.target.value
+                          )
                         }
                         sx={textFieldStyles}
                       >
@@ -216,56 +209,107 @@ const RemarksForm = ({ formData, handleChange }) => {
                         <MenuItem value="DAUGHTER">Daughter</MenuItem>
                         <MenuItem value="BROTHER">Brother</MenuItem>
                         <MenuItem value="SISTER">Sister</MenuItem>
-                        <MenuItem value="GRANDFATHER">Grandfather</MenuItem>
-                        <MenuItem value="GRANDMOTHER">Grandmother</MenuItem>
-                        <MenuItem value="UNCLE">Uncle</MenuItem>
-                        <MenuItem value="AUNT">Aunt</MenuItem>
                         <MenuItem value="OTHER">Other</MenuItem>
                       </StyledTextField>
                     </Grid>
                   </Grid>
 
-                  {/* Delete Button */}
                   {familyMembers.length > 1 && (
-                    <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+                    <Box sx={{ textAlign: "right", mt: 2 }}>
                       <Button
-                        variant="outlined"
                         color="error"
                         startIcon={<DeleteIcon />}
-                        sx={{ borderRadius: 2, px: 3 }}
                         onClick={() => deleteFamilyMember(index)}
                       >
-                        Remove Member
+                        Remove
                       </Button>
                     </Box>
                   )}
                 </Box>
               ))}
 
-              {/* Add Family Member Button */}
-              <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  startIcon={<AddIcon />}
-                  sx={{ borderRadius: 2, px: 3 }}
-                  onClick={addFamilyMember}
-                >
-                  Add Another Family Member
-                </Button>
-              </Box>
+              <Button
+                startIcon={<AddIcon />}
+                onClick={addFamilyMember}
+              >
+                Add Family Member
+              </Button>
             </Box>
           )}
         </Box>
 
-        {/* ----------------------- */}
-        {/* Nominee & Introducer Section */}
-        {/* ----------------------- */}
+        {/* ================= NOMINEE DETAILS ================= */}
+        <SectionHeader
+          icon={<NomineeIcon />}
+          title="Nominee Details"
+          subtitle="Information about the nominee"
+        />
+
+        <Box
+          sx={{
+            border: `1px solid ${alpha(
+              theme.palette.secondary.main,
+              0.2
+            )}`,
+            borderRadius: 3,
+            p: 4,
+          }}
+        >
+          <Grid container spacing={3}>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <StyledTextField
+                label="15. Nominee Name"
+                value={nominee.nomineeName}
+                onChange={(e) =>
+                  handleNomineeChange("nomineeName", e.target.value)
+                }
+                sx={textFieldStyles}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 4 }}>
+              <StyledTextField
+                select
+                label="16. Relation with Applicant"
+                value={nominee.relationWithApplicant}
+                onChange={(e) =>
+                  handleNomineeChange(
+                    "relationWithApplicant",
+                    e.target.value
+                  )
+                }
+                sx={textFieldStyles}
+              >
+                <MenuItem value="">Select Relation</MenuItem>
+                <MenuItem value="FATHER">Father</MenuItem>
+                <MenuItem value="MOTHER">Mother</MenuItem>
+                <MenuItem value="SPOUSE">Spouse</MenuItem>
+                <MenuItem value="SON">Son</MenuItem>
+                <MenuItem value="DAUGHTER">Daughter</MenuItem>
+                <MenuItem value="BROTHER">Brother</MenuItem>
+                <MenuItem value="SISTER">Sister</MenuItem>
+                <MenuItem value="OTHER">Other</MenuItem>
+              </StyledTextField>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 4 }}>
+              <StyledTextField
+                label="17. Mobile Number"
+                value={nominee.mobileNo}
+                inputProps={{ maxLength: 10 }}
+                onChange={(e) =>
+                  handleNomineeChange("mobileNo", e.target.value)
+                }
+                sx={textFieldStyles}
+              />
+            </Grid>
+          </Grid>
+        </Box>
         <Box>
           <SectionHeader
             icon={<NomineeIcon />}
-            title="Nominee & Introducer Details"
-            subtitle="Information about nominee and introducer"
+            title="Introduce / Witness"
+            subtitle="Information about witness and introducer"
             sx={{ mb: 3 }}
           />
 
@@ -279,47 +323,18 @@ const RemarksForm = ({ formData, handleChange }) => {
           >
             <Grid container spacing={3}>
               {/* Nominee Name */}
-              <Grid size={{ xs: 12, md: 6 }}>
-                <StyledTextField
-                  label="15. Nominee Name"
-                  value={nominee.nomineeName || ""}
-                  onChange={(e) =>
-                    handleNomineeChange("nomineeName", e.target.value)
-                  }
-                  sx={textFieldStyles}
-                />
-              </Grid>
+
 
               {/* Relation With Applicant */}
-              <Grid size={{ xs: 12, md: 6 }}>
-                <StyledTextField
-                  select
-                  label="16. Relation with Applicant"
-                  value={nominee.relationWithApplicant || ""}
-                  onChange={(e) =>
-                    handleNomineeChange("relationWithApplicant", e.target.value)
-                  }
-                  sx={textFieldStyles}
-                >
-                  <MenuItem value="">Select Relation</MenuItem>
-                  <MenuItem value="FATHER">Father</MenuItem>
-                  <MenuItem value="MOTHER">Mother</MenuItem>
-                  <MenuItem value="SPOUSE">Spouse</MenuItem>
-                  <MenuItem value="SON">Son</MenuItem>
-                  <MenuItem value="DAUGHTER">Daughter</MenuItem>
-                  <MenuItem value="BROTHER">Brother</MenuItem>
-                  <MenuItem value="SISTER">Sister</MenuItem>
-                  <MenuItem value="OTHER">Other</MenuItem>
-                </StyledTextField>
-              </Grid>
+
 
               {/* Introduced By */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <StyledTextField
-                  label="17. Introduced By"
-                  value={nominee.introduceBy || ""}
+                  label="18. Introduced By"
+                  value={witness.introduceBy || ""}
                   onChange={(e) =>
-                    handleNomineeChange("introduceBy", e.target.value)
+                    handleWitnessChange("introduceBy", e.target.value)
                   }
                   sx={textFieldStyles}
                 />
@@ -328,10 +343,10 @@ const RemarksForm = ({ formData, handleChange }) => {
               {/* Membership No */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <StyledTextField
-                  label="18. Membership No"
-                  value={nominee.memberShipNo || ""}
+                  label="19. Membership No"
+                  value={witness.memberShipNo || ""}
                   onChange={(e) =>
-                    handleNomineeChange("memberShipNo", e.target.value)
+                    handleWitnessChange("memberShipNo", e.target.value)
                   }
                   sx={textFieldStyles}
                 />
