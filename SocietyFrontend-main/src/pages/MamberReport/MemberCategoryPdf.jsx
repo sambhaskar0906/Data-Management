@@ -11,17 +11,20 @@ export const FIELD_MAP = {
     "personalDetails.motherCombinedName": "Mother's Name",
     "personalDetails.dateOfBirth": "Date of Birth",
     "personalDetails.ageInYears": "Age (Years)",
-    "personalDetails.minor": "Is Minor",
+    "personalDetails.minor": "Minor",
     "personalDetails.gender": "Gender",
     "personalDetails.religion": "Religion",
     "personalDetails.caste": "Caste",
     "personalDetails.maritalStatus": "Marital Status",
 
-    "personalDetails.phoneNo": "Phone No",
-    "personalDetails.alternatePhoneNo": "Alternate Phone",
-    "personalDetails.landlineNo": "Landline No",
-    "personalDetails.emailId": "Email 1",
-    "personalDetails.emailId2": "Email 2",
+    "personalDetails.phoneNo1": "Primary Number",
+    "personalDetails.phoneNo2": "Secondary Number",
+    "personalDetails.whatsapp": "WhatsApp Number",
+    "personalDetails.landlineNo": "Residence Landline  Number",
+    "personalDetails.landlineOffice": "Office Landline  Number",
+    "personalDetails.emailId1": "Primary Email",
+    "personalDetails.emailId2": "Secondary Email",
+    "personalDetails.emailId3": "Optional Email",
     "personalDetails.nameOfSpouse": "Spouse's Name",
 
 
@@ -31,10 +34,10 @@ export const FIELD_MAP = {
     "addressDetails.previousCurrentAddress": "Previous Addresses",
 
     // Documents - Text Fields
+    "documents.aadhaarNo": "Aadhaar No",
     "documents.panNo": "PAN No",
     "documents.rationCard": "Ration Card",
     "documents.drivingLicense": "Driving License",
-    "documents.aadhaarNo": "Aadhaar No",
     "documents.voterId": "Voter ID",
     "documents.passportNo": "Passport No",
 
@@ -44,7 +47,7 @@ export const FIELD_MAP = {
     "professionalDetails.degreeNumber": "Certificate of Membership",
 
     // Professional - Employment Type
-    "professionalDetails.inCaseOfServiceGovt": "Government Service",
+    // "professionalDetails.inCaseOfServiceGovt": "Government Service",
     "professionalDetails.serviceType": "Service Type",
 
     // Professional - Service Details
@@ -53,8 +56,8 @@ export const FIELD_MAP = {
     "professionalDetails.serviceDetails.monthlyIncome": "Monthly Income",
     "professionalDetails.serviceDetails.designation": "Designation",
     "professionalDetails.serviceDetails.dateOfJoining": "Date of Joining",
-    "professionalDetails.serviceDetails.employeeCode": "Employee Code",
     "professionalDetails.serviceDetails.dateOfRetirement": "Date of Retirement",
+    "professionalDetails.serviceDetails.employeeCode": "Employee Code",
     "professionalDetails.serviceDetails.officeNo": "Office Phone",
 
     // Professional - Business
@@ -64,16 +67,24 @@ export const FIELD_MAP = {
     "professionalDetails.businessDetails.businessStructure": "Business Structure",
     "professionalDetails.businessDetails.gstCertificate": "GST Certificate",
 
-    // Family
-    "familyDetails.familyMember": "Family Member Names",
-    "familyDetails.familyMemberNo": "Family Membership Number",
-    "familyDetails.relationWithApplicant": "Relation With Applicant",
+    "bankDetails.bankName": "Bank Name",
+    "bankDetails.branch": "Branch",
+    "bankDetails.accountNumber": "Account Number",
+    "bankDetails.ifscCode": "IFSC Code",
 
-    // Nominee - केवल ये तीन fields
+    "familyDetails.familyMember": "Member Names",
+    "familyDetails.familyMemberNo": "Membership Number",
+    "familyDetails.relationWithApplicant": "Relation With Member",
+
+
     "nomineeDetails.nomineeName": "Nominee Name",
-    "nomineeDetails.relationWithApplicant": "Relation with Applicant",
-    "nomineeDetails.mobileNo": "Mobile No",
+    "nomineeDetails.relationWithApplicant": "Relation with Member",
+    "nomineeDetails.nomineeMobileNo": "Nominee Contact Number",
+    "financialDetails.shareCapital": "Share Capital",
+    "financialDetails.compulsory": "Compulsory Deposit",
+    "financialDetails.optionalDeposit": "Optional Deposit",
 
+    "personalDetails.civilScore": "Cibil Score"
 };
 
 export const CATEGORY_MAP = {
@@ -81,9 +92,12 @@ export const CATEGORY_MAP = {
     addressDetails: "Address Details",
     documents: "Documents",
     professionalDetails: "Professional Details",
+    bankDetails: "Bank Details",
     familyDetails: "Family Details",
     nomineeDetails: "Nominee Details",
     introductionDetails: "Introduction/Witness By",
+    financialDetails: "Financial Details As on 31/03/2025",
+    // creditScoreDetails: "CIBIL Score Details",
 };
 
 // Helper functions
@@ -157,12 +171,12 @@ export const formatValuePlain = (value, fieldKey, member) => {
         return combined || "—";
     }
 
-    // Previous Addresses - अलग-अलग लाइनों में दिखाने के लिए
+
     if (fieldKey === "addressDetails.previousCurrentAddress") {
         if (Array.isArray(value)) {
             if (value.length === 0) return "No previous addresses";
 
-            // हर address को अलग लाइन में दिखाएं
+
             const formattedAddresses = value.map((addr, index) => {
                 const formatted = formatAddressValue(addr);
                 return `• Address ${index + 1}: ${formatted}`;
@@ -377,6 +391,8 @@ export const getFieldsByCategory = (member, category, viewType = "all") => {
             !["nomineeDetails.memberShipNo", "nomineeDetails.introduceBy"].includes(key)
         );
 
+
+
         return nomineeFields.filter(key => {
             const value = getValueByPath(member, key);
             if (viewType === "all") return true;
@@ -385,7 +401,9 @@ export const getFieldsByCategory = (member, category, viewType = "all") => {
             return true;
         });
     }
-
+    if (category === "creditScoreDetails") {
+        return ["personalDetails.civilScore"];
+    }
     if (category === "all") {
         const filtered = filteredKeys.filter(key => {
             // witness fields को exclude करें
@@ -559,6 +577,8 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
 
     // Function to add category section (updated version with introduction section)
     const addCategorySection = (doc, categoryKey, categoryName, fields, startY) => {
+
+
         if (fields.length === 0 && categoryKey !== "introductionDetails") return startY;
 
         // Add category header
@@ -573,7 +593,7 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
             if (familyTableData.length > 0) {
                 autoTable(doc, {
                     startY: startY + 5,
-                    head: [["S. No", "Family Member's Name", "Family Membership Number", "Relation With Member"]],
+                    head: [["S. No", "Member's Name", "Membership Number", "Relation With Member"]],
                     body: familyTableData,
                     styles: {
                         fontSize: 11, // Font size बड़ा किया (9 से 11)
@@ -726,46 +746,55 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
     const passportPhotoUrl = getValueByPath(member, "documents.passportSize");
     let startY = 35; // Start position for member info section
 
-    // Create member info section with photo and text side by side
     if (category === "personalDetails" || category === "all") {
         try {
             const pageWidth = doc.internal.pageSize.width;
-            const photoWidth = 30; // Photo size बड़ा किया (25 से 30)
-            const photoHeight = 30; // Photo size बड़ा किया (25 से 30)
-            const photoX = pageWidth - 45; // Right side with margin
+            const photoWidth = 30;
+            const photoHeight = 30;
+            const photoX = pageWidth - 45;
             const photoY = startY;
 
-            // If a URL exists, try to load & draw it. If it fails, fall back to placeholder.
             if (passportPhotoUrl) {
                 try {
                     const imageData = await loadImageAsBase64(passportPhotoUrl);
                     doc.addImage(imageData, 'JPEG', photoX, photoY, photoWidth, photoHeight);
-                } catch (imageError) {
-                    console.warn("Could not load passport photo image, using placeholder:", imageError);
-                    // Fallback to placeholder if image loading fails
+                } catch {
                     doc.setFillColor(240, 240, 240);
                     doc.rect(photoX, photoY, photoWidth, photoHeight, 'F');
-                    doc.setFontSize(8); // Font size बड़ा किया (6 से 8)
+                    doc.setFontSize(8);
                     doc.setTextColor(100, 100, 100);
                     doc.text("Photo", photoX + (photoWidth / 2), photoY + (photoHeight / 2) + 1, { align: 'center' });
                 }
             } else {
-                // No URL provided — draw placeholder box with "Photo"
                 doc.setFillColor(240, 240, 240);
                 doc.rect(photoX, photoY, photoWidth, photoHeight, 'F');
-                doc.setFontSize(8); // Font size बड़ा किया (6 से 8)
+                doc.setFontSize(8);
                 doc.setTextColor(100, 100, 100);
                 doc.text("Photo", photoX + (photoWidth / 2), photoY + (photoHeight / 2) + 1, { align: 'center' });
             }
 
-            // Add photo border (draw in both real image and placeholder cases)
+            // Border
             doc.setDrawColor(150);
             doc.setLineWidth(0.5);
             doc.rect(photoX, photoY, photoWidth, photoHeight);
+
+            // ⭐ Add Status Below Photo
+            const status = member?.status || "Active"; // Use dynamic status
+            doc.setFontSize(11);
+            doc.setFont(undefined, "bold");
+            doc.setTextColor(0, 0, 0); // green color
+            doc.text(
+                `Status: ${status}`,
+                photoX + photoWidth / 2,
+                photoY + photoHeight + 8,
+                { align: "center" }
+            );
+
         } catch (error) {
             console.warn("Could not add passport photo to PDF:", error);
         }
     }
+
 
     // Add member information on the left side (same line as photo)
     const infoStartX = 14;

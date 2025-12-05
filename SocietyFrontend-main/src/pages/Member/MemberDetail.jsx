@@ -16,7 +16,15 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions
+    DialogActions,
+    Menu,
+    MenuItem,
+    TableContainer,
+    Avatar,
+    Stack,
+    Tooltip,
+    Divider,
+    Chip
 } from "@mui/material";
 
 import SearchIcon from "@mui/icons-material/Search";
@@ -24,23 +32,28 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
-import AddIcon from '@mui/icons-material/Add';
-
+import AddIcon from "@mui/icons-material/Add";
+import FileDownloadDoneIcon from '@mui/icons-material/FileDownloadDone';
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import MemberView from "./MemberView";
 import MemberEditPage from "./MemberEdit.jsx";
-import { generateMembersListPDF } from "./MemberDetailsPdf";
+import { generateMembersListPDF } from "./MemberDetailsPdf.jsx";
+import { generateMembersExcel } from "./MemberDetailsExcel.jsx";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import CheckCircleOutline from "@mui/icons-material/CheckCircleOutline";
+import BlockIcon from "@mui/icons-material/Block";
 
 import {
     fetchAllMembers,
     deleteMember,
     clearSuccessMessage,
-    clearError
+    clearError,
+    updateMemberStatus
 } from "../../features/member/memberSlice";
 
+// ------------------ Helper map & util functions ------------------
 export const FIELD_MAP = {
-    // Personal Details
     "personalDetails.nameOfMember": "Member Name",
     "personalDetails.membershipNumber": "Membership No",
     "personalDetails.nameOfFather": "Father's Name",
@@ -53,9 +66,9 @@ export const FIELD_MAP = {
     "personalDetails.maritalStatus": "Marital Status",
     "personalDetails.religion": "Religion",
     "personalDetails.caste": "Caste",
-    "personalDetails.phoneNo": "Phone No",
+    "personalDetails.phoneNo1": "Phone No",
     "personalDetails.alternatePhoneNo": "Alternate Phone",
-    "personalDetails.emailId": "Email",
+    "personalDetails.emailId1": "Email",
 
     // Address - Permanent
     "addressDetails.permanentAddress.flatHouseNo": "Permanent - Flat/House No",
@@ -103,8 +116,8 @@ export const FIELD_MAP = {
     "familyDetails.familyMembersMemberOfSociety": "Family Members in Society",
     "familyDetails.familyMember": "Family Member Names",
     "familyDetails.familyMemberNo": "Family Member Phones",
-
 };
+
 export const getValueByPath = (obj, path) => {
     if (!path) return undefined;
     const parts = path.split(".");
@@ -169,47 +182,8 @@ export const formatValueForUI = (value) => {
     return String(value);
 };
 
-export const handleAddressUpdate = () => {
-    const currentFormData = { ...formData };
-
-    // Get current address (jo ab previous banega)
-    const currentAddress = getValueByPath(currentFormData, 'addressDetails.currentResidentalAddress');
-
-    // Get existing previous addresses
-    const previousAddresses = getValueByPath(currentFormData, 'addressDetails.previousCurrentAddress') || [];
-
-    // Check if current address is not empty and different from the last previous address
-    if (currentAddress &&
-        Object.keys(currentAddress).some(key => currentAddress[key]) &&
-        !isAddressEqual(currentAddress, previousAddresses[0])) {
-
-        // Add current address to previous addresses (at beginning)
-        const updatedPreviousAddresses = [currentAddress, ...previousAddresses];
-
-        // Update form data with new previous addresses
-        currentFormData.addressDetails.previousCurrentAddress = updatedPreviousAddresses;
-
-        // Set form data
-        setFormData(currentFormData);
-
-        // Show success message
-        alert('Current address moved to previous addresses! Now you can enter new current address.');
-    } else {
-        alert('Current address is empty or same as previous address. No changes made.');
-    }
-};
-
-// Helper function to compare two addresses
-const isAddressEqual = (addr1, addr2) => {
-    if (!addr1 || !addr2) return false;
-
-    const keys = ['flatHouseNo', 'areaStreetSector', 'locality', 'landmark', 'city', 'country', 'state', 'pincode'];
-    return keys.every(key => addr1[key] === addr2[key]);
-};
-
 export const getTitleForMember = (member) => {
     if (!member) return "";
-    // Prefer explicit title from form if provided
     const explicitTitle = (getValueByPath(member, "personalDetails.title") || "").toString().trim();
     if (explicitTitle) return explicitTitle;
 
@@ -224,7 +198,6 @@ export const getTitleForMember = (member) => {
     return "";
 };
 
-// Add: format full display name including title when available
 export const formatMemberName = (member) => {
     const name = getValueByPath(member, "personalDetails.nameOfMember") || "";
     const title = getTitleForMember(member);
@@ -232,14 +205,26 @@ export const formatMemberName = (member) => {
     return title ? `${title} ${name}` : name;
 };
 
+// ------------------ Main Component ------------------
 const MemberDetailsPage = () => {
     const dispatch = useDispatch();
-    const { members = [], loading, error, successMessage } = useSelector((state) => state.members);
+    const { members = [], loading, error, successMessage } = useSelector((state) => state.members || {});
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [actionMenu, setActionMenu] = useState({ anchor: null, member: null });
+    const [statusDialog, setStatusDialog] = useState({ open: false, member: null });
+    const openMenu = Boolean(anchorEl);
+
+    const closeActionMenu = () => {
+        setActionMenu({ anchor: null, member: null });
+    };
 
     const navigate = useNavigate();
-    const handleAddMember = () => {
-        navigate('/addmember')
-    }
+
+    const handleDownloadClick = (event) => {
+        setAnchorEl(event.currentTarget);
+    };
+    const handleMenuClose = () => setAnchorEl(null);
+    const handleAddMember = () => navigate('/addmember');
 
     // Search + pagination
     const [query, setQuery] = useState("");
@@ -255,33 +240,27 @@ const MemberDetailsPage = () => {
     const [editDialogOpen, setEditDialogOpen] = useState(false);
 
     // Delete confirmation
-    const [deleteConfirm, setDeleteConfirm] = useState({
-        open: false,
-        id: null
-    });
+    const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
 
-    // Load all members
     useEffect(() => {
         dispatch(fetchAllMembers());
     }, [dispatch]);
 
     // Clear notifications
     useEffect(() => {
-        if (successMessage)
-            setTimeout(() => dispatch(clearSuccessMessage()), 1500);
+        if (successMessage) setTimeout(() => dispatch(clearSuccessMessage()), 1500);
         if (error) setTimeout(() => dispatch(clearError()), 1500);
     }, [successMessage, error, dispatch]);
 
-    // Filter members by search
     const filteredMembers = useMemo(() => {
         if (!query.trim()) return members;
         const q = query.toLowerCase();
 
         return members.filter((m) => {
-            const name = getValueByPath(m, "personalDetails.nameOfMember") || "";
-            const mno = getValueByPath(m, "personalDetails.membershipNumber") || "";
-            const phone = getValueByPath(m, "personalDetails.phoneNo") || "";
-            const email = getValueByPath(m, "personalDetails.emailId") || "";
+            const name = (getValueByPath(m, "personalDetails.nameOfMember") || "").toString();
+            const mno = (getValueByPath(m, "personalDetails.membershipNumber") || "").toString();
+            const phone = (getValueByPath(m, "personalDetails.phoneNo1") || "").toString();
+            const email = (getValueByPath(m, "personalDetails.emailId1") || "").toString();
 
             return (
                 name.toLowerCase().includes(q) ||
@@ -292,156 +271,238 @@ const MemberDetailsPage = () => {
         });
     }, [query, members]);
 
-    // Pagination logic
     const paginatedMembers = useMemo(() => {
         const start = page * rowsPerPage;
         return filteredMembers.slice(start, start + rowsPerPage);
     }, [page, rowsPerPage, filteredMembers]);
 
-    // View handler
     const handleView = (member) => {
         setSelectedMember(member);
         setViewDialogOpen(true);
     };
 
-    // Edit handler (OPEN MODAL)
     const handleEdit = (member) => {
         setEditMember(member);
         setEditDialogOpen(true);
     };
 
-    // Delete handler
     const handleDelete = () => {
-        dispatch(deleteMember(deleteConfirm.id));
+        if (deleteConfirm.id) dispatch(deleteMember(deleteConfirm.id));
         setDeleteConfirm({ open: false, id: null });
     };
 
     return (
-        <Box p={2}>
-            <Typography variant="h5" sx={{ mb: 2, fontWeight: "bold" }}>
-                Member Details
-            </Typography>
+        <Box p={{ xs: 1.5, sm: 2.5 }}>
+            <Paper elevation={0} sx={{ p: 2, borderRadius: 2, background: 'transparent' }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} alignItems="center" justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
+                    <Box>
+                        <Typography variant="h5" sx={{ fontWeight: 700 }}>Member Details</Typography>
+                        <Typography variant="body2" color="text.secondary">Manage society members — minimal, clean & responsive.</Typography>
+                    </Box>
 
-            {/* Search + PDF */}
-            <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-                <TextField
-                    placeholder="Search..."
-                    fullWidth
-                    size="small"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon />
-                            </InputAdornment>
-                        )
-                    }}
-                />
+                    <Stack direction="row" spacing={1} alignItems="center">
+                        <TextField
+                            placeholder="Search by name, member no, phone or email"
+                            size="small"
+                            value={query}
+                            onChange={(e) => { setQuery(e.target.value); setPage(0); }}
+                            sx={{ width: { xs: 220, sm: 360 }, background: '#fff', borderRadius: 1 }}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon fontSize="small" />
+                                    </InputAdornment>
+                                )
+                            }}
+                        />
 
-                <Button
-                    variant="contained"
-                    startIcon={<DownloadIcon />}
-                    onClick={() => generateMembersListPDF(filteredMembers)}
-                    disabled={loading || filteredMembers.length === 0}
-                    sx={{ whiteSpace: 'nowrap', minWidth: 'auto' }}
-                >
-                    Download PDF
-                </Button>
+                        <Button
+                            variant="outlined"
+                            startIcon={<DownloadIcon />}
+                            onClick={handleDownloadClick}
+                            disabled={loading || filteredMembers.length === 0}
+                            sx={{ whiteSpace: 'nowrap', minWidth: '40px' }}
+                        >
+                            Export
+                        </Button>
 
+                        <Menu anchorEl={anchorEl} open={openMenu} onClose={handleMenuClose}>
+                            <MenuItem onClick={() => { generateMembersListPDF(filteredMembers); handleMenuClose(); }}>
+                                <FileDownloadDoneIcon sx={{ mr: 1 }} /> Download PDF
+                            </MenuItem>
+                            <MenuItem onClick={() => { generateMembersExcel(filteredMembers); handleMenuClose(); }}>
+                                <FileDownloadDoneIcon sx={{ mr: 1 }} /> Download Excel
+                            </MenuItem>
+                        </Menu>
 
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={handleAddMember}
-                    sx={{ whiteSpace: 'nowrap', minWidth: 'auto' }}
-                >
-                    Member
-                </Button>
-            </Box>
+                        <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddMember} sx={{ ml: 1 }}>
+                            Add Member
+                        </Button>
+                    </Stack>
+                </Stack>
 
-            {/* Table */}
-            <Paper>
-                <Table>
-                    <TableHead sx={{ background: "#1976d2" }}>
-                        <TableRow>
-                            <TableCell sx={{ color: "white" }}>S.No</TableCell>
-                            <TableCell sx={{ color: "white" }}>Member No</TableCell>
-                            <TableCell sx={{ color: "white" }}>Name</TableCell>
-                            <TableCell sx={{ color: "white" }}>Phone</TableCell>
-                            <TableCell sx={{ color: "white" }}>Email</TableCell>
-                            <TableCell sx={{ color: "white" }}>City</TableCell>
-                            <TableCell sx={{ color: "white" }}>Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
+                <Paper elevation={1} sx={{ borderRadius: 2, overflow: 'hidden' }}>
+                    <TableContainer sx={{ maxHeight: 520, background: '#fafafa' }}>
+                        <Table stickyHeader size="small">
+                            <TableHead>
+                                <TableRow sx={{ background: '#fff' }}>
+                                    <TableCell sx={{ fontWeight: 700, minWidth: 60 }}>S.No</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, minWidth: 120 }}>Member No</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, minWidth: 200 }}>Member Name</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, minWidth: 180 }}>Father Name</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>Mobile No</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, minWidth: 180 }}>Email</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>Introduced By</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, minWidth: 120 }}>Status</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, minWidth: 140, textAlign: 'center' }}>Actions</TableCell>
+                                </TableRow>
+                            </TableHead>
 
-                    <TableBody>
-                        {paginatedMembers.map((m, index) => (
-                            <TableRow key={m._id}>
-                                <TableCell>{page * rowsPerPage + index + 1}</TableCell>
-                                <TableCell>{getValueByPath(m, "personalDetails.membershipNumber")}</TableCell>
-                                <TableCell>{formatMemberName(m)}</TableCell>
-                                <TableCell>{getValueByPath(m, "personalDetails.phoneNo")}</TableCell>
-                                <TableCell>{getValueByPath(m, "personalDetails.emailId")}</TableCell>
-                                <TableCell>{getValueByPath(m, "addressDetails.currentResidentalAddress.city")}</TableCell>
+                            <TableBody>
+                                {paginatedMembers.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={7} sx={{ py: 6 }}>
+                                            <Box textAlign="center">
+                                                <Typography variant="h6" color="text.secondary">No members found</Typography>
+                                                <Typography variant="body2" color="text.secondary">Try adjusting your search or add a new member.</Typography>
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
 
-                                <TableCell>
-                                    <IconButton color="primary" onClick={() => handleView(m)}>
-                                        <VisibilityIcon />
-                                    </IconButton>
+                                {paginatedMembers.map((m, index) => (
+                                    <TableRow key={m._id} hover sx={{ '&:hover': { background: '#fff' } }}>
+                                        {/* S.No */}
+                                        <TableCell>{page * rowsPerPage + index + 1}</TableCell>
 
-                                    <IconButton color="secondary" onClick={() => handleEdit(m)}>
-                                        <EditIcon />
-                                    </IconButton>
+                                        {/* Member No */}
+                                        <TableCell>
+                                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                {getValueByPath(m, "personalDetails.membershipNumber") || "—"}
+                                            </Typography>
+                                        </TableCell>
 
-                                    <IconButton
-                                        color="error"
-                                        onClick={() =>
-                                            setDeleteConfirm({ open: true, id: m._id })
-                                        }
-                                    >
-                                        <DeleteIcon />
-                                    </IconButton>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                                        {/* Member Name with Avatar */}
+                                        <TableCell>
+                                            <Stack direction="row" spacing={1.5} alignItems="center">
+                                                <Avatar
+                                                    src={getValueByPath(m, "documents.passportSize") || ""}
+                                                    alt={formatMemberName(m)}
+                                                    sx={{ width: 36, height: 36 }}
+                                                />
+                                                <Box>
+                                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                                        {formatMemberName(m)}
+                                                    </Typography>
+                                                </Box>
+                                            </Stack>
+                                        </TableCell>
 
-                <TablePagination
-                    component="div"
-                    count={filteredMembers.length}
-                    page={page}
-                    onPageChange={(e, newPage) => setPage(newPage)}
-                    rowsPerPage={rowsPerPage}
-                    onRowsPerPageChange={(e) => {
-                        setRowsPerPage(parseInt(e.target.value, 10));
-                        setPage(0);
-                    }}
-                />
+                                        {/* Father Name */}
+                                        <TableCell>
+                                            <Typography variant="body2">
+                                                {getValueByPath(m, "personalDetails.nameOfFather") || "—"}
+                                            </Typography>
+                                        </TableCell>
+
+                                        {/* Mobile No */}
+                                        <TableCell>
+                                            <Typography variant="body2">
+                                                {getValueByPath(m, "personalDetails.phoneNo1") || "—"}
+                                            </Typography>
+                                        </TableCell>
+
+                                        {/* Email */}
+                                        <TableCell>
+                                            <Typography variant="body2">
+                                                {getValueByPath(m, "personalDetails.emailId1") || "—"}
+                                            </Typography>
+                                        </TableCell>
+
+                                        {/* Introduced By */}
+                                        <TableCell>
+                                            <Typography variant="body2">
+                                                {getValueByPath(m, "nomineeDetails.introduceBy") || "—"}
+                                            </Typography>
+                                        </TableCell>
+
+                                        {/* Status */}
+                                        <TableCell>
+                                            <Chip
+                                                label={m.status === "active" ? "Active" : "Inactive"}
+                                                color={m.status === "active" ? "success" : "error"}
+                                                size="small"
+                                            />
+                                        </TableCell>
+
+                                        <TableCell
+                                            align="center"
+                                            sx={{
+                                                display: "flex",
+                                                justifyContent: "center",
+                                                alignItems: "center",
+                                                gap: 0.5,   // space between icons
+                                                flexWrap: "nowrap" // stops icons going to next line
+                                            }}
+                                        >
+                                            <Tooltip title="View">
+                                                <IconButton color="primary" onClick={() => handleView(m)}>
+                                                    <VisibilityIcon />
+                                                </IconButton>
+                                            </Tooltip>
+
+                                            <Tooltip title="Edit">
+                                                <IconButton color="secondary" onClick={() => handleEdit(m)}>
+                                                    <EditIcon />
+                                                </IconButton>
+                                            </Tooltip>
+
+                                            <Tooltip title="Delete">
+                                                <IconButton color="error" onClick={() => setDeleteConfirm({ open: true, id: m._id })}>
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </Tooltip>
+
+                                            <Tooltip title="More">
+                                                <IconButton onClick={(e) => setStatusDialog({ open: true, member: m })}>
+                                                    <MoreVertIcon />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </TableCell>
+
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
+                        <TablePagination
+                            component="div"
+                            count={filteredMembers.length}
+                            page={page}
+                            onPageChange={(e, newPage) => setPage(newPage)}
+                            rowsPerPage={rowsPerPage}
+                            onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                            labelRowsPerPage="Rows"
+                            sx={{ '.MuiTablePagination-toolbar': { minHeight: 40 } }}
+                        />
+                    </Box>
+                </Paper>
             </Paper>
 
             {/* VIEW DIALOG */}
-            <MemberView
-                open={viewDialogOpen}
-                handleClose={() => setViewDialogOpen(false)}
-                member={selectedMember}
-            />
+            <MemberView open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} member={selectedMember} />
 
             {/* EDIT DIALOG */}
-            <MemberEditPage
-                open={editDialogOpen}
-                member={editMember}
-                onClose={() => setEditDialogOpen(false)}
-            />
+            <MemberEditPage open={editDialogOpen} member={editMember} onClose={() => setEditDialogOpen(false)} />
 
             {/* DELETE DIALOG */}
-            <Dialog
-                open={deleteConfirm.open}
-                onClose={() => setDeleteConfirm({ open: false, id: null })}
-            >
+            <Dialog open={deleteConfirm.open} onClose={() => setDeleteConfirm({ open: false, id: null })}>
                 <DialogTitle>Confirm Delete</DialogTitle>
-                <DialogContent>Are you sure?</DialogContent>
+                <DialogContent>
+                    <Typography>Are you sure you want to delete this member?</Typography>
+                </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setDeleteConfirm({ open: false, id: null })}>
                         Cancel
@@ -451,6 +512,72 @@ const MemberDetailsPage = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+            {/* STATUS CHANGE DIALOG */}
+            <Dialog
+                open={statusDialog.open}
+                onClose={() => setStatusDialog({ open: false, member: null })}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle sx={{ fontWeight: 700, textAlign: "center" }}>
+                    Change Status
+                </DialogTitle>
+
+                <DialogContent sx={{ py: 3 }}>
+                    <Stack spacing={2}>
+                        {/* ACTIVE BUTTON */}
+                        <Button
+                            variant="contained"
+                            color="success"
+                            startIcon={<CheckCircleOutline />}
+                            sx={{
+                                py: 1.5,
+                                fontSize: "16px",
+                                fontWeight: "bold",
+                                background: "green",
+                            }}
+                            onClick={() => {
+                                dispatch(updateMemberStatus({
+                                    id: member._id,
+                                    status: "Active"
+                                }));
+                                setStatusDialog({ open: false, member: null });
+                            }}
+                        >
+                            Mark as Active
+                        </Button>
+
+                        {/* INACTIVE BUTTON */}
+                        <Button
+                            variant="contained"
+                            color="error"
+                            startIcon={<BlockIcon />}
+                            sx={{
+                                py: 1.5,
+                                fontSize: "16px",
+                                fontWeight: "bold",
+                                background: "red",
+                            }}
+                            onClick={() => {
+                                dispatch(updateMemberStatus({
+                                    id: statusDialog.member._id,
+                                    status: "inactive",
+                                }));
+                                setStatusDialog({ open: false, member: null });
+                            }}
+                        >
+                            Mark as Inactive
+                        </Button>
+                    </Stack>
+                </DialogContent>
+
+                <DialogActions>
+                    <Button onClick={() => setStatusDialog({ open: false, member: null })}>
+                        Cancel
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
         </Box>
     );
 };

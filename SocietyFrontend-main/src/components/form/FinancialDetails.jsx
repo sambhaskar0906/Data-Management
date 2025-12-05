@@ -71,7 +71,7 @@ const FinancialDetailsForm = ({ formData = {}, handleChange }) => {
                         }}
                     >
                         <Grid container spacing={3}>
-                            <Grid size={{ xs: 12, md: 4 }} >
+                            <Grid size={{ xs: 12, md: 4 }}>
                                 <TextField
                                     label="Share Capital (SC)"
                                     value={currentEntry.shareCapital || ""}
@@ -87,7 +87,7 @@ const FinancialDetailsForm = ({ formData = {}, handleChange }) => {
                                 />
                             </Grid>
 
-                            <Grid size={{ xs: 12, md: 4 }} >
+                            <Grid size={{ xs: 12, md: 4 }}>
                                 <TextField
                                     label="Optional Deposit (OD)"
                                     value={currentEntry.optionalDeposit || ""}
@@ -103,7 +103,7 @@ const FinancialDetailsForm = ({ formData = {}, handleChange }) => {
                                 />
                             </Grid>
 
-                            <Grid size={{ xs: 12, md: 4 }} >
+                            <Grid size={{ xs: 12, md: 4 }}>
                                 <TextField
                                     label="Compulsory (CD)"
                                     value={currentEntry.compulsory || ""}

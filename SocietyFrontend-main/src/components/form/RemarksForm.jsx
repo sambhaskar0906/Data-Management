@@ -69,7 +69,9 @@ const RemarksForm = ({ formData, handleChange }) => {
   const nominee = formData.nomineeDetails || {
     nomineeName: "",
     relationWithApplicant: "",
-    mobileNo: "",
+    nomineeMobileNo: "",
+    introduceBy: "",
+    memberShipNo: "",
   };
 
 
@@ -80,18 +82,7 @@ const RemarksForm = ({ formData, handleChange }) => {
     });
   };
 
-  /* ------  Introduce details ------ */
-  const witness = formData.witnessDetails || {
-    introduceBy: "",
-    memberShipNo: "",
-  };
 
-  const handleWitnessChange = (field, value) => {
-    handleChange("witnessDetails", null, {
-      ...witness,
-      [field]: value,
-    })
-  }
 
   /* ================= COMMON STYLES ================= */
 
@@ -127,7 +118,7 @@ const RemarksForm = ({ formData, handleChange }) => {
           />
 
           <Typography fontWeight={600} sx={{ mb: 2 }}>
-            11. Any family member a member of the society?
+            Any family member a member of the society?
           </Typography>
 
           <RadioGroup
@@ -295,10 +286,10 @@ const RemarksForm = ({ formData, handleChange }) => {
             <Grid size={{ xs: 12, md: 4 }}>
               <StyledTextField
                 label="17. Mobile Number"
-                value={nominee.mobileNo}
+                value={nominee.nomineeMobileNo}
                 inputProps={{ maxLength: 10 }}
                 onChange={(e) =>
-                  handleNomineeChange("mobileNo", e.target.value)
+                  handleNomineeChange("nomineeMobileNo", e.target.value)
                 }
                 sx={textFieldStyles}
               />
@@ -332,9 +323,9 @@ const RemarksForm = ({ formData, handleChange }) => {
               <Grid size={{ xs: 12, md: 6 }}>
                 <StyledTextField
                   label="18. Introduced By"
-                  value={witness.introduceBy || ""}
+                  value={nominee.introduceBy || ""}
                   onChange={(e) =>
-                    handleWitnessChange("introduceBy", e.target.value)
+                    handleNomineeChange("introduceBy", e.target.value)
                   }
                   sx={textFieldStyles}
                 />
@@ -344,9 +335,9 @@ const RemarksForm = ({ formData, handleChange }) => {
               <Grid size={{ xs: 12, md: 6 }}>
                 <StyledTextField
                   label="19. Membership No"
-                  value={witness.memberShipNo || ""}
+                  value={nominee.memberShipNo || ""}
                   onChange={(e) =>
-                    handleWitnessChange("memberShipNo", e.target.value)
+                    handleNomineeChange("memberShipNo", e.target.value)
                   }
                   sx={textFieldStyles}
                 />

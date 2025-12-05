@@ -113,6 +113,22 @@ export const fetchGuarantorRelations = createAsyncThunk(
 );
 
 /* ===========================================================
+   ✅ UPDATE MEMBER STATUS (Active / Inactive)
+   =========================================================== */
+export const updateMemberStatus = createAsyncThunk(
+    "members/updateMemberStatus",
+    async ({ id, status }, { rejectWithValue }) => {
+        try {
+            const response = await axios.put(`/members/status/${id}`, { status });
+            return response.data.data; // updated member
+        } catch (error) {
+            return rejectWithValue(error.response?.data || error.message);
+        }
+    }
+);
+
+
+/* ===========================================================
    ✅ SLICE SETUP
    =========================================================== */
 const memberSlice = createSlice({
@@ -311,6 +327,33 @@ const memberSlice = createSlice({
             })
             .addCase(fetchGuarantorRelations.rejected, (state, action) => {
                 state.loading = false;
+                state.error = action.payload;
+            })
+            /* ======================== UPDATE MEMBER STATUS ======================== */
+            .addCase(updateMemberStatus.pending, (state) => {
+                state.loading = true;
+                state.operationLoading.update = true;
+                state.error = null;
+            })
+            .addCase(updateMemberStatus.fulfilled, (state, action) => {
+                state.loading = false;
+                state.operationLoading.update = false;
+
+                const updatedMember = action.payload;
+                const index = state.members.findIndex((m) => m._id === updatedMember._id);
+                if (index !== -1) {
+                    state.members[index] = updatedMember;
+                }
+
+                if (state.selectedMember && state.selectedMember._id === updatedMember._id) {
+                    state.selectedMember = updatedMember;
+                }
+
+                state.successMessage = `Status updated to ${updatedMember.status}`;
+            })
+            .addCase(updateMemberStatus.rejected, (state, action) => {
+                state.loading = false;
+                state.operationLoading.update = false;
                 state.error = action.payload;
             })
 

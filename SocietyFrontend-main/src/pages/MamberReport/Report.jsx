@@ -1,74 +1,42 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Paper,
-    Typography,
-    Box,
-    TextField,
-    InputAdornment,
-    Button,
-    MenuItem,
-    Select,
-    FormControl,
-    InputLabel,
-    Stack,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    IconButton,
-    CircularProgress,
-    Alert,
-    Chip,
-    Tabs,
-    Tab
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+    Paper, Typography, Box, TextField, InputAdornment, Button,
+    MenuItem, Select, FormControl, InputLabel, Stack, Dialog,
+    DialogTitle, DialogContent, DialogActions, IconButton,
+    CircularProgress, Alert, Chip, Tabs, Tab, Checkbox, FormControlLabel
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DeleteIcon from "@mui/icons-material/Delete";
+import FilterListIcon from "@mui/icons-material/FilterList";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Formik, Form } from "formik";
 import { useNavigate } from "react-router-dom";
-
-// Import your Redux actions
 import { fetchAllMembers, deleteMember } from "../../features/member/memberSlice";
 
+// Utility Functions
 const getValueByPath = (obj, path) => {
     if (!path) return undefined;
-    const parts = path.split(".");
-    let cur = obj;
-    for (const p of parts) {
-        if (cur === undefined || cur === null) return undefined;
-        cur = cur[p];
-    }
-    return cur;
+    return path.split(".").reduce((cur, p) => cur?.[p], obj);
 };
 
 const isMissing = (value) => {
     if (value === undefined || value === null) return true;
     if (typeof value === "string") return value.trim() === "";
     if (Array.isArray(value)) return value.length === 0;
-    if (typeof value === "object") {
-        if (Object.keys(value).length === 0) return true;
-        return Object.values(value).every(val =>
-            val === undefined || val === null || val === "" ||
-            (typeof val === 'object' && Object.keys(val).length === 0)
-        );
-    }
+    if (typeof value === "object") return Object.values(value).every(val =>
+        val === undefined || val === null || val === "" ||
+        (typeof val === 'object' && Object.keys(val).length === 0)
+    );
     return false;
 };
 
-// Civil Score specific check
 const getCivilScoreStatus = (civilScore) => {
-    if (civilScore === undefined || civilScore === null || civilScore === "") return "missing";
+    if (!civilScore) return "missing";
     const score = Number(civilScore);
     if (isNaN(score)) return "invalid";
     if (score >= 750) return "excellent";
@@ -76,79 +44,113 @@ const getCivilScoreStatus = (civilScore) => {
     return "poor";
 };
 
-// All fields with their display names
+const getNameWithTitle = (member) => {
+    const title = getValueByPath(member, "personalDetails.title") || "";
+    const name = getValueByPath(member, "personalDetails.nameOfMember") || "";
+    return title && name ? `${title} ${name}` : name || "—";
+};
+
+// Age extraction function
+const extractAge = (ageString) => {
+    if (!ageString) return 0;
+    const match = ageString.match(/(\d+)/);
+    return match ? parseInt(match[1]) : 0;
+};
+
+// Field Definitions based on your model
 const ALL_FIELDS = {
     // Personal Details
+    "personalDetails.title": "Title",
     "personalDetails.nameOfMember": "Member Name",
     "personalDetails.membershipNumber": "Membership No",
+    "personalDetails.minor": "Minor",
+    "personalDetails.guardianName": "Guardian Name",
+    "personalDetails.guardianRelation": "Guardian Relation",
+    "personalDetails.fatherTitle": "Father Title",
     "personalDetails.nameOfFather": "Father's Name",
+    "personalDetails.motherTitle": "Mother Title",
     "personalDetails.nameOfMother": "Mother's Name",
+    "personalDetails.nameOfSpouse": "Spouse Name",
     "personalDetails.dateOfBirth": "Date of Birth",
     "personalDetails.ageInYears": "Age",
     "personalDetails.membershipDate": "Membership Date",
     "personalDetails.amountInCredit": "Amount In Credit",
+    "personalDetails.civilScore": "Civil Score",
     "personalDetails.gender": "Gender",
     "personalDetails.maritalStatus": "Marital Status",
     "personalDetails.religion": "Religion",
     "personalDetails.caste": "Caste",
-    "personalDetails.phoneNo": "Phone No",
+    "personalDetails.phoneNo1": "Phone No 1",
+    "personalDetails.phoneNo2": "Phone No 2",
+    "personalDetails.whatsappNumber": "WhatsApp Number",
     "personalDetails.alternatePhoneNo": "Alternate Phone",
-    "personalDetails.emailId": "Email",
+    "personalDetails.emailId1": "Email 1",
+    "personalDetails.emailId2": "Email 2",
+    "personalDetails.emailId3": "Email 3",
+    "personalDetails.landlineNo": "Landline",
+    "personalDetails.landlineOffice": "Office Landline",
 
     // Address Details
-    "addressDetails.permanentAddress.flatHouseNo": "Permanent - House No",
-    "addressDetails.permanentAddress.areaStreetSector": "Permanent - Area",
-    "addressDetails.permanentAddress.locality": "Permanent - Locality",
-    "addressDetails.permanentAddress.landmark": "Permanent - Landmark",
-    "addressDetails.permanentAddress.city": "Permanent - City",
-    "addressDetails.permanentAddress.country": "Permanent - Country",
-    "addressDetails.permanentAddress.state": "Permanent - State",
-    "addressDetails.permanentAddress.pincode": "Permanent - Pincode",
-    "addressDetails.currentResidentalAddress.flatHouseNo": "Current - House No",
-    "addressDetails.currentResidentalAddress.areaStreetSector": "Current - Area",
-    "addressDetails.currentResidentalAddress.locality": "Current - Locality",
-    "addressDetails.currentResidentalAddress.landmark": "Current - Landmark",
-    "addressDetails.currentResidentalAddress.city": "Current - City",
-    "addressDetails.currentResidentalAddress.country": "Current - Country",
-    "addressDetails.currentResidentalAddress.state": "Current - State",
-    "addressDetails.currentResidentalAddress.pincode": "Current - Pincode",
+    "addressDetails.residenceType": "Residence Type",
+    "addressDetails.permanentAddress.flatHouseNo": "Permanent House No",
+    "addressDetails.permanentAddress.areaStreetSector": "Permanent Area",
+    "addressDetails.permanentAddress.locality": "Permanent Locality",
+    "addressDetails.permanentAddress.landmark": "Permanent Landmark",
+    "addressDetails.permanentAddress.city": "Permanent City",
+    "addressDetails.permanentAddress.country": "Permanent Country",
+    "addressDetails.permanentAddress.state": "Permanent State",
+    "addressDetails.permanentAddress.pincode": "Permanent Pincode",
+    "addressDetails.currentResidentalAddress.flatHouseNo": "Current House No",
+    "addressDetails.currentResidentalAddress.areaStreetSector": "Current Area",
+    "addressDetails.currentResidentalAddress.locality": "Current Locality",
+    "addressDetails.currentResidentalAddress.landmark": "Current Landmark",
+    "addressDetails.currentResidentalAddress.city": "Current City",
+    "addressDetails.currentResidentalAddress.country": "Current Country",
+    "addressDetails.currentResidentalAddress.state": "Current State",
+    "addressDetails.currentResidentalAddress.pincode": "Current Pincode",
 
     // Documents
-    "documents.aadhaarNo": "Aadhaar Card",
-    "documents.panNo": "PAN Card",
-    "documents.voterId": "Voter ID",
-    "documents.drivingLicense": "Driving License",
-    "documents.passportNo": "Passport",
-    "documents.rationCard": "Ration Card",
     "documents.passportSize": "Passport Photo",
-    "documents.aadhaarNoPhoto": "Aadhaar Photo",
+    "documents.panNo": "PAN Card",
+    "documents.rationCard": "Ration Card",
+    "documents.drivingLicense": "Driving License",
+    "documents.aadhaarNo": "Aadhaar Card",
+    "documents.voterId": "Voter ID",
+    "documents.passportNo": "Passport",
     "documents.panNoPhoto": "PAN Photo",
-    "documents.voterIdPhoto": "Voter ID Photo",
-    "documents.drivingLicensePhoto": "DL Photo",
-    "documents.passportNoPhoto": "Passport Photo",
     "documents.rationCardPhoto": "Ration Card Photo",
+    "documents.drivingLicensePhoto": "DL Photo",
+    "documents.aadhaarNoPhoto": "Aadhaar Photo",
+    "documents.voterIdPhoto": "Voter ID Photo",
+    "documents.passportNoPhoto": "Passport Photo",
+    "documents.signedPhoto": "Signed Photo",
 
     // Professional Details
     "professionalDetails.qualification": "Qualification",
+    "professionalDetails.qualificationRemark": "Qualification Remark",
     "professionalDetails.occupation": "Occupation",
     "professionalDetails.degreeNumber": "Degree Number",
+    "professionalDetails.serviceType": "Service Type",
+    "professionalDetails.serviceDetails.fullNameOfCompany": "Company Name",
+    "professionalDetails.serviceDetails.addressOfCompany": "Company Address",
+    "professionalDetails.serviceDetails.department": "Department",
+    "professionalDetails.serviceDetails.monthlyIncome": "Monthly Income",
+    "professionalDetails.serviceDetails.designation": "Designation",
+    "professionalDetails.serviceDetails.dateOfJoining": "Date of Joining",
+    "professionalDetails.serviceDetails.employeeCode": "Employee Code",
+    "professionalDetails.serviceDetails.dateOfRetirement": "Date of Retirement",
+    "professionalDetails.serviceDetails.officeNo": "Office Number",
 
     // Family Details
     "familyDetails.familyMembersMemberOfSociety": "Family in Society",
     "familyDetails.familyMember": "Family Members",
-    "familyDetails.familyMemberNo": "Family Phones",
+    "familyDetails.familyMemberNo": "Family Phone Numbers",
 
     // Bank Details
     "bankDetails.bankName": "Bank Name",
     "bankDetails.branch": "Bank Branch",
     "bankDetails.accountNumber": "Account Number",
     "bankDetails.ifscCode": "IFSC Code",
-    "bankDetails.civilScore": "Civil Score",
-
-    // Reference Details
-    "referenceDetails.referenceName": "Reference Name",
-    "referenceDetails.referenceMno": "Reference Mobile",
-    "referenceDetails.guarantorName": "Guarantor Name",
 
     // Guarantee Details
     "guaranteeDetails.whetherMemberHasGivenGuaranteeInOtherSociety": "Guarantee Other Society",
@@ -156,49 +158,41 @@ const ALL_FIELDS = {
 
     // Loan Details
     "loanDetails": "Loan Details",
+
+    // Nominee Details
+    "nomineeDetails.nomineeName": "Nominee Name",
+    "nomineeDetails.relationWithApplicant": "Nominee Relation",
+    "nomineeDetails.introduceBy": "Introduced By",
+    "nomineeDetails.memberShipNo": "Introducer Membership No",
 };
 
-// Field groups for organization
-const FIELD_GROUPS = {
-    "personal": {
-        label: "Personal Details",
-        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("personalDetails"))
-    },
-    "address": {
-        label: "Address Details",
-        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("addressDetails"))
-    },
-    "documents": {
-        label: "Documents",
-        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("documents"))
-    },
-    "professional": {
-        label: "Professional",
-        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("professionalDetails"))
-    },
-    "family": {
-        label: "Family",
-        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("familyDetails"))
-    },
-    "bank": {
-        label: "Bank",
-        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("bankDetails"))
-    },
-    "reference": {
-        label: "Reference",
-        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("referenceDetails"))
-    },
-    "guarantee": {
-        label: "Guarantee",
-        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith("guaranteeDetails"))
-    },
-    "loan": {
-        label: "Loan",
-        fields: ["loanDetails"]
+const FIELD_GROUPS = Object.entries({
+    personal: "Personal Details",
+    address: "Address Details",
+    documents: "Documents",
+    professional: "Professional",
+    family: "Family",
+    bank: "Bank",
+    reference: "Reference",
+    guarantee: "Guarantee",
+    loan: "Loan",
+    nominee: "Nominee"
+}).reduce((acc, [key, label]) => ({
+    ...acc,
+    [key]: {
+        label,
+        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith(key === "personal" ? "personalDetails" :
+            key === "address" ? "addressDetails" :
+                key === "documents" ? "documents" :
+                    key === "professional" ? "professionalDetails" :
+                        key === "family" ? "familyDetails" :
+                            key === "bank" ? "bankDetails" :
+                                key === "reference" ? "referenceDetails" :
+                                    key === "guarantee" ? "guaranteeDetails" :
+                                        key === "nominee" ? "nomineeDetails" : key))
     }
-};
+}), {});
 
-// Civil Score specific filters
 const CIVIL_SCORE_FILTERS = {
     "all": "All Civil Scores",
     "missing": "Missing Civil Score",
@@ -209,89 +203,228 @@ const CIVIL_SCORE_FILTERS = {
 };
 
 // Delete Confirmation Dialog
-const DeleteConfirmationDialog = ({ open, onClose, onConfirm, memberName }) => {
-    return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle>Confirm Delete</DialogTitle>
-            <DialogContent>
-                <Typography>
-                    Are you sure you want to delete member <strong>"{memberName}"</strong>?
-                    This action cannot be undone.
-                </Typography>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Cancel</Button>
-                <Button onClick={onConfirm} variant="contained" color="error">
-                    Delete
-                </Button>
-            </DialogActions>
-        </Dialog>
-    );
-};
+const DeleteConfirmationDialog = ({ open, onClose, onConfirm, memberName }) => (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+            <Typography>Are you sure you want to delete member <strong>"{memberName}"</strong>?</Typography>
+        </DialogContent>
+        <DialogActions>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button onClick={onConfirm} variant="contained" color="error">Delete</Button>
+        </DialogActions>
+    </Dialog>
+);
 
-// Tab Panel Component
-function TabPanel({ children, value, index, ...other }) {
-    return (
-        <div
-            role="tabpanel"
-            hidden={value !== index}
-            id={`field-tabpanel-${index}`}
-            aria-labelledby={`field-tab-${index}`}
-            {...other}
-        >
-            {value === index && <Box sx={{ py: 2 }}>{children}</Box>}
-        </div>
-    );
+function TabPanel({ children, value, index }) {
+    return <div hidden={value !== index}>{value === index && <Box sx={{ py: 2 }}>{children}</Box>}</div>;
 }
+
+// Advanced Filters Component
+const AdvancedFilters = ({ values, setFieldValue, filters }) => (
+    <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1, mb: 2, bgcolor: '#f9f9f9' }}>
+        <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold', color: 'primary.main' }}>
+            <FilterListIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+            Advanced Filters
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            {/* Occupation Filter */}
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+                <InputLabel>Occupation</InputLabel>
+                <Select value={values.occupationFilter} label="Occupation"
+                    onChange={(e) => setFieldValue("occupationFilter", e.target.value)}>
+                    {filters.occupationOptions.map(opt => (
+                        <MenuItem key={opt} value={opt}>{opt === "all" ? "All Occupations" : opt}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+
+            {/* Qualification Filter - CA, ADV, DR, etc. */}
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+                <InputLabel>Qualification</InputLabel>
+                <Select value={values.qualificationFilter} label="Qualification"
+                    onChange={(e) => setFieldValue("qualificationFilter", e.target.value)}>
+                    {filters.qualificationOptions.map(opt => (
+                        <MenuItem key={opt} value={opt}>{opt === "all" ? "All Qualifications" : opt}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+
+            {/* Religion Filter */}
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Religion</InputLabel>
+                <Select value={values.religionFilter} label="Religion"
+                    onChange={(e) => setFieldValue("religionFilter", e.target.value)}>
+                    {filters.religionOptions.map(opt => (
+                        <MenuItem key={opt} value={opt}>{opt === "all" ? "All Religions" : opt}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+
+            {/* Category Filter */}
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+                <InputLabel>Category</InputLabel>
+                <Select value={values.categoryFilter} label="Category"
+                    onChange={(e) => setFieldValue("categoryFilter", e.target.value)}>
+                    {filters.categoryOptions.map(opt => (
+                        <MenuItem key={opt} value={opt}>{opt === "all" ? "All Categories" : FIELD_GROUPS[opt]?.label || opt}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+
+            {/* View Type */}
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+                <InputLabel>View Type</InputLabel>
+                <Select value={values.viewType} label="View Type"
+                    onChange={(e) => setFieldValue("viewType", e.target.value)}>
+                    <MenuItem value="all">All Members</MenuItem>
+                    <MenuItem value="missing">Missing Only</MenuItem>
+                    <MenuItem value="available">Available Only</MenuItem>
+                </Select>
+            </FormControl>
+
+            {/* Gender Filter */}
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Gender</InputLabel>
+                <Select value={values.genderFilter} label="Gender"
+                    onChange={(e) => setFieldValue("genderFilter", e.target.value)}>
+                    <MenuItem value="all">All Genders</MenuItem>
+                    <MenuItem value="Male">Male</MenuItem>
+                    <MenuItem value="Female">Female</MenuItem>
+                    <MenuItem value="Transgender">Transgender</MenuItem>
+                </Select>
+            </FormControl>
+
+            {/* Marital Status Filter */}
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Marital Status</InputLabel>
+                <Select value={values.maritalFilter} label="Marital Status"
+                    onChange={(e) => setFieldValue("maritalFilter", e.target.value)}>
+                    <MenuItem value="all">All Status</MenuItem>
+                    <MenuItem value="Single">Single</MenuItem>
+                    <MenuItem value="Married">Married</MenuItem>
+                    <MenuItem value="Divorced">Divorced</MenuItem>
+                    <MenuItem value="Widowed">Widowed</MenuItem>
+                </Select>
+            </FormControl>
+
+            {/* Age Range Filter - Fixed */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <TextField
+                    size="small"
+                    label="Min Age"
+                    type="number"
+                    value={values.minAge}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        setFieldValue("minAge", val === "" ? "" : Math.max(0, parseInt(val) || 0));
+                    }}
+                    inputProps={{ min: 0, max: 150 }}
+                    sx={{ width: 100 }}
+                />
+                <Typography>to</Typography>
+                <TextField
+                    size="small"
+                    label="Max Age"
+                    type="number"
+                    value={values.maxAge}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        setFieldValue("maxAge", val === "" ? "" : Math.max(0, parseInt(val) || 0));
+                    }}
+                    inputProps={{ min: 0, max: 150 }}
+                    sx={{ width: 100 }}
+                />
+            </Box>
+
+            {/* Caste Filter */}
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Caste</InputLabel>
+                <Select value={values.casteFilter} label="Caste"
+                    onChange={(e) => setFieldValue("casteFilter", e.target.value)}>
+                    {filters.casteOptions.map(opt => (
+                        <MenuItem key={opt} value={opt}>{opt === "all" ? "All Castes" : opt}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+
+            {/* Reset Filters Button */}
+            <Button variant="outlined" size="small" onClick={() => {
+                setFieldValue("occupationFilter", "all");
+                setFieldValue("qualificationFilter", "all");
+                setFieldValue("religionFilter", "all");
+                setFieldValue("categoryFilter", "all");
+                setFieldValue("genderFilter", "all");
+                setFieldValue("maritalFilter", "all");
+                setFieldValue("casteFilter", "all");
+                setFieldValue("minAge", "");
+                setFieldValue("maxAge", "");
+                setFieldValue("viewType", "all");
+                setFieldValue("civilScoreFilter", "all");
+            }}>
+                Reset Filters
+            </Button>
+        </Box>
+
+        {/* Active Filters Summary */}
+        {(values.occupationFilter !== "all" || values.qualificationFilter !== "all" ||
+            values.religionFilter !== "all" || values.categoryFilter !== "all" ||
+            values.genderFilter !== "all" || values.maritalFilter !== "all" ||
+            values.casteFilter !== "all" || values.minAge !== "" ||
+            values.maxAge !== "" || values.viewType !== "all" ||
+            (values.selectedField === "personalDetails.civilScore" && values.civilScoreFilter !== "all")) && (
+                <Box sx={{ mt: 1, pt: 1, borderTop: 1, borderColor: 'divider' }}>
+                    <Typography variant="caption" color="text.secondary">
+                        Active Filters:
+                        {values.occupationFilter !== "all" && <span style={{ marginLeft: 8 }}><strong>Occupation:</strong> {values.occupationFilter}</span>}
+                        {values.qualificationFilter !== "all" && <span style={{ marginLeft: 8 }}><strong>Qualification:</strong> {values.qualificationFilter}</span>}
+                        {values.religionFilter !== "all" && <span style={{ marginLeft: 8 }}><strong>Religion:</strong> {values.religionFilter}</span>}
+                        {values.categoryFilter !== "all" && <span style={{ marginLeft: 8 }}><strong>Category:</strong> {FIELD_GROUPS[values.categoryFilter]?.label}</span>}
+                        {values.genderFilter !== "all" && <span style={{ marginLeft: 8 }}><strong>Gender:</strong> {values.genderFilter}</span>}
+                        {values.maritalFilter !== "all" && <span style={{ marginLeft: 8 }}><strong>Marital Status:</strong> {values.maritalFilter}</span>}
+                        {values.casteFilter !== "all" && <span style={{ marginLeft: 8 }}><strong>Caste:</strong> {values.casteFilter}</span>}
+                        {values.minAge && <span style={{ marginLeft: 8 }}><strong>Min Age:</strong> {values.minAge}</span>}
+                        {values.maxAge && <span style={{ marginLeft: 8 }}><strong>Max Age:</strong> {values.maxAge}</span>}
+                        {values.viewType !== "all" && <span style={{ marginLeft: 8 }}><strong>View Type:</strong> {values.viewType}</span>}
+                        {values.selectedField === "personalDetails.civilScore" && values.civilScoreFilter !== "all" &&
+                            <span style={{ marginLeft: 8 }}><strong>Civil Score:</strong> {CIVIL_SCORE_FILTERS[values.civilScoreFilter]}</span>}
+                    </Typography>
+                </Box>
+            )}
+    </Box>
+);
 
 // Main Component
 const MissingMembersTable = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-
-    // Get data from Redux store
     const { members, loading, error, operationLoading } = useSelector((state) => state.members);
-
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [memberToDelete, setMemberToDelete] = useState(null);
     const [tabValue, setTabValue] = useState(0);
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(true);
 
-    // Fetch members on component mount
-    useEffect(() => {
-        dispatch(fetchAllMembers());
-    }, [dispatch]);
-
-    const handleTabChange = (event, newValue) => {
-        setTabValue(newValue);
-    };
+    useEffect(() => { dispatch(fetchAllMembers()); }, [dispatch]);
 
     const generatePDF = (filteredMembers, selectedField, viewType) => {
         const doc = new jsPDF();
-        doc.setFontSize(16);
         doc.text("Field Status Report", 14, 16);
-        doc.setFontSize(10);
         doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 24);
         doc.text(`Field: ${ALL_FIELDS[selectedField]} | View: ${viewType} | Total: ${filteredMembers.length}`, 14, 32);
 
-        const head = [["S. No", "Member Name", "Membership No", "Phone No", "Status"]];
-
-        const body = filteredMembers.map((m, idx) => {
-            const fieldValue = getValueByPath(m, selectedField);
-            const isFieldMissing = isMissing(fieldValue);
-
-            return [
-                idx + 1,
-                getValueByPath(m, "personalDetails.nameOfMember") || "—",
-                getValueByPath(m, "personalDetails.membershipNumber") || "—",
-                getValueByPath(m, "personalDetails.phoneNo") || "—",
-                isFieldMissing ? "MISSING" : "AVAILABLE"
-            ];
-        });
-
         autoTable(doc, {
             startY: 40,
-            head,
-            body,
+            head: [["S. No", "Member Name", "Membership No", "Phone", "Email", "City", "Status"]],
+            body: filteredMembers.map((m, idx) => [
+                idx + 1,
+                getNameWithTitle(m),
+                getValueByPath(m, "personalDetails.membershipNumber") || "—",
+                getValueByPath(m, "personalDetails.phoneNo1") || "—",
+                getValueByPath(m, "personalDetails.emailId1") || "—",
+                getValueByPath(m, "addressDetails.permanentAddress.city") ||
+                getValueByPath(m, "addressDetails.currentResidentalAddress.city") || "—",
+                isMissing(getValueByPath(m, selectedField)) ? "MISSING" : "AVAILABLE"
+            ]),
             styles: { fontSize: 9, cellPadding: 3 },
             headStyles: { fillColor: [25, 118, 210], textColor: 255, fontSize: 10 },
         });
@@ -299,651 +432,353 @@ const MissingMembersTable = () => {
         doc.save(`${viewType}_${ALL_FIELDS[selectedField]}_Report_${Date.now()}.pdf`);
     };
 
-    const handleViewDetails = (member) => {
-        navigate(`/member-details/${member._id}`);
-    };
+    if (loading) return (
+        <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+            <CircularProgress /><Typography sx={{ ml: 2 }}>Loading members...</Typography>
+        </Box>
+    );
 
-    const handleDeleteClick = (member, e) => {
-        e.stopPropagation();
-        setMemberToDelete(member);
-        setDeleteDialogOpen(true);
-    };
+    if (error) return (
+        <Box sx={{ p: 3 }}>
+            <Alert severity="error" sx={{ mb: 2 }}>Error loading members: {error.message || error.toString()}</Alert>
+            <Button variant="contained" onClick={() => dispatch(fetchAllMembers())}>Retry</Button>
+        </Box>
+    );
 
-    const handleConfirmDelete = () => {
-        if (memberToDelete) {
-            dispatch(deleteMember(memberToDelete._id))
-                .then(() => {
-                    setDeleteDialogOpen(false);
-                    setMemberToDelete(null);
-                    dispatch(fetchAllMembers());
-                });
-        }
-    };
-
-    const handleCloseDeleteDialog = () => {
-        setDeleteDialogOpen(false);
-        setMemberToDelete(null);
-    };
-
-    // Show loading state
-    if (loading) {
-        return (
-            <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-                <CircularProgress />
-                <Typography sx={{ ml: 2 }}>Loading members...</Typography>
-            </Box>
-        );
-    }
-
-    // Show error state
-    if (error) {
-        return (
-            <Box sx={{ p: 3 }}>
-                <Alert severity="error" sx={{ mb: 2 }}>
-                    Error loading members: {error.message || error.toString()}
-                </Alert>
-                <Button variant="contained" onClick={() => dispatch(fetchAllMembers())}>
-                    Retry
-                </Button>
-            </Box>
-        );
-    }
-
-    // Check if members data is available
-    if (!members || members.length === 0) {
-        return (
-            <Box sx={{ p: 3 }}>
-                <Alert severity="info">
-                    No members found.
-                </Alert>
-                <Button variant="contained" onClick={() => dispatch(fetchAllMembers())} sx={{ mt: 2 }}>
-                    Refresh Data
-                </Button>
-            </Box>
-        );
-    }
+    if (!members?.length) return (
+        <Box sx={{ p: 3 }}>
+            <Alert severity="info">No members found.</Alert>
+            <Button variant="contained" onClick={() => dispatch(fetchAllMembers())} sx={{ mt: 2 }}>Refresh Data</Button>
+        </Box>
+    );
 
     return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h5" sx={{ mb: 2, color: "primary.main", fontWeight: "bold" }}>
                 Field Status Overview
             </Typography>
-
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Total Members: {members.length} | Select a field and view type to check status
+                Total Members: {members.length} | Select a field and apply filters to check status
             </Typography>
 
             <DeleteConfirmationDialog
                 open={deleteDialogOpen}
-                onClose={handleCloseDeleteDialog}
-                onConfirm={handleConfirmDelete}
-                memberName={memberToDelete ? getValueByPath(memberToDelete, "personalDetails.nameOfMember") : ""}
+                onClose={() => { setDeleteDialogOpen(false); setMemberToDelete(null); }}
+                onConfirm={() => {
+                    if (memberToDelete) {
+                        dispatch(deleteMember(memberToDelete._id)).then(() => {
+                            setDeleteDialogOpen(false);
+                            setMemberToDelete(null);
+                            dispatch(fetchAllMembers());
+                        });
+                    }
+                }}
+                memberName={memberToDelete ? getNameWithTitle(memberToDelete) : ""}
             />
 
             <Formik initialValues={{
                 search: "",
                 selectedField: "documents.aadhaarNo",
-                viewType: "all", // all, missing, available
-                civilScoreFilter: "all", // Civil score specific filter
+                viewType: "all",
+                civilScoreFilter: "all",
                 occupationFilter: "all",
+                qualificationFilter: "all",
                 religionFilter: "all",
-                categoryFilter: "all"
+                categoryFilter: "all",
+                genderFilter: "all",
+                maritalFilter: "all",
+                casteFilter: "all",
+                minAge: "",
+                maxAge: ""
             }} onSubmit={() => { }}>
                 {({ values, setFieldValue }) => {
-                    // Derived options for filters
-                    const occupationOptions = useMemo(() => {
-                        const set = new Set();
-                        (members || []).forEach(m => {
-                            const v = (getValueByPath(m, "professionalDetails.occupation") || "").toString().trim();
-                            if (v) set.add(v);
-                        });
-                        return ["all", ...Array.from(set)];
-                    }, [members]);
+                    // Derived filter options
+                    const filters = useMemo(() => ({
+                        occupationOptions: ["all", ...new Set(members.map(m =>
+                            (getValueByPath(m, "professionalDetails.occupation") || "").toString().trim()).filter(Boolean))],
+                        qualificationOptions: ["all", ...new Set(members.map(m =>
+                            (getValueByPath(m, "professionalDetails.qualification") || "").toString().trim()).filter(Boolean))],
+                        religionOptions: ["all", ...new Set(members.map(m =>
+                            (getValueByPath(m, "personalDetails.religion") || "").toString().trim()).filter(Boolean))],
+                        casteOptions: ["all", ...new Set(members.map(m =>
+                            (getValueByPath(m, "personalDetails.caste") || "").toString().trim()).filter(Boolean))],
+                        categoryOptions: ["all", ...Object.keys(FIELD_GROUPS)]
+                    }), [members]);
 
-                    const religionOptions = useMemo(() => {
-                        const set = new Set();
-                        (members || []).forEach(m => {
-                            const v = (getValueByPath(m, "personalDetails.religion") || "").toString().trim();
-                            if (v) set.add(v);
-                        });
-                        return ["all", ...Array.from(set)];
-                    }, [members]);
-
-                    const categoryOptions = useMemo(() => {
-                        return ["all", ...Object.keys(FIELD_GROUPS)];
-                    }, []);
-
+                    // Filtered members with ALL filters applied
                     const filteredMembers = useMemo(() => {
-                        if (!members) return [];
-
                         let result = [...members];
 
-                        // Filter by search
+                        // Search filter
                         const searchTerm = values.search.trim().toLowerCase();
                         if (searchTerm) {
                             result = result.filter(m => {
-                                const memNo = (getValueByPath(m, "personalDetails.membershipNumber") || "").toLowerCase();
-                                const name = (getValueByPath(m, "personalDetails.nameOfMember") || "").toLowerCase();
-                                const phone = (getValueByPath(m, "personalDetails.phoneNo") || "").toLowerCase();
-                                const email = (getValueByPath(m, "personalDetails.emailId") || "").toLowerCase();
-                                const caste = (getValueByPath(m, "personalDetails.caste") || "").toLowerCase();
-                                const religion = (getValueByPath(m, "personalDetails.religion") || "").toLowerCase();
-                                const occupation = (getValueByPath(m, "professionalDetails.occupation") || "").toLowerCase();
-
-                                // qualification, degreeNumber, company name, designation
-                                const qualification = (getValueByPath(m, "professionalDetails.qualification") || "").toLowerCase();
-                                const degreeNumber = (getValueByPath(m, "professionalDetails.degreeNumber") || "").toLowerCase();
-                                const companyName = (getValueByPath(m, "professionalDetails.serviceDetails.fullNameOfCompany") || "").toLowerCase();
-                                const designation = (getValueByPath(m, "professionalDetails.serviceDetails.designation") || "").toLowerCase();
-
-                                return name.includes(searchTerm) ||
-                                    memNo.includes(searchTerm) ||
-                                    phone.includes(searchTerm) ||
-                                    email.includes(searchTerm) ||
-                                    caste.includes(searchTerm) ||
-                                    religion.includes(searchTerm) ||
-                                    occupation.includes(searchTerm) ||
-                                    qualification.includes(searchTerm) ||
-                                    degreeNumber.includes(searchTerm) ||
-                                    companyName.includes(searchTerm) ||
-                                    designation.includes(searchTerm);
+                                const searchFields = [
+                                    getValueByPath(m, "personalDetails.nameOfMember"),
+                                    getValueByPath(m, "personalDetails.title"),
+                                    getValueByPath(m, "personalDetails.membershipNumber"),
+                                    getValueByPath(m, "personalDetails.phoneNo1"),
+                                    getValueByPath(m, "personalDetails.phoneNo2"),
+                                    getValueByPath(m, "personalDetails.emailId1"),
+                                    getValueByPath(m, "personalDetails.emailId2"),
+                                    getValueByPath(m, "personalDetails.emailId3"),
+                                    getValueByPath(m, "personalDetails.caste"),
+                                    getValueByPath(m, "personalDetails.religion"),
+                                    getValueByPath(m, "professionalDetails.occupation"),
+                                    getValueByPath(m, "professionalDetails.qualification"),
+                                    getValueByPath(m, "addressDetails.permanentAddress.city"),
+                                    getValueByPath(m, "addressDetails.currentResidentalAddress.city"),
+                                    getValueByPath(m, "professionalDetails.degreeNumber"),
+                                    getValueByPath(m, "professionalDetails.serviceDetails.fullNameOfCompany"),
+                                    getValueByPath(m, "professionalDetails.serviceDetails.designation")
+                                ];
+                                return searchFields.some(field =>
+                                    field?.toString().toLowerCase().includes(searchTerm)
+                                );
                             });
                         }
 
-                        // Filter by occupation
-                        if (values.occupationFilter && values.occupationFilter !== "all") {
-                            const chosen = values.occupationFilter.toLowerCase();
-                            result = result.filter(m => {
-                                const occ = (getValueByPath(m, "professionalDetails.occupation") || "").toLowerCase();
-                                return occ === chosen;
-                            });
-                        }
+                        // Apply ALL filters in sequence
+                        const applyFilters = [
+                            // Occupation filter
+                            () => values.occupationFilter !== "all" ?
+                                result.filter(m => {
+                                    const occupation = getValueByPath(m, "professionalDetails.occupation") || "";
+                                    return occupation.toLowerCase() === values.occupationFilter.toLowerCase();
+                                }) : result,
 
-                        // Filter by religion
-                        if (values.religionFilter && values.religionFilter !== "all") {
-                            const chosen = values.religionFilter.toLowerCase();
-                            result = result.filter(m => {
-                                const rel = (getValueByPath(m, "personalDetails.religion") || "").toLowerCase();
-                                return rel === chosen;
-                            });
-                        }
+                            // Qualification filter (CA, ADV, DR, etc.)
+                            () => values.qualificationFilter !== "all" ?
+                                result.filter(m => {
+                                    const qualification = getValueByPath(m, "professionalDetails.qualification") || "";
+                                    return qualification.toLowerCase() === values.qualificationFilter.toLowerCase();
+                                }) : result,
 
-                        // Filter by category (keep members who have at least one non-missing field in that group)
-                        if (values.categoryFilter && values.categoryFilter !== "all") {
-                            const groupKey = values.categoryFilter;
-                            const fields = FIELD_GROUPS[groupKey]?.fields || [];
-                            if (fields.length > 0) {
-                                result = result.filter(m => {
-                                    return fields.some(fk => {
-                                        const fieldValue = getValueByPath(m, fk);
-                                        return !isMissing(fieldValue);
+                            // Religion filter
+                            () => values.religionFilter !== "all" ?
+                                result.filter(m => {
+                                    const religion = getValueByPath(m, "personalDetails.religion") || "";
+                                    return religion.toLowerCase() === values.religionFilter.toLowerCase();
+                                }) : result,
+
+                            // Gender filter
+                            () => values.genderFilter !== "all" ?
+                                result.filter(m => {
+                                    const gender = getValueByPath(m, "personalDetails.gender") || "";
+                                    return gender.toLowerCase() === values.genderFilter.toLowerCase();
+                                }) : result,
+
+                            // Marital status filter
+                            () => values.maritalFilter !== "all" ?
+                                result.filter(m => {
+                                    const maritalStatus = getValueByPath(m, "personalDetails.maritalStatus") || "";
+                                    return maritalStatus.toLowerCase() === values.maritalFilter.toLowerCase();
+                                }) : result,
+
+                            // Caste filter
+                            () => values.casteFilter !== "all" ?
+                                result.filter(m => {
+                                    const caste = getValueByPath(m, "personalDetails.caste") || "";
+                                    return caste.toLowerCase() === values.casteFilter.toLowerCase();
+                                }) : result,
+
+                            // Age range filter - FIXED
+                            () => {
+                                const minAge = parseInt(values.minAge) || 0;
+                                const maxAge = parseInt(values.maxAge) || 150;
+
+                                if (minAge > 0 || maxAge < 150) {
+                                    return result.filter(m => {
+                                        const ageStr = getValueByPath(m, "personalDetails.ageInYears") || "";
+                                        const age = extractAge(ageStr);
+                                        return age >= minAge && age <= maxAge;
                                     });
-                                });
-                            }
-                        }
-
-                        // Filter by field status (missing / available)
-                        if (values.viewType !== "all") {
-                            result = result.filter(m => {
-                                const fieldValue = getValueByPath(m, values.selectedField);
-                                const isFieldMissing = isMissing(fieldValue);
-                                return values.viewType === "missing" ? isFieldMissing : !isFieldMissing;
-                            });
-                        }
-
-                        // Filter by civil score (if civil score field is selected)
-                        if (values.selectedField === "bankDetails.civilScore" && values.civilScoreFilter !== "all") {
-                            result = result.filter(m => {
-                                const civilScore = getValueByPath(m, "bankDetails.civilScore");
-                                const civilScoreStatus = getCivilScoreStatus(civilScore);
-                                return civilScoreStatus === values.civilScoreFilter;
-                            });
-                        }
-
-                        return result;
-                    }, [values.search, values.selectedField, values.viewType, values.civilScoreFilter, values.occupationFilter, values.religionFilter, values.categoryFilter, members]);
-
-                    const allMembersCount = useMemo(() => {
-                        return members.filter(m => {
-                            const searchTerm = values.search.trim().toLowerCase();
-                            if (searchTerm) {
-                                const name = (getValueByPath(m, "personalDetails.nameOfMember") || "").toLowerCase();
-                                const memNo = (getValueByPath(m, "personalDetails.membershipNumber") || "").toLowerCase();
-                                const phone = (getValueByPath(m, "personalDetails.phoneNo") || "").toLowerCase();
-                                const email = (getValueByPath(m, "personalDetails.emailId") || "").toLowerCase();
-                                const caste = (getValueByPath(m, "personalDetails.caste") || "").toLowerCase();
-                                const religion = (getValueByPath(m, "personalDetails.religion") || "").toLowerCase();
-                                const occupation = (getValueByPath(m, "professionalDetails.occupation") || "").toLowerCase();
-                                const qualification = (getValueByPath(m, "professionalDetails.qualification") || "").toLowerCase();
-                                const degreeNumber = (getValueByPath(m, "professionalDetails.degreeNumber") || "").toLowerCase();
-                                const companyName = (getValueByPath(m, "professionalDetails.serviceDetails.fullNameOfCompany") || "").toLowerCase();
-                                const designation = (getValueByPath(m, "professionalDetails.serviceDetails.designation") || "").toLowerCase();
-
-                                return name.includes(searchTerm) ||
-                                    memNo.includes(searchTerm) ||
-                                    phone.includes(searchTerm) ||
-                                    email.includes(searchTerm) ||
-                                    caste.includes(searchTerm) ||
-                                    religion.includes(searchTerm) ||
-                                    occupation.includes(searchTerm) ||
-                                    qualification.includes(searchTerm) ||
-                                    degreeNumber.includes(searchTerm) ||
-                                    companyName.includes(searchTerm) ||
-                                    designation.includes(searchTerm);
-                            }
-                            return true;
-                        }).length;
-                    }, [values.search, members]);
-
-                    const missingCount = useMemo(() => {
-                        return members.filter(m => {
-                            const fieldValue = getValueByPath(m, values.selectedField);
-                            const isFieldMissing = isMissing(fieldValue);
-
-                            const searchTerm = values.search.trim().toLowerCase();
-                            if (searchTerm) {
-                                const name = (getValueByPath(m, "personalDetails.nameOfMember") || "").toLowerCase();
-                                const memNo = (getValueByPath(m, "personalDetails.membershipNumber") || "").toLowerCase();
-                                const phone = (getValueByPath(m, "personalDetails.phoneNo") || "").toLowerCase();
-                                const email = (getValueByPath(m, "personalDetails.emailId") || "").toLowerCase();
-                                const caste = (getValueByPath(m, "personalDetails.caste") || "").toLowerCase();
-                                const religion = (getValueByPath(m, "personalDetails.religion") || "").toLowerCase();
-                                const occupation = (getValueByPath(m, "professionalDetails.occupation") || "").toLowerCase();
-                                const qualification = (getValueByPath(m, "professionalDetails.qualification") || "").toLowerCase();
-                                const degreeNumber = (getValueByPath(m, "professionalDetails.degreeNumber") || "").toLowerCase();
-                                const companyName = (getValueByPath(m, "professionalDetails.serviceDetails.fullNameOfCompany") || "").toLowerCase();
-                                const designation = (getValueByPath(m, "professionalDetails.serviceDetails.designation") || "").toLowerCase();
-
-                                if (!name.includes(searchTerm) &&
-                                    !memNo.includes(searchTerm) &&
-                                    !phone.includes(searchTerm) &&
-                                    !email.includes(searchTerm) &&
-                                    !caste.includes(searchTerm) &&
-                                    !religion.includes(searchTerm) &&
-                                    !occupation.includes(searchTerm) &&
-                                    !qualification.includes(searchTerm) &&
-                                    !degreeNumber.includes(searchTerm) &&
-                                    !companyName.includes(searchTerm) &&
-                                    !designation.includes(searchTerm)
-                                ) {
-                                    return false;
                                 }
-                            }
+                                return result;
+                            },
 
-                            return isFieldMissing;
-                        }).length;
-                    }, [values.selectedField, values.search, members]);
+                            // Category filter
+                            () => values.categoryFilter !== "all" ?
+                                result.filter(m => FIELD_GROUPS[values.categoryFilter]?.fields?.some(fk =>
+                                    !isMissing(getValueByPath(m, fk))
+                                )) : result,
 
-                    const availableCount = allMembersCount - missingCount;
+                            // Field status filter
+                            () => values.viewType !== "all" ?
+                                result.filter(m => {
+                                    const isMissingField = isMissing(getValueByPath(m, values.selectedField));
+                                    return values.viewType === "missing" ? isMissingField : !isMissingField;
+                                }) : result,
 
-                    // Civil Score Statistics
-                    const civilScoreStats = useMemo(() => {
-                        const stats = {
-                            missing: 0,
-                            excellent: 0,
-                            good: 0,
-                            poor: 0,
-                            invalid: 0
-                        };
+                            // Civil score filter (check both personalDetails.civilScore and bankDetails.civilScore)
+                            () => (values.selectedField === "personalDetails.civilScore" ||
+                                values.selectedField === "bankDetails.civilScore") &&
+                                values.civilScoreFilter !== "all" ?
+                                result.filter(m => {
+                                    const civilScore = getValueByPath(m, values.selectedField);
+                                    return getCivilScoreStatus(civilScore) === values.civilScoreFilter;
+                                }) : result
+                        ];
 
-                        members.forEach(m => {
-                            const civilScore = getValueByPath(m, "bankDetails.civilScore");
-                            const status = getCivilScoreStatus(civilScore);
-                            stats[status]++;
+                        // Apply all filters sequentially
+                        applyFilters.forEach(filterFn => {
+                            result = filterFn();
                         });
 
-                        return stats;
-                    }, [members]);
+                        return result;
+                    }, [values, members]);
+
+                    // Statistics
+                    const stats = useMemo(() => {
+                        const civilScoreStats = members.reduce((acc, m) => {
+                            const civilScore = getValueByPath(m, "personalDetails.civilScore") ||
+                                getValueByPath(m, "bankDetails.civilScore");
+                            acc[getCivilScoreStatus(civilScore)]++;
+                            return acc;
+                        }, { missing: 0, excellent: 0, good: 0, poor: 0, invalid: 0 });
+
+                        return {
+                            all: filteredMembers.length,
+                            missing: members.filter(m => isMissing(getValueByPath(m, values.selectedField))).length,
+                            available: members.length - members.filter(m => isMissing(getValueByPath(m, values.selectedField))).length,
+                            civilScore: civilScoreStats
+                        };
+                    }, [members, values.selectedField, filteredMembers]);
 
                     return (
                         <Form>
                             <Stack spacing={2} sx={{ mb: 3 }}>
+                                {/* Main Search and Actions */}
                                 <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
-                                    <TextField
-                                        size="small"
-                                        placeholder="Search by name, membership no, phone, email, caste, religion, occupation, qualification..."
-                                        value={values.search}
-                                        onChange={(e) => setFieldValue("search", e.target.value)}
-                                        InputProps={{
-                                            startAdornment: (
-                                                <InputAdornment position="start">
-                                                    <SearchIcon />
-                                                </InputAdornment>
-                                            ),
-                                        }}
-                                        sx={{ width: 420 }}
-                                    />
+                                    <TextField size="small" placeholder="Search by name, membership, phone, email, qualification..."
+                                        value={values.search} onChange={(e) => setFieldValue("search", e.target.value)}
+                                        InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
+                                        sx={{ width: 400 }} />
 
-                                    <FormControl size="small" sx={{ minWidth: 140 }}>
-                                        <InputLabel>View Type</InputLabel>
-                                        <Select
-                                            value={values.viewType}
-                                            label="View Type"
-                                            onChange={(e) => setFieldValue("viewType", e.target.value)}
-                                        >
-                                            <MenuItem value="all">All Members</MenuItem>
-                                            <MenuItem value="missing">Missing Only</MenuItem>
-                                            <MenuItem value="available">Available Only</MenuItem>
-                                        </Select>
-                                    </FormControl>
-
-                                    {/* Occupation Filter */}
-                                    <FormControl size="small" sx={{ minWidth: 160 }}>
-                                        <InputLabel>Occupation</InputLabel>
-                                        <Select
-                                            value={values.occupationFilter}
-                                            label="Occupation"
-                                            onChange={(e) => setFieldValue("occupationFilter", e.target.value)}
-                                        >
-                                            {occupationOptions.map(opt => (
-                                                <MenuItem key={opt} value={opt}>{opt === "all" ? "All Occupations" : opt}</MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-
-                                    {/* Religion Filter */}
-                                    <FormControl size="small" sx={{ minWidth: 140 }}>
-                                        <InputLabel>Religion</InputLabel>
-                                        <Select
-                                            value={values.religionFilter}
-                                            label="Religion"
-                                            onChange={(e) => setFieldValue("religionFilter", e.target.value)}
-                                        >
-                                            {religionOptions.map(opt => (
-                                                <MenuItem key={opt} value={opt}>{opt === "all" ? "All Religions" : opt}</MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-
-                                    {/* Category (field group) Filter */}
-                                    <FormControl size="small" sx={{ minWidth: 160 }}>
-                                        <InputLabel>Category</InputLabel>
-                                        <Select
-                                            value={values.categoryFilter}
-                                            label="Category"
-                                            onChange={(e) => setFieldValue("categoryFilter", e.target.value)}
-                                        >
-                                            {categoryOptions.map(opt => (
-                                                <MenuItem key={opt} value={opt}>{opt === "all" ? "All Categories" : FIELD_GROUPS[opt]?.label || opt}</MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-
-                                    {/* Civil Score Filter - Only show when civil score field is selected */}
-                                    {values.selectedField === "bankDetails.civilScore" && (
-                                        <FormControl size="small" sx={{ minWidth: 200 }}>
-                                            <InputLabel>Civil Score</InputLabel>
-                                            <Select
-                                                value={values.civilScoreFilter}
-                                                label="Civil Score"
-                                                onChange={(e) => setFieldValue("civilScoreFilter", e.target.value)}
-                                            >
-                                                {Object.entries(CIVIL_SCORE_FILTERS).map(([key, label]) => (
-                                                    <MenuItem key={key} value={key}>
-                                                        {label}
-                                                    </MenuItem>
-                                                ))}
-                                            </Select>
-                                        </FormControl>
-                                    )}
-
-                                    <Button
-                                        variant="contained"
-                                        startIcon={<PictureAsPdfIcon />}
+                                    <Button variant="contained" startIcon={<PictureAsPdfIcon />}
                                         onClick={() => generatePDF(filteredMembers, values.selectedField, values.viewType)}
-                                        disabled={filteredMembers.length === 0}
-                                    >
+                                        disabled={!filteredMembers.length}>
                                         Download PDF
                                     </Button>
 
-                                    <Button
-                                        variant="outlined"
-                                        onClick={() => dispatch(fetchAllMembers())}
-                                        disabled={loading}
-                                    >
+                                    <Button variant="outlined" onClick={() => dispatch(fetchAllMembers())} disabled={loading}>
                                         Refresh
                                     </Button>
+
+                                    <FormControlLabel control={<Checkbox checked={showAdvancedFilters}
+                                        onChange={(e) => setShowAdvancedFilters(e.target.checked)} />}
+                                        label="Show Advanced Filters" />
                                 </Box>
+
+                                {/* Advanced Filters */}
+                                {showAdvancedFilters && (
+                                    <AdvancedFilters values={values} setFieldValue={setFieldValue} filters={filters} />
+                                )}
 
                                 {/* Field Selection Tabs */}
                                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                                    <Tabs value={tabValue} onChange={handleTabChange} aria-label="field categories">
-                                        {Object.keys(FIELD_GROUPS).map((groupKey, index) => (
-                                            <Tab
-                                                key={groupKey}
-                                                label={FIELD_GROUPS[groupKey].label}
-                                                id={`field-tab-${index}`}
-                                            />
+                                    <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
+                                        {Object.entries(FIELD_GROUPS).map(([key, { label }], idx) => (
+                                            <Tab key={key} label={label} />
                                         ))}
                                     </Tabs>
                                 </Box>
 
-                                {/* Field Buttons Grid */}
-                                {Object.keys(FIELD_GROUPS).map((groupKey, index) => (
-                                    <TabPanel key={groupKey} value={tabValue} index={index}>
+                                {/* Field Buttons */}
+                                {Object.entries(FIELD_GROUPS).map(([key, { fields }], idx) => (
+                                    <TabPanel key={key} value={tabValue} index={idx}>
                                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                            {FIELD_GROUPS[groupKey].fields.map(fieldKey => (
-                                                <Chip
-                                                    key={fieldKey}
-                                                    label={ALL_FIELDS[fieldKey]}
+                                            {fields.map(fieldKey => (
+                                                <Chip key={fieldKey} label={ALL_FIELDS[fieldKey]}
                                                     onClick={() => {
                                                         setFieldValue("selectedField", fieldKey);
-                                                        if (fieldKey !== "bankDetails.civilScore") {
+                                                        if (fieldKey !== "personalDetails.civilScore") {
                                                             setFieldValue("civilScoreFilter", "all");
                                                         }
                                                     }}
                                                     color={values.selectedField === fieldKey ? "primary" : "default"}
                                                     variant={values.selectedField === fieldKey ? "filled" : "outlined"}
-                                                    clickable
-                                                />
+                                                    clickable />
                                             ))}
                                         </Box>
                                     </TabPanel>
                                 ))}
 
-                                {/* Summary Chips */}
+                                {/* Summary Statistics */}
                                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                                    <Chip
-                                        label={`Total: ${allMembersCount}`}
-                                        color="primary"
-                                        variant="outlined"
-                                    />
-                                    <Chip
-                                        label={`Missing: ${missingCount}`}
-                                        color="error"
-                                        variant={values.viewType === "missing" ? "filled" : "outlined"}
-                                        clickable
-                                        onClick={() => setFieldValue("viewType", "missing")}
-                                    />
-                                    <Chip
-                                        label={`Available: ${availableCount}`}
-                                        color="success"
-                                        variant={values.viewType === "available" ? "filled" : "outlined"}
-                                        clickable
-                                        onClick={() => setFieldValue("viewType", "available")}
-                                    />
-                                    <Chip
-                                        label={`All: ${allMembersCount}`}
-                                        color="default"
-                                        variant={values.viewType === "all" ? "filled" : "outlined"}
-                                        clickable
-                                        onClick={() => setFieldValue("viewType", "all")}
-                                    />
+                                    <Chip label={`Total: ${stats.all}`} color="primary" variant="outlined" />
+                                    <Chip label={`Missing: ${stats.missing}`} color="error" variant={values.viewType === "missing" ? "filled" : "outlined"}
+                                        clickable onClick={() => setFieldValue("viewType", "missing")} />
+                                    <Chip label={`Available: ${stats.available}`} color="success" variant={values.viewType === "available" ? "filled" : "outlined"}
+                                        clickable onClick={() => setFieldValue("viewType", "available")} />
 
-                                    {/* Civil Score Stats Chips - Only show when civil score field is selected */}
-                                    {values.selectedField === "bankDetails.civilScore" && (
-                                        <>
-                                            <Chip
-                                                label={`Excellent: ${civilScoreStats.excellent}`}
-                                                color="success"
-                                                variant={values.civilScoreFilter === "excellent" ? "filled" : "outlined"}
-                                                clickable
-                                                onClick={() => setFieldValue("civilScoreFilter", "excellent")}
-                                            />
-                                            <Chip
-                                                label={`Good: ${civilScoreStats.good}`}
-                                                color="warning"
-                                                variant={values.civilScoreFilter === "good" ? "filled" : "outlined"}
-                                                clickable
-                                                onClick={() => setFieldValue("civilScoreFilter", "good")}
-                                            />
-                                            <Chip
-                                                label={`Poor: ${civilScoreStats.poor}`}
-                                                color="error"
-                                                variant={values.civilScoreFilter === "poor" ? "filled" : "outlined"}
-                                                clickable
-                                                onClick={() => setFieldValue("civilScoreFilter", "poor")}
-                                            />
-                                            <Chip
-                                                label={`Missing: ${civilScoreStats.missing}`}
-                                                color="default"
-                                                variant={values.civilScoreFilter === "missing" ? "filled" : "outlined"}
-                                                clickable
-                                                onClick={() => setFieldValue("civilScoreFilter", "missing")}
-                                            />
-                                        </>
-                                    )}
+                                    {(values.selectedField === "personalDetails.civilScore" ||
+                                        values.selectedField === "bankDetails.civilScore") && (
+                                            <>
+                                                <Chip label={`Excellent: ${stats.civilScore.excellent}`} color="success"
+                                                    variant={values.civilScoreFilter === "excellent" ? "filled" : "outlined"}
+                                                    clickable onClick={() => setFieldValue("civilScoreFilter", "excellent")} />
+                                                <Chip label={`Good: ${stats.civilScore.good}`} color="warning"
+                                                    variant={values.civilScoreFilter === "good" ? "filled" : "outlined"}
+                                                    clickable onClick={() => setFieldValue("civilScoreFilter", "good")} />
+                                                <Chip label={`Poor: ${stats.civilScore.poor}`} color="error"
+                                                    variant={values.civilScoreFilter === "poor" ? "filled" : "outlined"}
+                                                    clickable onClick={() => setFieldValue("civilScoreFilter", "poor")} />
+                                                <Chip label={`Missing: ${stats.civilScore.missing}`} color="default"
+                                                    variant={values.civilScoreFilter === "missing" ? "filled" : "outlined"}
+                                                    clickable onClick={() => setFieldValue("civilScoreFilter", "missing")} />
+                                            </>
+                                        )}
 
                                     <Typography variant="body2" color="text.secondary">
                                         Selected: <strong>{ALL_FIELDS[values.selectedField]}</strong>
-                                        {values.selectedField === "bankDetails.civilScore" && values.civilScoreFilter !== "all" && (
-                                            <span> | Filter: <strong>{CIVIL_SCORE_FILTERS[values.civilScoreFilter]}</strong></span>
-                                        )}
-                                    </Typography>
-
-                                    {/* Active filters summary */}
-                                    <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                                        {values.occupationFilter !== "all" && <span>Occupation: <strong>{values.occupationFilter}</strong> &nbsp;</span>}
-                                        {values.religionFilter !== "all" && <span>Religion: <strong>{values.religionFilter}</strong> &nbsp;</span>}
-                                        {values.categoryFilter !== "all" && <span>Category: <strong>{FIELD_GROUPS[values.categoryFilter]?.label || values.categoryFilter}</strong></span>}
+                                        {(values.selectedField === "personalDetails.civilScore" ||
+                                            values.selectedField === "bankDetails.civilScore") &&
+                                            values.civilScoreFilter !== "all" && (
+                                                <span> | Filter: <strong>{CIVIL_SCORE_FILTERS[values.civilScoreFilter]}</strong></span>
+                                            )}
                                     </Typography>
                                 </Box>
                             </Stack>
 
-                            {filteredMembers.length === 0 ? (
-                                <Alert severity="info">
-                                    No members match the current filters.
-                                </Alert>
+                            {/* Results Table */}
+                            {!filteredMembers.length ? (
+                                <Alert severity="info">No members match the current filters.</Alert>
                             ) : (
                                 <TableContainer component={Paper} sx={{ maxHeight: '70vh', overflow: 'auto' }}>
                                     <Table stickyHeader size="small">
                                         <TableHead>
                                             <TableRow>
-                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>S. No</TableCell>
-                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Member Name</TableCell>
-                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Membership No</TableCell>
-                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Phone No</TableCell>
-                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>
-                                                    {ALL_FIELDS[values.selectedField]} Status
-                                                </TableCell>
-                                                {values.selectedField === "bankDetails.civilScore" && (
-                                                    <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>
-                                                        Civil Score Value
+                                                {["S. No", "Member No", "Name", "Phone", "Email", "City", "Actions"].map((header, idx) => (
+                                                    <TableCell key={idx} sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>
+                                                        {header}
                                                     </TableCell>
-                                                )}
-                                                <TableCell sx={{ fontWeight: "bold", bgcolor: 'primary.main', color: 'white' }}>Actions</TableCell>
+                                                ))}
                                             </TableRow>
                                         </TableHead>
-
                                         <TableBody>
                                             {filteredMembers.map((m, idx) => {
-                                                const fieldValue = getValueByPath(m, values.selectedField);
-                                                const isFieldMissing = isMissing(fieldValue);
-                                                const civilScore = getValueByPath(m, "bankDetails.civilScore");
-                                                const civilScoreStatus = getCivilScoreStatus(civilScore);
-
+                                                const isFieldMissing = isMissing(getValueByPath(m, values.selectedField));
+                                                const city = getValueByPath(m, "addressDetails.permanentAddress.city") ||
+                                                    getValueByPath(m, "addressDetails.currentResidentalAddress.city");
                                                 return (
-                                                    <TableRow
-                                                        key={m._id || idx}
+                                                    <TableRow key={m._id} hover onClick={() => navigate(`/member-details/${m._id}`)}
                                                         sx={{
-                                                            "&:nth-of-type(odd)": { backgroundColor: "#fafafa" },
-                                                            "&:hover": { backgroundColor: "#f0f0f0", cursor: "pointer" },
-                                                            backgroundColor: isFieldMissing ? "#ffebee" : "inherit"
-                                                        }}
-                                                        onClick={() => handleViewDetails(m)}
-                                                    >
+                                                            backgroundColor: isFieldMissing ? "#ffebee" : "inherit",
+                                                            "&:nth-of-type(odd)": { backgroundColor: isFieldMissing ? "#ffebee" : "#fafafa" }
+                                                        }}>
                                                         <TableCell>{idx + 1}</TableCell>
-                                                        <TableCell>
-                                                            {getValueByPath(m, "personalDetails.nameOfMember") || "—"}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {getValueByPath(m, "personalDetails.membershipNumber") || "—"}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {getValueByPath(m, "personalDetails.phoneNo") || "—"}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {values.selectedField === "bankDetails.civilScore" ? (
-                                                                <Chip
-                                                                    label={
-                                                                        civilScoreStatus === "missing" ? "MISSING" :
-                                                                            civilScoreStatus === "excellent" ? "EXCELLENT" :
-                                                                                civilScoreStatus === "good" ? "GOOD" :
-                                                                                    civilScoreStatus === "poor" ? "POOR" : "INVALID"
-                                                                    }
-                                                                    color={
-                                                                        civilScoreStatus === "missing" ? "default" :
-                                                                            civilScoreStatus === "excellent" ? "success" :
-                                                                                civilScoreStatus === "good" ? "warning" :
-                                                                                    civilScoreStatus === "poor" ? "error" : "error"
-                                                                    }
-                                                                    size="small"
-                                                                />
-                                                            ) : (
-                                                                <Chip
-                                                                    label={isFieldMissing ? "MISSING" : "AVAILABLE"}
-                                                                    color={isFieldMissing ? "error" : "success"}
-                                                                    size="small"
-                                                                />
-                                                            )}
-                                                        </TableCell>
-
-                                                        {/* Civil Score Value Column */}
-                                                        {values.selectedField === "bankDetails.civilScore" && (
-                                                            <TableCell>
-                                                                {civilScore ? (
-                                                                    <Typography
-                                                                        variant="body2"
-                                                                        sx={{
-                                                                            fontWeight: 'bold',
-                                                                            color:
-                                                                                civilScoreStatus === "excellent" ? '#2e7d32' :
-                                                                                    civilScoreStatus === "good" ? '#ed6c02' :
-                                                                                        civilScoreStatus === "poor" ? '#d32f2f' : '#757575'
-                                                                        }}
-                                                                    >
-                                                                        {civilScore}
-                                                                    </Typography>
-                                                                ) : (
-                                                                    <Typography variant="body2" color="text.secondary">
-                                                                        —
-                                                                    </Typography>
-                                                                )}
-                                                            </TableCell>
-                                                        )}
-
+                                                        <TableCell>{getValueByPath(m, "personalDetails.membershipNumber") || "—"}</TableCell>
+                                                        <TableCell>{getNameWithTitle(m)}</TableCell>
+                                                        <TableCell>{getValueByPath(m, "personalDetails.phoneNo1") || "—"}</TableCell>
+                                                        <TableCell>{getValueByPath(m, "personalDetails.emailId1") || "—"}</TableCell>
+                                                        <TableCell>{city || "—"}</TableCell>
                                                         <TableCell>
                                                             <Box sx={{ display: 'flex', gap: 1 }}>
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleViewDetails(m);
-                                                                    }}
-                                                                    title="View Details"
-                                                                    color="primary"
-                                                                >
-                                                                    <VisibilityIcon />
-                                                                </IconButton>
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={(e) => handleDeleteClick(m, e)}
-                                                                    title="Delete Member"
-                                                                    color="error"
-                                                                    disabled={operationLoading.delete}
-                                                                >
-                                                                    <DeleteIcon />
-                                                                </IconButton>
+                                                                <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(`/member-details/${m._id}`); }}
+                                                                    title="View Details" color="primary"><VisibilityIcon /></IconButton>
+                                                                <IconButton size="small" onClick={(e) => { e.stopPropagation(); setMemberToDelete(m); setDeleteDialogOpen(true); }}
+                                                                    title="Delete Member" color="error" disabled={operationLoading.delete}><DeleteIcon /></IconButton>
                                                             </Box>
                                                         </TableCell>
                                                     </TableRow>

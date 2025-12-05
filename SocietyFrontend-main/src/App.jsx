@@ -5,7 +5,7 @@ import MainRoutes from './Routes/MainRoutes'
 const App = () => {
   return (
     <Box>
-      <MainRoutes/>
+      <MainRoutes />
     </Box>
   )
 }
