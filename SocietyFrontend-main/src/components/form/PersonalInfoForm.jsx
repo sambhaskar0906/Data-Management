@@ -7,6 +7,7 @@ import Autocomplete from "@mui/material/Autocomplete";
 
 const PersonalInfoForm = ({ formData, handleChange }) => {
   const personalInfo = formData.personalDetails || formData.personalInformation || {};
+  const creditInfo = formData.creditDetails || formData.creditInformation || {};
   const [dobError, setDobError] = useState("");
   const [civilScoreText, setCivilScoreText] = useState("");
   const theme = useTheme();
@@ -21,7 +22,7 @@ const PersonalInfoForm = ({ formData, handleChange }) => {
 
   // Civil Score logic
   const handleCivilScoreChange = (score) => {
-    handleFieldChange("civilScore", score);
+    handleChange("creditDetails", "cibilScore", score);
 
     if (!score) {
       setCivilScoreText("");
@@ -389,9 +390,9 @@ const PersonalInfoForm = ({ formData, handleChange }) => {
             <Box sx={{ position: 'relative' }}>
               <StyledTextField
                 label="Civil Score"
-                name="civilScore"
+                name="cibilScore"
                 type="number"
-                value={personalInfo.civilScore || ""}
+                value={creditInfo.cibilScore || ""}
                 onChange={(e) => handleCivilScoreChange(e.target.value)}
                 sx={textFieldStyles}
                 InputProps={{

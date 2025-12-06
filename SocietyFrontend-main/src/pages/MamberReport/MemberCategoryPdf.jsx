@@ -14,7 +14,7 @@ export const FIELD_MAP = {
     "personalDetails.minor": "Minor",
     "personalDetails.gender": "Gender",
     "personalDetails.religion": "Religion",
-    "personalDetails.caste": "Caste",
+    "personalDetails.caste": "Category",
     "personalDetails.maritalStatus": "Marital Status",
 
     "personalDetails.phoneNo1": "Primary Number",
@@ -67,10 +67,12 @@ export const FIELD_MAP = {
     "professionalDetails.businessDetails.businessStructure": "Business Structure",
     "professionalDetails.businessDetails.gstCertificate": "GST Certificate",
 
+    "bankDetails.accountHolderName": "Account Holder Name",
     "bankDetails.bankName": "Bank Name",
     "bankDetails.branch": "Branch",
     "bankDetails.accountNumber": "Account Number",
     "bankDetails.ifscCode": "IFSC Code",
+
 
     "familyDetails.familyMember": "Member Names",
     "familyDetails.familyMemberNo": "Membership Number",
@@ -84,7 +86,7 @@ export const FIELD_MAP = {
     "financialDetails.compulsory": "Compulsory Deposit",
     "financialDetails.optionalDeposit": "Optional Deposit",
 
-    "personalDetails.civilScore": "Cibil Score"
+    "creditDetails.cibilScore": "Cibil Score"
 };
 
 export const CATEGORY_MAP = {
@@ -95,9 +97,9 @@ export const CATEGORY_MAP = {
     bankDetails: "Bank Details",
     familyDetails: "Family Details",
     nomineeDetails: "Nominee Details",
-    introductionDetails: "Introduction/Witness By",
+    introductionDetails: "Introducer/Witness By",
     financialDetails: "Financial Details As on 31/03/2025",
-    // creditScoreDetails: "CIBIL Score Details",
+    creditDetails: "CIBIL Score Details",
 };
 
 // Helper functions
@@ -401,9 +403,7 @@ export const getFieldsByCategory = (member, category, viewType = "all") => {
             return true;
         });
     }
-    if (category === "creditScoreDetails") {
-        return ["personalDetails.civilScore"];
-    }
+
     if (category === "all") {
         const filtered = filteredKeys.filter(key => {
             // witness fields को exclude करें
@@ -531,6 +531,10 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
     if (!member) return;
 
     const doc = new jsPDF();
+    const originalSetFontSize = doc.setFontSize;
+    doc.setFontSize = function (size) {
+        return originalSetFontSize.call(this, size - 2);
+    };
     const memberName = getMemberFullName(member);
 
     const membershipNumber = getValueByPath(member, "personalDetails.membershipNumber") || "N/A";

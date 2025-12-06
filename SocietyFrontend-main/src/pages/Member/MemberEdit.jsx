@@ -1,3 +1,5 @@
+/***  NEUMORPHISM UI — UPDATED MEMBEREDITPAGE  ***/
+
 import React, { useEffect, useState } from "react";
 import {
     Dialog,
@@ -19,24 +21,38 @@ import {
     FormControl,
     Chip
 } from "@mui/material";
+
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SaveIcon from "@mui/icons-material/Save";
+
 import { useDispatch, useSelector } from "react-redux";
 import { updateMember } from "../../features/member/memberSlice";
 import { FIELD_MAP, getValueByPath, setValueByPath, isMissing } from "./MemberDetail";
 
 export default function MemberEditPage({ open, member, onClose }) {
+
     const dispatch = useDispatch();
     const { loading } = useSelector((s) => s.members);
+
     const [formData, setFormData] = useState(member);
+
+    // Soft UI theme colors
+    const neu = {
+        bg: "#e9eef5",
+        shadowLight: "rgba(255,255,255,0.8)",
+        shadowDark: "rgba(0,0,0,0.15)"
+    };
 
     useEffect(() => {
         setFormData(member);
     }, [member]);
 
     const handleFieldUpdate = (path, value) => {
-        setFormData(prev => setValueByPath(prev, path, value));
+        setFormData(prev => {
+            const updated = setValueByPath(prev, path, value);
+            return { ...updated };
+        });
     };
 
     const handleSave = () => {
@@ -45,7 +61,11 @@ export default function MemberEditPage({ open, member, onClose }) {
         });
     };
 
+    // ---------------------------
+    // Editable Field – NEW UI
+    // ---------------------------
     const EditableField = ({ label, value, path, onUpdate, type = "text", options = [] }) => {
+
         const [isEditing, setIsEditing] = useState(false);
         const [editValue, setEditValue] = useState(value);
 
@@ -56,108 +76,88 @@ export default function MemberEditPage({ open, member, onClose }) {
             setIsEditing(false);
         };
 
-        const cancelEdit = () => {
-            setEditValue(value);
-            setIsEditing(false);
-        };
-
         const keyHandler = (e) => {
             if (e.key === "Enter") saveField();
-            if (e.key === "Escape") cancelEdit();
+            if (e.key === "Escape") setIsEditing(false);
         };
 
+        // Neumorphic View
         const ViewMode = (
             <Box
                 sx={{
-                    p: 1.5,
-                    borderRadius: 1,
+                    p: 1.6,
+                    borderRadius: "14px",
                     cursor: "pointer",
-                    border: "1px solid #e0e0e0",
-                    backgroundColor: isMissing(value) ? "#fff0f0" : "#fafafa",
-                    "&:hover": {
-                        border: "1px solid #1976d2",
-                        backgroundColor: "#f0f8ff"
-                    }
+                    background: neu.bg,
+                    border: "0",
+
+                    transition: "0.2s",
+
                 }}
                 onClick={() => setIsEditing(true)}
             >
-                <Typography variant="body2" color={isMissing(value) ? "error" : "text.primary"}>
+                <Typography variant="body2" color="text.primary">
                     {isMissing(value) ? "Missing" : (value || "Not provided")}
                 </Typography>
             </Box>
         );
 
-        const EditMode = (() => {
-            if (type === "select") {
-                return (
-                    <FormControl fullWidth size="small">
-                        <Select
-                            autoFocus
-                            value={editValue || ""}
-                            onBlur={saveField}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onKeyDown={keyHandler}
-                        >
-                            {options.map((o) => (
-                                <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                );
-            }
+        // Neumorphic Input
+        const InputUI = (
+            <TextField
+                autoFocus
+                fullWidth
+                size="small"
+                type={type}
+                value={editValue || ""}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={saveField}
+                onKeyDown={keyHandler}
+                sx={{
+                    "& .MuiOutlinedInput-root": {
+                        borderRadius: "14px",
+                        background: neu.bg,
 
-            if (type === "date") {
-                return (
-                    <TextField
-                        autoFocus
-                        fullWidth
-                        size="small"
-                        type="date"
-                        value={editValue || ""}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onBlur={saveField}
-                        onKeyDown={keyHandler}
-                        InputLabelProps={{ shrink: true }}
-                    />
-                );
-            }
-
-            return (
-                <TextField
-                    autoFocus
-                    fullWidth
-                    size="small"
-                    type={type}
-                    value={editValue || ""}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onBlur={saveField}
-                    onKeyDown={keyHandler}
-                    placeholder={`Enter ${label.toLowerCase()}`}
-                />
-            );
-        })();
+                        "& fieldset": { border: "0" }
+                    }
+                }}
+            />
+        );
 
         return (
             <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 600 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.6 }}>
                     {label}
                 </Typography>
-                {isEditing ? EditMode : ViewMode}
+                {isEditing ? InputUI : ViewMode}
             </Box>
         );
     };
 
+    // ---------------------------
+    // Editable Object
+    // ---------------------------
     const EditableObjectField = ({ label, value, path, onUpdate, fields }) => {
+
         const updateInner = (key, val) => {
             const newObj = { ...(value || {}), [key]: val };
             onUpdate(path, newObj);
         };
 
         return (
-            <Box sx={{ mb: 3, p: 2, border: "1px solid #e0e0e0", borderRadius: 1 }}>
-                <Typography variant="h6" color="primary" gutterBottom sx={{ fontSize: "1.1rem", fontWeight: 600 }}>
+            <Box
+                sx={{
+                    mb: 3,
+                    p: 2.5,
+                    borderRadius: "20px",
+                    background: neu.bg,
+
+                }}
+            >
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
                     {label}
                 </Typography>
+
                 <Grid container spacing={2}>
                     {fields.map((item) => (
                         <Grid size={{ xs: 12, md: 6 }} key={item.key}>
@@ -175,7 +175,11 @@ export default function MemberEditPage({ open, member, onClose }) {
         );
     };
 
+    // ---------------------------
+    // Editable Array (Neumorphic)
+    // ---------------------------
     const EditableArrayField = ({ label, values, path, onUpdate }) => {
+
         const [isEditing, setIsEditing] = useState(false);
         const [editValue, setEditValue] = useState(values?.join(", ") || "");
 
@@ -184,21 +188,17 @@ export default function MemberEditPage({ open, member, onClose }) {
         }, [values]);
 
         const saveField = () => {
-            const newArray = editValue.split(",").map(item => item.trim()).filter(item => item);
+            const newArray = editValue.split(",").map(s => s.trim()).filter(Boolean);
             onUpdate(path, newArray);
             setIsEditing(false);
         };
 
-        const keyHandler = (e) => {
-            if (e.key === "Enter") saveField();
-            if (e.key === "Escape") setIsEditing(false);
-        };
-
         return (
             <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 600 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.6 }}>
                     {label}
                 </Typography>
+
                 {isEditing ? (
                     <TextField
                         autoFocus
@@ -207,28 +207,40 @@ export default function MemberEditPage({ open, member, onClose }) {
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onBlur={saveField}
-                        onKeyDown={keyHandler}
-                        placeholder="Enter values separated by commas"
+                        sx={{
+                            "& .MuiOutlinedInput-root": {
+                                borderRadius: "14px",
+                                background: neu.bg,
+
+                                "& fieldset": { border: "0" }
+                            }
+                        }}
+                        placeholder="Comma separated values"
                     />
                 ) : (
                     <Box
                         sx={{
-                            p: 1.5,
-                            borderRadius: 1,
+                            p: 1.4,
+                            borderRadius: "14px",
                             cursor: "pointer",
-                            border: "1px solid #e0e0e0",
-                            backgroundColor: "#fafafa",
-                            "&:hover": {
-                                border: "1px solid #1976d2",
-                                backgroundColor: "#f0f8ff"
-                            }
+                            background: neu.bg,
+
                         }}
                         onClick={() => setIsEditing(true)}
                     >
-                        {values?.length > 0 ? (
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                {values.map((item, index) => (
-                                    <Chip key={index} label={item} size="small" variant="outlined" />
+                        {values?.length ? (
+                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.7 }}>
+                                {values.map((item, i) => (
+                                    <Chip
+                                        key={i}
+                                        label={item}
+                                        size="small"
+                                        sx={{
+                                            background: neu.bg,
+                                            borderRadius: "10px",
+
+                                        }}
+                                    />
                                 ))}
                             </Box>
                         ) : (
@@ -244,45 +256,87 @@ export default function MemberEditPage({ open, member, onClose }) {
 
     if (!member) return null;
 
-    const personalFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('personalDetails'));
-    const referenceFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('referenceDetails') && !f.includes('gurantorMno'));
-    const documentFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('documents'));
-    const bankFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('bankDetails'));
-    const professionalFields = Object.keys(FIELD_MAP).filter(f => f.startsWith('professionalDetails')); // ADDED PROFESSIONAL FIELDS
+    const personalFields = Object.keys(FIELD_MAP).filter(f => f.startsWith("personalDetails"));
+    const referenceFields = Object.keys(FIELD_MAP).filter(f => f.startsWith("referenceDetails") && !f.includes("gurantorMno"));
+    const documentFields = Object.keys(FIELD_MAP).filter(f => f.startsWith("documents"));
+    const bankFields = Object.keys(FIELD_MAP).filter(f => f.startsWith("bankDetails"));
+    const professionalFields = Object.keys(FIELD_MAP).filter(f => f.startsWith("professionalDetails"));
 
+    // ---------------------------
+    // RETURN UI (Dialog)
+    // ---------------------------
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-            <DialogTitle sx={{ borderBottom: "1px solid #e0e0e0", pb: 2 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        Edit Member: {getValueByPath(formData, "personalDetails.nameOfMember") || "Unknown"}
-                    </Typography>
-                    <IconButton onClick={onClose} disabled={loading}>
-                        <CloseIcon />
-                    </IconButton>
-                </Box>
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="lg"
+            fullWidth
+            PaperProps={{
+                sx: {
+                    borderRadius: "25px",
+                    background: neu.bg,
+
+                }
+            }}
+        >
+            <DialogTitle
+                sx={{
+                    p: 2.5,
+                    borderBottom: "none",
+                    fontWeight: 700,
+                    display: "flex",
+                    justifyContent: "space-between"
+                }}
+            >
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Edit Member: {getValueByPath(formData, "personalDetails.nameOfMember") || "Unknown"}
+                </Typography>
+
+                <IconButton
+                    onClick={onClose}
+                    sx={{
+                        background: neu.bg,
+                        borderRadius: "50%",
+
+                    }}
+                >
+                    <CloseIcon />
+                </IconButton>
             </DialogTitle>
 
-            <DialogContent dividers sx={{ maxHeight: '70vh' }}>
+            {/* ----------------------------------------------------------- */}
+            {/* MAIN FORM SECTION */}
+            {/* ----------------------------------------------------------- */}
+            <DialogContent dividers sx={{ maxHeight: "75vh", border: "none", p: 3 }}>
                 <Grid container spacing={3}>
-                    {/* Personal Details */}
-                    <Grid size={{ xs: 12 }}>
-                        <Accordion defaultExpanded sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
+
+                    {/* PERSONAL */}
+                    <Grid size={{ xs: 12 }} >
+                        <Accordion
+                            defaultExpanded
+                            sx={{
+                                borderRadius: "20px",
+                                background: neu.bg,
+
+                                "&:before": { display: "none" }
+                            }}
+                        >
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
                                     Personal Details
                                 </Typography>
                             </AccordionSummary>
+
                             <AccordionDetails>
                                 <Grid container spacing={2}>
                                     {personalFields.map(fieldKey => (
-                                        <Grid size={{ xs: 12, md: 6 }} md={4} key={fieldKey}>
+                                        <Grid size={{ xs: 12, md: 4 }} key={fieldKey}>
                                             <EditableField
                                                 label={FIELD_MAP[fieldKey]}
                                                 value={getValueByPath(formData, fieldKey)}
                                                 path={fieldKey}
                                                 onUpdate={handleFieldUpdate}
-                                                type={fieldKey.includes('date') ? 'date' : 'text'}
+                                                type={fieldKey.includes("date") ? "date" : "text"}
                                             />
                                         </Grid>
                                     ))}
@@ -291,14 +345,21 @@ export default function MemberEditPage({ open, member, onClose }) {
                         </Accordion>
                     </Grid>
 
-                    {/* Professional Details - ADDED THIS SECTION */}
-                    <Grid size={{ xs: 12 }}>
-                        <Accordion sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
+                    {/* PROFESSIONAL */}
+                    <Grid size={{ xs: 12 }} >
+                        <Accordion
+                            sx={{
+                                borderRadius: "20px",
+                                background: neu.bg,
+                                "&:before": { display: "none" }
+                            }}
+                        >
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
                                     Professional Details
                                 </Typography>
                             </AccordionSummary>
+
                             <AccordionDetails>
                                 <Grid container spacing={2}>
                                     {professionalFields.map(fieldKey => (
@@ -316,64 +377,118 @@ export default function MemberEditPage({ open, member, onClose }) {
                         </Accordion>
                     </Grid>
 
-                    {/* Address Details */}
-                    <Grid size={{ xs: 12 }}>
-                        <Accordion defaultExpanded sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
+                    {/* ADDRESS */}
+                    <Grid size={{ xs: 12 }} >
+                        <Accordion
+                            defaultExpanded
+                            sx={{
+                                borderRadius: "20px",
+                                background: neu.bg,
+                                "&:before": { display: "none" }
+                            }}
+                        >
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
                                     Address Details
                                 </Typography>
                             </AccordionSummary>
+
                             <AccordionDetails>
+                                {/* Permanent */}
                                 <EditableObjectField
                                     label="Permanent Address"
-                                    value={getValueByPath(formData, 'addressDetails.permanentAddress')}
+                                    value={getValueByPath(formData, "addressDetails.permanentAddress")}
                                     path="addressDetails.permanentAddress"
                                     onUpdate={handleFieldUpdate}
                                     fields={[
-                                        { key: 'flatHouseNo', label: 'Flat/House No' },
-                                        { key: 'areaStreetSector', label: 'Area/Street/Sector' },
-                                        { key: 'locality', label: 'Locality' },
-                                        { key: 'landmark', label: 'Landmark' },
-                                        { key: 'city', label: 'City' },
-                                        { key: 'country', label: 'Country' },
-                                        { key: 'state', label: 'State' },
-                                        { key: 'pincode', label: 'Pincode' },
+                                        { key: "flatHouseNo", label: "Flat/House No" },
+                                        { key: "areaStreetSector", label: "Area/Street/Sector" },
+                                        { key: "locality", label: "Locality" },
+                                        { key: "landmark", label: "Landmark" },
+                                        { key: "city", label: "City" },
+                                        { key: "country", label: "Country" },
+                                        { key: "state", label: "State" },
+                                        { key: "pincode", label: "Pincode" }
                                     ]}
                                 />
 
+                                {/* Current */}
                                 <EditableObjectField
                                     label="Current Residential Address"
-                                    value={getValueByPath(formData, 'addressDetails.currentResidentalAddress')}
+                                    value={getValueByPath(formData, "addressDetails.currentResidentalAddress")}
                                     path="addressDetails.currentResidentalAddress"
                                     onUpdate={handleFieldUpdate}
                                     fields={[
-                                        { key: 'flatHouseNo', label: 'Flat/House No' },
-                                        { key: 'areaStreetSector', label: 'Area/Street/Sector' },
-                                        { key: 'locality', label: 'Locality' },
-                                        { key: 'landmark', label: 'Landmark' },
-                                        { key: 'city', label: 'City' },
-                                        { key: 'country', label: 'Country' },
-                                        { key: 'state', label: 'State' },
-                                        { key: 'pincode', label: 'Pincode' },
+                                        { key: "flatHouseNo", label: "Flat/House No" },
+                                        { key: "areaStreetSector", label: "Area/Street/Sector" },
+                                        { key: "locality", label: "Locality" },
+                                        { key: "landmark", label: "Landmark" },
+                                        { key: "city", label: "City" },
+                                        { key: "country", label: "Country" },
+                                        { key: "state", label: "State" },
+                                        { key: "pincode", label: "Pincode" }
                                     ]}
                                 />
+
+                                {/* Previous */}
+                                <Box sx={{ mt: 3 }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
+                                        Previous Current Addresses
+                                    </Typography>
+
+                                    {getValueByPath(formData, "addressDetails.previousCurrentAddress")?.length > 0 ? (
+                                        getValueByPath(formData, "addressDetails.previousCurrentAddress").map((addr, i) => (
+                                            <Box
+                                                key={i}
+                                                sx={{
+                                                    mb: 2,
+                                                    p: 2,
+                                                    borderRadius: "14px",
+                                                    background: neu.bg,
+
+                                                }}
+                                            >
+                                                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                                                    Address #{i + 1}
+                                                </Typography>
+
+                                                {Object.entries(addr).map(([key, val]) => (
+                                                    <Typography key={key} variant="body2">
+                                                        <strong>{key}: </strong> {val || "—"}
+                                                    </Typography>
+                                                ))}
+                                            </Box>
+                                        ))
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary">
+                                            No previous addresses found.
+                                        </Typography>
+                                    )}
+                                </Box>
                             </AccordionDetails>
                         </Accordion>
                     </Grid>
 
-                    {/* Reference Details */}
-                    <Grid size={{ xs: 12 }}>
-                        <Accordion sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
+                    {/* REFERENCES */}
+                    <Grid size={{ xs: 12 }} >
+                        <Accordion
+                            sx={{
+                                borderRadius: "20px",
+                                background: neu.bg,
+
+                                "&:before": { display: "none" }
+                            }}
+                        >
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
                                     Reference & Guarantor Details
                                 </Typography>
                             </AccordionSummary>
+
                             <AccordionDetails>
                                 <Grid container spacing={2}>
                                     {referenceFields.map(fieldKey => (
-                                        <Grid size={{ xs: 12, }} key={fieldKey}>
+                                        <Grid size={{ xs: 12 }} key={fieldKey}>
                                             <EditableField
                                                 label={FIELD_MAP[fieldKey]}
                                                 value={getValueByPath(formData, fieldKey)}
@@ -382,31 +497,40 @@ export default function MemberEditPage({ open, member, onClose }) {
                                             />
                                         </Grid>
                                     ))}
-                                    <Grid size={{ xs: 12 }}>
+
+                                    <Grid size={{ xs: 12 }} >
                                         <EditableArrayField
                                             label="Guarantor Mobile Numbers"
-                                            values={getValueByPath(formData, 'referenceDetails.gurantorMno')}
+                                            values={getValueByPath(formData, "referenceDetails.gurantorMno")}
                                             path="referenceDetails.gurantorMno"
                                             onUpdate={handleFieldUpdate}
                                         />
                                     </Grid>
                                 </Grid>
                             </AccordionDetails>
-                        </Accordion>
+                        </ Accordion>
                     </Grid>
 
-                    {/* Documents Section */}
-                    <Grid size={{ xs: 12 }}>
-                        <Accordion sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
+                    {/* DOCUMENTS */}
+                    <Grid size={{ xs: 12 }} >
+                        <Accordion
+                            sx={{
+                                borderRadius: "20px",
+                                background: neu.bg,
+
+                                "&:before": { display: "none" }
+                            }}
+                        >
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
                                     Document Details
                                 </Typography>
                             </AccordionSummary>
+
                             <AccordionDetails>
                                 <Grid container spacing={2}>
                                     {documentFields.map(fieldKey => (
-                                        <Grid size={{ xs: 12, md: 6 }} md={4} key={fieldKey}>
+                                        <Grid size={{ xs: 12, md: 4 }} key={fieldKey}>
                                             <EditableField
                                                 label={FIELD_MAP[fieldKey]}
                                                 value={getValueByPath(formData, fieldKey)}
@@ -418,26 +542,34 @@ export default function MemberEditPage({ open, member, onClose }) {
                                 </Grid>
                             </AccordionDetails>
                         </Accordion>
-                    </Grid>
+                    </ Grid>
 
-                    {/* Bank Details */}
-                    <Grid size={{ xs: 12, sm: 12, md: 12 }}>
-                        <Accordion sx={{ border: "1px solid #e0e0e0", borderRadius: 1 }}>
+                    {/* BANK */}
+                    <Grid size={{ xs: 12 }} >
+                        <Accordion
+                            sx={{
+                                borderRadius: "20px",
+                                background: neu.bg,
+
+                                "&:before": { display: "none" }
+                            }}
+                        >
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
                                     Bank Details
                                 </Typography>
                             </AccordionSummary>
+
                             <AccordionDetails>
                                 <Grid container spacing={2}>
                                     {bankFields.map(fieldKey => (
-                                        <Grid size={{ xs: 12, md: 6 }} md={4} key={fieldKey}>
+                                        <Grid size={{ xs: 12, md: 4 }} key={fieldKey}>
                                             <EditableField
                                                 label={FIELD_MAP[fieldKey]}
                                                 value={getValueByPath(formData, fieldKey)}
                                                 path={fieldKey}
                                                 onUpdate={handleFieldUpdate}
-                                                type={fieldKey.includes('civilScore') ? 'number' : 'text'}
+                                                type={fieldKey.includes("civilScore") ? "number" : "text"}
                                             />
                                         </Grid>
                                     ))}
@@ -445,23 +577,51 @@ export default function MemberEditPage({ open, member, onClose }) {
                             </AccordionDetails>
                         </Accordion>
                     </Grid>
-                </Grid>
-            </DialogContent>
 
-            <DialogActions sx={{ borderTop: "1px solid #e0e0e0", p: 2 }}>
-                <Button onClick={onClose} disabled={loading} sx={{ minWidth: 100 }}>
+                </Grid >
+            </DialogContent >
+
+            {/* FOOTER */}
+            <DialogActions DialogActions
+                sx={{
+                    p: 2.5,
+                    borderTop: "none",
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: 2
+                }
+                }
+            >
+                <Button
+                    onClick={onClose}
+                    disabled={loading}
+                    sx={{
+                        px: 3,
+                        borderRadius: "14px",
+                        background: neu.bg,
+
+                    }}
+                >
                     Cancel
                 </Button>
+
                 <Button
                     variant="contained"
                     startIcon={loading ? <CircularProgress size={16} /> : <SaveIcon />}
                     disabled={loading}
                     onClick={handleSave}
-                    sx={{ minWidth: 120 }}
+                    sx={{
+                        px: 3,
+                        borderRadius: "14px",
+                        background: "#4b70f5",
+                        color: "#fff",
+
+                        "&:hover": { background: "#3a5be0" }
+                    }}
                 >
-                    {loading ? 'Saving...' : 'Save'}
+                    {loading ? "Saving..." : "Save"}
                 </Button>
-            </DialogActions>
-        </Dialog>
+            </DialogActions >
+        </Dialog >
     );
 }

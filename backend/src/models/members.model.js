@@ -186,6 +186,7 @@ const memberSchema = new mongoose.Schema(
 
     // ===== BANK DETAILS =====
     bankDetails: {
+      accountHolderName: { type: String },
       bankName: { type: String },
       branch: { type: String },
       accountNumber: { type: String },
@@ -224,13 +225,6 @@ const memberSchema = new mongoose.Schema(
       },
     ],
 
-    // ===== MEMBER STATUS =====
-    status: {
-      type: String,
-      enum: ["Active", "Inactive"],
-      default: "Active"
-    },
-
     // ===== NOMINEE DETAILS =====
     nomineeDetails: {
       nomineeName: { type: String },
@@ -243,7 +237,13 @@ const memberSchema = new mongoose.Schema(
       shareCapital: { type: String },
       optionalDeposit: { type: String },
       compulsory: { type: String },
-    }
+    },
+
+    creditDetails: {
+      cibilScore: {
+        type: String
+      },
+    },
   },
   { timestamps: true }
 );

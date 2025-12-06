@@ -68,7 +68,7 @@ const MemberDossierForm = () => {
       emailId3: "",
       landlineNo: "",
       landlineOffice: "",
-      civilScore: "",
+
     },
 
     Address: {
@@ -162,6 +162,7 @@ const MemberDossierForm = () => {
     },
 
     bankDetails: [{
+      accountHolderName: "",
       bankName: "",
       branch: "",
       accountNumber: "",
@@ -190,6 +191,10 @@ const MemberDossierForm = () => {
       optionalDeposit: "",
       compulsory: ""
     }],
+
+    creditDetails: {
+      cibilScore: "",
+    },
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -523,7 +528,12 @@ const MemberDossierForm = () => {
       if (financialData.compulsory) {
         formDataToSend.append("financialDetails[compulsory]", financialData.compulsory);
       }
-
+      if (values.creditDetails?.cibilScore) {
+        formDataToSend.append(
+          "creditDetails[cibilScore]",
+          values.creditDetails.cibilScore.toString()
+        );
+      }
       /* -----------------------------------------
          REFERENCES
       ----------------------------------------- */

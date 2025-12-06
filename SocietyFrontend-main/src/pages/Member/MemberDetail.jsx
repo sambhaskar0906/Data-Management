@@ -24,25 +24,29 @@ import {
     Stack,
     Tooltip,
     Divider,
-    Chip
+    Chip,
+    Drawer,
+    Grid
 } from "@mui/material";
 
 import SearchIcon from "@mui/icons-material/Search";
+import FilterListIcon from "@mui/icons-material/FilterList";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import AddIcon from "@mui/icons-material/Add";
 import FileDownloadDoneIcon from '@mui/icons-material/FileDownloadDone';
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import CheckCircleOutline from "@mui/icons-material/CheckCircleOutline";
+import BlockIcon from "@mui/icons-material/Block";
+
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import MemberView from "./MemberView";
 import MemberEditPage from "./MemberEdit.jsx";
 import { generateMembersListPDF } from "./MemberDetailsPdf.jsx";
 import { generateMembersExcel } from "./MemberDetailsExcel.jsx";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import CheckCircleOutline from "@mui/icons-material/CheckCircleOutline";
-import BlockIcon from "@mui/icons-material/Block";
 
 import {
     fetchAllMembers,
@@ -53,6 +57,7 @@ import {
 } from "../../features/member/memberSlice";
 
 // ------------------ Helper map & util functions ------------------
+// (Assume your existing helpers remain; they are kept as-is)
 export const FIELD_MAP = {
     "personalDetails.nameOfMember": "Member Name",
     "personalDetails.membershipNumber": "Membership No",
@@ -69,8 +74,6 @@ export const FIELD_MAP = {
     "personalDetails.phoneNo1": "Phone No",
     "personalDetails.alternatePhoneNo": "Alternate Phone",
     "personalDetails.emailId1": "Email",
-
-    // Address - Permanent
     "addressDetails.permanentAddress.flatHouseNo": "Permanent - Flat/House No",
     "addressDetails.permanentAddress.areaStreetSector": "Permanent - Area/Street/Sector",
     "addressDetails.permanentAddress.locality": "Permanent - Locality",
@@ -80,8 +83,6 @@ export const FIELD_MAP = {
     "addressDetails.permanentAddress.state": "Permanent - State",
     "addressDetails.permanentAddress.pincode": "Permanent - Pincode",
     "addressDetails.permanentAddressBillPhoto": "Permanent - Bill Photo",
-
-    // Address - Current
     "addressDetails.currentResidentalAddress.flatHouseNo": "Current - Flat/House No",
     "addressDetails.currentResidentalAddress.areaStreetSector": "Current - Area/Street/Sector",
     "addressDetails.currentResidentalAddress.locality": "Current - Locality",
@@ -92,8 +93,6 @@ export const FIELD_MAP = {
     "addressDetails.currentResidentalAddress.pincode": "Current - Pincode",
     "addressDetails.currentResidentalBillPhoto": "Current - Bill Photo",
     "addressDetails.previousCurrentAddress": "Previous Addresses",
-
-    // Documents
     "documents.passportSize": "Passport Size Photo",
     "documents.panNo": "PAN No",
     "documents.rationCard": "Ration Card",
@@ -107,12 +106,8 @@ export const FIELD_MAP = {
     "documents.aadhaarNoPhoto": "Aadhaar Photo",
     "documents.voterIdPhoto": "Voter ID Photo",
     "documents.passportNoPhoto": "Passport Photo",
-
-    // Professional Details
     "professionalDetails.qualification": "Qualification",
     "professionalDetails.occupation": "Occupation",
-
-    // Family Details
     "familyDetails.familyMembersMemberOfSociety": "Family Members in Society",
     "familyDetails.familyMember": "Family Member Names",
     "familyDetails.familyMemberNo": "Family Member Phones",
@@ -205,6 +200,16 @@ export const formatMemberName = (member) => {
     return title ? `${title} ${name}` : name;
 };
 
+export const formatFatherName = (member) => {
+    const fatherName = getValueByPath(member, "personalDetails.nameOfFather") || "";
+    const fatherTitle = getValueByPath(member, "personalDetails.fatherTitle") || "";
+
+    if (!fatherName) return "—";
+
+    return fatherTitle ? `${fatherTitle} ${fatherName}` : fatherName;
+};
+
+
 // ------------------ Main Component ------------------
 const MemberDetailsPage = () => {
     const dispatch = useDispatch();
@@ -213,10 +218,6 @@ const MemberDetailsPage = () => {
     const [actionMenu, setActionMenu] = useState({ anchor: null, member: null });
     const [statusDialog, setStatusDialog] = useState({ open: false, member: null });
     const openMenu = Boolean(anchorEl);
-
-    const closeActionMenu = () => {
-        setActionMenu({ anchor: null, member: null });
-    };
 
     const navigate = useNavigate();
 
@@ -242,6 +243,31 @@ const MemberDetailsPage = () => {
     // Delete confirmation
     const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
 
+    // Filter drawer state
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+
+    const [filters, setFilters] = useState({
+        name: "",
+        membershipNumber: "",
+        phone: "",
+        email: "",
+        fatherName: "",
+        introducedBy: "",
+        city: "",
+        state: "",
+        pincode: "",
+        occupation: "",
+        qualification: "",
+        caste: "",
+        religion: "",
+        gender: "",
+        status: "",
+        minAge: "",
+        maxAge: "",
+    });
+
+    // When component loads, fetch members
     useEffect(() => {
         dispatch(fetchAllMembers());
     }, [dispatch]);
@@ -252,30 +278,96 @@ const MemberDetailsPage = () => {
         if (error) setTimeout(() => dispatch(clearError()), 1500);
     }, [successMessage, error, dispatch]);
 
+    // Helpers for filters
+    const handleFilterChange = (field, value) => {
+        setFilters(prev => ({ ...prev, [field]: value }));
+        setPage(0);
+    };
+
+    const clearAllFilters = () => {
+        setFilters({
+            name: "",
+            membershipNumber: "",
+            phone: "",
+            email: "",
+            fatherName: "",
+            introducedBy: "",
+            city: "",
+            state: "",
+            pincode: "",
+            occupation: "",
+            qualification: "",
+            caste: "",
+            religion: "",
+            gender: "",
+            status: ""
+        });
+        setPage(0);
+    };
+
     const filteredMembers = useMemo(() => {
-        if (!query.trim()) return members;
-        const q = query.toLowerCase();
+        const q = (query || "").toString().trim().toLowerCase();
+
+        const f = Object.fromEntries(
+            Object.entries(filters).map(([k, v]) => [k, (v || "").toString().trim().toLowerCase()])
+        );
 
         return members.filter((m) => {
-            const name = (getValueByPath(m, "personalDetails.nameOfMember") || "").toString();
-            const mno = (getValueByPath(m, "personalDetails.membershipNumber") || "").toString();
-            const phone = (getValueByPath(m, "personalDetails.phoneNo1") || "").toString();
-            const email = (getValueByPath(m, "personalDetails.emailId1") || "").toString();
+
+            // 🔍 GLOBAL SEARCH
+            const matchesQuery = !q || [
+                getValueByPath(m, "personalDetails.nameOfMember"),
+                getValueByPath(m, "personalDetails.membershipNumber"),
+                getValueByPath(m, "personalDetails.phoneNo1"),
+                getValueByPath(m, "personalDetails.emailId1"),
+                getValueByPath(m, "personalDetails.phoneNo2"),
+                getValueByPath(m, "nomineeDetails.introduceBy"),
+                getValueByPath(m, "personalDetails.nameOfFather")
+            ].some(val => (val || "").toString().toLowerCase().includes(q));
+
+            if (!matchesQuery) return false;
+
+            // 🎯 AGE FILTER (Correct Place)
+            const age = getValueByPath(m, "personalDetails.ageInYears");
+
+            if (f.minAge && age < parseInt(f.minAge)) return false;
+            if (f.maxAge && age > parseInt(f.maxAge)) return false;
+
+            // Generic matching function
+            const match = (filterValue, path) => {
+                if (!filterValue) return true;
+                const val = getValueByPath(m, path);
+                return (val || "").toString().toLowerCase().includes(filterValue);
+            };
 
             return (
-                name.toLowerCase().includes(q) ||
-                mno.toLowerCase().includes(q) ||
-                phone.toLowerCase().includes(q) ||
-                email.toLowerCase().includes(q)
+                match(f.name, "personalDetails.nameOfMember") &&
+                match(f.membershipNumber, "personalDetails.membershipNumber") &&
+                match(f.phone, "personalDetails.phoneNo1") &&
+                match(f.email, "personalDetails.emailId1") &&
+                match(f.fatherName, "personalDetails.nameOfFather") &&
+                match(f.introducedBy, "nomineeDetails.introduceBy") &&
+                match(f.city, "addressDetails.currentResidentalAddress.city") &&
+                match(f.state, "addressDetails.currentResidentalAddress.state") &&
+                match(f.pincode, "addressDetails.currentResidentalAddress.pincode") &&
+                match(f.occupation, "professionalDetails.occupation") &&
+                match(f.qualification, "professionalDetails.qualification") &&
+                match(f.caste, "personalDetails.caste") &&
+                match(f.religion, "personalDetails.religion") &&
+                match(f.gender, "personalDetails.gender") &&
+                (!f.status || (getValueByPath(m, "status") || "").toString().toLowerCase() === f.status)
             );
         });
-    }, [query, members]);
+    }, [members, query, filters]);
 
+
+    // Pagination slice
     const paginatedMembers = useMemo(() => {
         const start = page * rowsPerPage;
         return filteredMembers.slice(start, start + rowsPerPage);
     }, [page, rowsPerPage, filteredMembers]);
 
+    // Actions
     const handleView = (member) => {
         setSelectedMember(member);
         setViewDialogOpen(true);
@@ -289,6 +381,27 @@ const MemberDetailsPage = () => {
     const handleDelete = () => {
         if (deleteConfirm.id) dispatch(deleteMember(deleteConfirm.id));
         setDeleteConfirm({ open: false, id: null });
+    };
+
+    // Status dialog handlers (fixed to use statusDialog.member)
+    const handleMarkActive = () => {
+        if (statusDialog.member && statusDialog.member._id) {
+            dispatch(updateMemberStatus({
+                id: statusDialog.member._id,
+                status: "Active"
+            }));
+        }
+        setStatusDialog({ open: false, member: null });
+    };
+
+    const handleMarkInactive = () => {
+        if (statusDialog.member && statusDialog.member._id) {
+            dispatch(updateMemberStatus({
+                id: statusDialog.member._id,
+                status: "Inactive"
+            }));
+        }
+        setStatusDialog({ open: false, member: null });
     };
 
     return (
@@ -315,6 +428,12 @@ const MemberDetailsPage = () => {
                                 )
                             }}
                         />
+
+                        <Tooltip title="Filters">
+                            <IconButton onClick={() => setFilterDialogOpen(true)} sx={{ bgcolor: "#fff" }}>
+                                <FilterListIcon />
+                            </IconButton>
+                        </Tooltip>
 
                         <Button
                             variant="outlined"
@@ -353,7 +472,7 @@ const MemberDetailsPage = () => {
                                     <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>Mobile No</TableCell>
                                     <TableCell sx={{ fontWeight: 700, minWidth: 180 }}>Email</TableCell>
                                     <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>Introduced By</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, minWidth: 120 }}>Status</TableCell>
+                                    {/* <TableCell sx={{ fontWeight: 700, minWidth: 120 }}>Status</TableCell> */}
                                     <TableCell sx={{ fontWeight: 700, minWidth: 140, textAlign: 'center' }}>Actions</TableCell>
                                 </TableRow>
                             </TableHead>
@@ -361,7 +480,7 @@ const MemberDetailsPage = () => {
                             <TableBody>
                                 {paginatedMembers.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={7} sx={{ py: 6 }}>
+                                        <TableCell colSpan={9} sx={{ py: 6 }}>
                                             <Box textAlign="center">
                                                 <Typography variant="h6" color="text.secondary">No members found</Typography>
                                                 <Typography variant="body2" color="text.secondary">Try adjusting your search or add a new member.</Typography>
@@ -394,14 +513,17 @@ const MemberDetailsPage = () => {
                                                     <Typography variant="body2" sx={{ fontWeight: 700 }}>
                                                         {formatMemberName(m)}
                                                     </Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {getValueByPath(m, "professionalDetails.occupation") || ""}
+                                                    </Typography>
                                                 </Box>
                                             </Stack>
                                         </TableCell>
 
                                         {/* Father Name */}
                                         <TableCell>
-                                            <Typography variant="body2">
-                                                {getValueByPath(m, "personalDetails.nameOfFather") || "—"}
+                                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                {formatFatherName(m)}
                                             </Typography>
                                         </TableCell>
 
@@ -427,13 +549,13 @@ const MemberDetailsPage = () => {
                                         </TableCell>
 
                                         {/* Status */}
-                                        <TableCell>
+                                        {/* <TableCell>
                                             <Chip
-                                                label={m.status === "active" ? "Active" : "Inactive"}
-                                                color={m.status === "active" ? "success" : "error"}
+                                                label={(getValueByPath(m, "status") || "").toString()}
+                                                color={((getValueByPath(m, "status") || "").toString().toLowerCase() === "active") ? "success" : "error"}
                                                 size="small"
                                             />
-                                        </TableCell>
+                                        </TableCell> */}
 
                                         <TableCell
                                             align="center"
@@ -441,8 +563,8 @@ const MemberDetailsPage = () => {
                                                 display: "flex",
                                                 justifyContent: "center",
                                                 alignItems: "center",
-                                                gap: 0.5,   // space between icons
-                                                flexWrap: "nowrap" // stops icons going to next line
+                                                gap: 0.5,
+                                                flexWrap: "nowrap"
                                             }}
                                         >
                                             <Tooltip title="View">
@@ -464,7 +586,7 @@ const MemberDetailsPage = () => {
                                             </Tooltip>
 
                                             <Tooltip title="More">
-                                                <IconButton onClick={(e) => setStatusDialog({ open: true, member: m })}>
+                                                <IconButton onClick={() => setStatusDialog({ open: true, member: m })}>
                                                     <MoreVertIcon />
                                                 </IconButton>
                                             </Tooltip>
@@ -512,6 +634,7 @@ const MemberDetailsPage = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
             {/* STATUS CHANGE DIALOG */}
             <Dialog
                 open={statusDialog.open}
@@ -525,46 +648,22 @@ const MemberDetailsPage = () => {
 
                 <DialogContent sx={{ py: 3 }}>
                     <Stack spacing={2}>
-                        {/* ACTIVE BUTTON */}
                         <Button
                             variant="contained"
                             color="success"
                             startIcon={<CheckCircleOutline />}
-                            sx={{
-                                py: 1.5,
-                                fontSize: "16px",
-                                fontWeight: "bold",
-                                background: "green",
-                            }}
-                            onClick={() => {
-                                dispatch(updateMemberStatus({
-                                    id: member._id,
-                                    status: "Active"
-                                }));
-                                setStatusDialog({ open: false, member: null });
-                            }}
+                            sx={{ py: 1.5, fontSize: "16px", fontWeight: "bold" }}
+                            onClick={handleMarkActive}
                         >
                             Mark as Active
                         </Button>
 
-                        {/* INACTIVE BUTTON */}
                         <Button
                             variant="contained"
                             color="error"
                             startIcon={<BlockIcon />}
-                            sx={{
-                                py: 1.5,
-                                fontSize: "16px",
-                                fontWeight: "bold",
-                                background: "red",
-                            }}
-                            onClick={() => {
-                                dispatch(updateMemberStatus({
-                                    id: statusDialog.member._id,
-                                    status: "inactive",
-                                }));
-                                setStatusDialog({ open: false, member: null });
-                            }}
+                            sx={{ py: 1.5, fontSize: "16px", fontWeight: "bold" }}
+                            onClick={handleMarkInactive}
                         >
                             Mark as Inactive
                         </Button>
@@ -578,7 +677,236 @@ const MemberDetailsPage = () => {
                 </DialogActions>
             </Dialog>
 
-        </Box>
+            <Dialog
+                open={filterDialogOpen}
+                onClose={() => setFilterDialogOpen(false)}
+                maxWidth="md"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                        p: 0,
+                        background: "#f7f9fc",
+                    }
+                }}
+            >
+                {/* HEADER */}
+                <Box sx={{ p: 3, borderBottom: "1px solid #e0e6ef", bgcolor: "#fff" }}>
+                    <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+                        Advanced Filters
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Apply filters to refine the member list.
+                    </Typography>
+                </Box>
+
+                {/* BODY */}
+                <DialogContent sx={{ p: 3 }}>
+
+                    {/* PERSONAL DETAILS CARD */}
+                    <Paper elevation={0} sx={{ p: 2.5, mb: 3, borderRadius: 2, border: "1px solid #e0e6ef" }}>
+                        <Typography sx={{ mb: 2, fontWeight: 700, color: "primary.main" }}>
+                            ⭐ Personal Details
+                        </Typography>
+
+                        <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="Member Name"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.name}
+                                    onChange={(e) => handleFilterChange("name", e.target.value)}
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start"><SearchIcon /></InputAdornment>
+                                        )
+                                    }}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="Membership No"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.membershipNumber}
+                                    onChange={(e) => handleFilterChange("membershipNumber", e.target.value)}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="Phone"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.phone}
+                                    onChange={(e) => handleFilterChange("phone", e.target.value)}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="Email"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.email}
+                                    onChange={(e) => handleFilterChange("email", e.target.value)}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="Father Name"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.fatherName}
+                                    onChange={(e) => handleFilterChange("fatherName", e.target.value)}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="Introduced By"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.introducedBy}
+                                    onChange={(e) => handleFilterChange("introducedBy", e.target.value)}
+                                />
+                            </Grid>
+
+                            {/* AGE RANGE */}
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="Min Age"
+                                    type="number"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.minAge}
+                                    onChange={(e) => handleFilterChange("minAge", e.target.value)}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="Max Age"
+                                    type="number"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.maxAge}
+                                    onChange={(e) => handleFilterChange("maxAge", e.target.value)}
+                                />
+                            </Grid>
+                        </Grid>
+                    </Paper>
+
+                    {/* ADDRESS CARD */}
+                    <Paper elevation={0} sx={{ p: 2.5, mb: 3, borderRadius: 2, border: "1px solid #e0e6ef" }}>
+                        <Typography sx={{ mb: 2, fontWeight: 700, color: "primary.main" }}>
+                            🏠 Address Details
+                        </Typography>
+
+                        <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="City"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.city}
+                                    onChange={(e) => handleFilterChange("city", e.target.value)}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="State"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.state}
+                                    onChange={(e) => handleFilterChange("state", e.target.value)}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="Pincode"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.pincode}
+                                    onChange={(e) => handleFilterChange("pincode", e.target.value)}
+                                />
+                            </Grid>
+                        </Grid>
+                    </Paper>
+
+                    {/* OTHER FILTERS CARD */}
+                    <Paper elevation={0} sx={{ p: 2.5, mb: 1, borderRadius: 2, border: "1px solid #e0e6ef" }}>
+                        <Typography sx={{ mb: 2, fontWeight: 700, color: "primary.main" }}>
+                            🔎 Other Filters
+                        </Typography>
+
+                        <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="Occupation"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.occupation}
+                                    onChange={(e) => handleFilterChange("occupation", e.target.value)}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="Qualification"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.qualification}
+                                    onChange={(e) => handleFilterChange("qualification", e.target.value)}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="Caste"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.caste}
+                                    onChange={(e) => handleFilterChange("caste", e.target.value)}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    label="Religion"
+                                    size="small"
+                                    fullWidth
+                                    value={filters.religion}
+                                    onChange={(e) => handleFilterChange("religion", e.target.value)}
+                                />
+                            </Grid>
+                        </Grid>
+                    </Paper>
+                </DialogContent>
+
+                {/* FOOTER BUTTONS - More Professional */}
+                <DialogActions sx={{ p: 2.5, borderTop: "1px solid #e0e6ef", bgcolor: "#fff" }}>
+                    <Button variant="outlined" color="error" onClick={() => setFilterDialogOpen(false)}>
+                        Close
+                    </Button>
+
+                    <Button variant="outlined" onClick={clearAllFilters}>
+                        Clear Filters
+                    </Button>
+
+                    <Button variant="contained" onClick={() => setFilterDialogOpen(false)}>
+                        Apply Filters
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+
+        </Box >
     );
 };
 

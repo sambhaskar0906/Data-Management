@@ -34,7 +34,7 @@ const BankGuaranteeForm = ({ formData, handleChange }) => {
   const addBankDetail = () => {
     const updatedBankDetails = [
       ...bankDetails,
-      { bankName: "", branch: "", accountNumber: "", ifscCode: "" }
+      { accountHolderName: "", bankName: "", branch: "", accountNumber: "", ifscCode: "" }
     ];
     handleChange('bankDetails', null, updatedBankDetails);
 
@@ -89,6 +89,13 @@ const BankGuaranteeForm = ({ formData, handleChange }) => {
               </Typography>
 
               <Grid container spacing={3}>
+                <Grid item xs={12} sm={6}>
+                  <StyledTextField
+                    label="Account Holder Name"
+                    value={bank?.accountHolderName || ""}
+                    onChange={(e) => handleBankDetailChange(index, 'accountHolderName', e.target.value)}
+                  />
+                </Grid>
                 <Grid item xs={12} sm={6}>
                   <StyledTextField
                     label="Bank Name"

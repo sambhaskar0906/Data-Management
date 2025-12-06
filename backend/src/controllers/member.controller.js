@@ -90,6 +90,7 @@ export const createMember = async (req, res) => {
     const documents = safeParse(req.body.documents, {});
     const nomineeDetails = safeParse(req.body.nomineeDetails, {});
     const financialDetails = safeParse(req.body.financialDetails, {});
+    const creditDetails = safeParse(req.body.creditDetails, {});
     const uploadedFiles = await mapReqFilesToCloudinary(req);
 
     const memberData = {
@@ -184,6 +185,7 @@ export const createMember = async (req, res) => {
           ? [referenceDetails]
           : [],
       guaranteeDetails,
+      creditDetails,
     };
 
     const member = new Member(memberData);

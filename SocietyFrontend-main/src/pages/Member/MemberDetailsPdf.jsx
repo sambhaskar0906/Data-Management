@@ -7,7 +7,7 @@ import { getValueByPath } from "./MemberDetail";
 // 🔹 REUSABLE BRAND HEADER FOR ALL PDF PAGES
 // --------------------------------------------------
 const addSocietyHeader = (doc) => {
-    doc.setFillColor(40, 53, 147); // Blue bar
+    doc.setFillColor(40, 53, 147);
     doc.rect(0, 0, 210, 18, "F");
 
     doc.setFont("helvetica", "bold");
@@ -39,7 +39,21 @@ const addPageNumbers = (doc) => {
 // --------------------------------------------------
 // 🔹 VALUE FORMATTER
 // --------------------------------------------------
-const formatValueForPDF = (value) => {
+const formatValueForPDF = (value, key, member) => {
+    // ---- Custom logic for Title + Name ----
+    if (key === "personalDetails.nameOfMember") {
+        const title = member?.personalDetails?.title || "";
+        const name = member?.personalDetails?.nameOfMember || "";
+        return `${title} ${name}`.trim();
+    }
+
+    if (key === "personalDetails.nameOfFather") {
+        const fTitle = member?.personalDetails?.fatherTitle || "";
+        const fName = member?.personalDetails?.nameOfFather || "";
+        return `${fTitle} ${fName}`.trim();
+    }
+
+    // -------- DEFAULT HANDLING BELOW ----------
     if (!value) return "Not Provided";
 
     if (typeof value === "string" && value.startsWith("http")) return "Image Available";
@@ -49,9 +63,7 @@ const formatValueForPDF = (value) => {
         return value
             .map((v) =>
                 typeof v === "object"
-                    ? Object.entries(v)
-                        .map(([k, val]) => `${k}: ${val}`)
-                        .join(", ")
+                    ? Object.entries(v).map(([k, val]) => `${k}: ${val}`).join(", ")
                     : v
             )
             .join(" | ");
@@ -65,6 +77,7 @@ const formatValueForPDF = (value) => {
 
     return value.toString();
 };
+
 
 // --------------------------------------------------
 // 🔹 SINGLE MEMBER PDF (Attractive Design)
@@ -122,7 +135,7 @@ export const generateMemberPDF = (member) => {
             }
 
             const label = FIELD_MAP[key];
-            const value = formatValueForPDF(getValueByPath(memberObj, key));
+            const value = formatValueForPDF(getValueByPath(memberObj, key), key, memberObj);
 
             doc.text(`${label}:`, 16, y);
             doc.text(value, 75, y);
@@ -180,15 +193,26 @@ export const generateMembersListPDF = (members) => {
         "Introduced By"
     ];
 
-    const rows = members.map((m, i) => [
-        i + 1,
-        getValueByPath(m, "personalDetails.membershipNumber") || "—",
-        getValueByPath(m, "personalDetails.nameOfMember") || "—",
-        getValueByPath(m, "personalDetails.nameOfFather") || "—",
-        getValueByPath(m, "personalDetails.phoneNo") || "—",
-        getValueByPath(m, "personalDetails.emailId") || "—",
-        getValueByPath(m, "nomineeDetails.introduceBy") || "—"
-    ]);
+    const rows = members.map((m, i) => {
+        const memberTitle = m?.personalDetails?.title || "";
+        const memberName = m?.personalDetails?.nameOfMember || "";
+        const fullMemberName = `${memberTitle} ${memberName}`.trim();
+
+        const fatherTitle = m?.personalDetails?.fatherTitle || "";
+        const fatherName = m?.personalDetails?.nameOfFather || "";
+        const fullFatherName = `${fatherTitle} ${fatherName}`.trim();
+
+        return [
+            i + 1,
+            getValueByPath(m, "personalDetails.membershipNumber") || "—",
+            fullMemberName || "—",
+            fullFatherName || "—",
+            getValueByPath(m, "personalDetails.phoneNo1") || "—",
+            getValueByPath(m, "personalDetails.emailId1") || "—",
+            getValueByPath(m, "nomineeDetails.introduceBy") || "—"
+        ];
+    });
+
 
     doc.autoTable({
         startY: 38,
