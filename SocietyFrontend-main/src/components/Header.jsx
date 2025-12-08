@@ -17,91 +17,127 @@ const Header = () => {
                 background: "#ffffff",
                 borderRadius: 3,
                 px: 3,
-                py: 2,
+                py: 2.5,
                 mb: 3,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-                border: "1px solid #e0e0e0",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
+                boxShadow: "0 5px 16px rgba(0,0,0,0.08)",
+                border: "1px solid #e6e6e6",
+                position: "relative",
+                overflow: "hidden",
             }}
         >
-            {/* LEFT SIDE */}
-            <Box>
-                <Typography
-                    variant="h6"
-                    sx={{
-                        fontWeight: 700,
-                        color: "#1a237e",
-                        letterSpacing: "0.5px"
-                    }}
-                >
-                    CA Co-Operative Thrift & Credit Society
-                </Typography>
 
-                <Typography
-                    variant="body2"
-                    sx={{ color: "text.secondary", mt: 0.3 }}
-                >
-                    Welcome to the Admin Dashboard
-                </Typography>
-            </Box>
+            {/* 🔵 Gradient Blue Accent Strip */}
+            <Box
+                sx={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: 6,
+                    background: "linear-gradient(90deg, #1A237E, #1976D2, #4FC3F7)",
+                }}
+            />
 
-            {/* RIGHT SIDE */}
-            <Stack direction="row" spacing={2} alignItems="center">
-                <Box textAlign="right">
+            {/* Header Content */}
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    mt: 1,
+                }}
+            >
+                {/* LEFT SIDE */}
+                <Box>
                     <Typography
-                        variant="subtitle2"
-                        sx={{ fontWeight: 600 }}
+                        variant="h6"
+                        sx={{
+                            fontWeight: 800,
+                            color: "#1A237E",
+                            letterSpacing: "0.8px",
+                            textShadow: "0 1px 2px rgba(0,0,0,0.15)",
+                            fontSize: "20px"
+                        }}
                     >
-                        Admin
+                        CA Co-Operative Thrift & Credit Society
                     </Typography>
 
                     <Typography
-                        variant="caption"
-                        color="text.secondary"
+                        variant="body2"
+                        sx={{
+                            color: "#555",
+                            mt: 0.3,
+                            fontWeight: 500
+                        }}
                     >
-                        System Manager
+                        Welcome to the Admin Dashboard
                     </Typography>
                 </Box>
 
-                {/* Avatar Block */}
-                <Avatar
-                    sx={{
-                        bgcolor: "#3f51b5",
-                        width: 42,
-                        height: 42,
-                        fontSize: 18,
-                        fontWeight: 700,
-                        boxShadow: "0 2px 6px rgba(63,81,181,0.3)"
-                    }}
-                >
-                    A
-                </Avatar>
+                {/* RIGHT SIDE */}
+                <Stack direction="row" spacing={2.5} alignItems="center">
+                    <Box textAlign="right">
+                        <Typography
+                            variant="subtitle2"
+                            sx={{
+                                fontWeight: 700,
+                                color: "#1A237E"
+                            }}
+                        >
+                            Admin
+                        </Typography>
 
-                <Divider orientation="vertical" flexItem />
+                        <Typography
+                            variant="caption"
+                            sx={{ color: "text.secondary" }}
+                        >
+                            System Manager
+                        </Typography>
+                    </Box>
 
-                {/* Logout Button */}
-                <Button
-                    variant="contained"
-                    color="error"
-                    size="small"
-                    startIcon={<LogoutIcon />}
-                    onClick={handleLogout}
-                    sx={{
-                        textTransform: "none",
-                        fontWeight: 600,
-                        px: 2.5,
-                        borderRadius: 2,
-                        boxShadow: "0 2px 5px rgba(244,67,54,0.3)",
-                        "&:hover": {
-                            boxShadow: "0 3px 8px rgba(244,67,54,0.5)",
-                        },
-                    }}
-                >
-                    Logout
-                </Button>
-            </Stack>
+                    {/* Avatar */}
+                    <Avatar
+                        sx={{
+                            bgcolor: "#1A237E",
+                            width: 46,
+                            height: 46,
+                            fontSize: 20,
+                            fontWeight: 700,
+                            color: "#fff",
+                            boxShadow: "0 4px 10px rgba(26,35,126,0.4)",
+                            border: "2px solid #4FC3F7"
+                        }}
+                    >
+                        A
+                    </Avatar>
+
+                    <Divider orientation="vertical" flexItem />
+
+                    {/* Logout Button */}
+                    <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        startIcon={<LogoutIcon />}
+                        onClick={handleLogout}
+                        sx={{
+                            textTransform: "none",
+                            fontWeight: 600,
+                            px: 3,
+                            borderRadius: 2,
+                            letterSpacing: 0.3,
+                            backgroundColor: "#D32F2F",
+                            boxShadow: "0 3px 8px rgba(211,47,47,0.35)",
+                            "&:hover": {
+                                backgroundColor: "#b71c1c",
+                                boxShadow: "0 5px 14px rgba(183,28,28,0.45)",
+                            },
+                        }}
+                    >
+                        Logout
+                    </Button>
+                </Stack>
+            </Box>
         </Box>
     );
 };

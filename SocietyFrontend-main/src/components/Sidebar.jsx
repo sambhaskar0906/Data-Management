@@ -24,8 +24,8 @@ const Sidebar = () => {
         { label: "Dashboard", route: "/dashboard", icon: <DashboardIcon /> },
         { label: "Member", route: "/memberdetail", icon: <PeopleIcon /> },
         { label: "Report", route: "/report", icon: <AssessmentIcon /> },
-        { label: "Loan", route: "/view-loan", icon: <RealEstateAgentIcon /> },
-        { label: "Surety Report", route: "/surety-report", icon: <AssessmentIcon /> },
+        // { label: "Loan", route: "/view-loan", icon: <RealEstateAgentIcon /> },
+        // { label: "Surety Report", route: "/surety-report", icon: <AssessmentIcon /> },
         { label: "Greeting", route: "/greeting", icon: <EventSeatIcon /> },
         { label: "Notice", route: "/notice", icon: <AssessmentIcon /> },
     ];
@@ -40,7 +40,6 @@ const Sidebar = () => {
                 height: "100vh",
                 bgcolor: "#ffffff",
                 borderRight: "1px solid #e0e0e0",
-                p: 2,
                 display: "flex",
                 flexDirection: "column",
                 position: "sticky",
@@ -48,15 +47,30 @@ const Sidebar = () => {
                 overflowY: "auto",
             }}
         >
-            {/* BRAND TITLE */}
-            <Box sx={{ textAlign: "center", mb: 2 }}>
+            {/* HEADER WITH DIAGONAL DESIGN */}
+            <Box
+                sx={{
+                    height: 80,
+                    background: `
+                        linear-gradient(120deg, #1A237E 55%, #1976D2 55%)
+                    `,
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    p: '10px',
+                }}
+            >
                 <Typography
                     variant="h6"
                     sx={{
                         fontWeight: 700,
-                        color: "#1a237e",
-                        letterSpacing: "0.5px",
-                        fontSize: "17px",
+                        color: "#fff",
+                        textShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        fontSize: "18px",
                     }}
                 >
                     CA Co-Operative Society

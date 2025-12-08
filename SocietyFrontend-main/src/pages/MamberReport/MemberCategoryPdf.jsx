@@ -27,7 +27,6 @@ export const FIELD_MAP = {
     "personalDetails.emailId3": "Optional Email",
     "personalDetails.nameOfSpouse": "Spouse's Name",
 
-
     // Address
     "addressDetails.currentResidentalAddress": "Current Address",
     "addressDetails.permanentAddress": "Permanent Address",
@@ -47,7 +46,6 @@ export const FIELD_MAP = {
     "professionalDetails.degreeNumber": "Certificate of Membership",
 
     // Professional - Employment Type
-    // "professionalDetails.inCaseOfServiceGovt": "Government Service",
     "professionalDetails.serviceType": "Service Type",
 
     // Professional - Service Details
@@ -67,17 +65,9 @@ export const FIELD_MAP = {
     "professionalDetails.businessDetails.businessStructure": "Business Structure",
     "professionalDetails.businessDetails.gstCertificate": "GST Certificate",
 
-    "bankDetails.accountHolderName": "Account Holder Name",
-    "bankDetails.bankName": "Bank Name",
-    "bankDetails.branch": "Branch",
-    "bankDetails.accountNumber": "Account Number",
-    "bankDetails.ifscCode": "IFSC Code",
-
-
     "familyDetails.familyMember": "Member Names",
     "familyDetails.familyMemberNo": "Membership Number",
     "familyDetails.relationWithApplicant": "Relation With Member",
-
 
     "nomineeDetails.nomineeName": "Nominee Name",
     "nomineeDetails.relationWithApplicant": "Relation with Member",
@@ -173,11 +163,9 @@ export const formatValuePlain = (value, fieldKey, member) => {
         return combined || "—";
     }
 
-
     if (fieldKey === "addressDetails.previousCurrentAddress") {
         if (Array.isArray(value)) {
             if (value.length === 0) return "No previous addresses";
-
 
             const formattedAddresses = value.map((addr, index) => {
                 const formatted = formatAddressValue(addr);
@@ -255,6 +243,27 @@ export const getValueByPath = (obj, path) => {
         return combined || undefined;
     }
 
+    // Handle array notation (e.g., bankDetails[0].accountHolderName)
+    if (path.includes('[') && path.includes(']')) {
+        const match = path.match(/([^\.]+)\[(\d+)\](?:\.(.+))?/);
+        if (match) {
+            const arrayName = match[1];
+            const index = parseInt(match[2], 10);
+            const restPath = match[3];
+
+            // Get the array
+            const array = obj[arrayName];
+            if (Array.isArray(array) && array[index]) {
+                if (restPath) {
+                    // Recursively get value from the object in array
+                    return getValueByPath(array[index], restPath);
+                }
+                return array[index];
+            }
+            return undefined;
+        }
+    }
+
     const parts = path.split(".");
     let cur = obj;
     for (const p of parts) {
@@ -262,6 +271,28 @@ export const getValueByPath = (obj, path) => {
         cur = cur[p];
     }
     return cur;
+};
+
+// Add this function to get bank details table data
+const getBankDetailsTableData = (member) => {
+    const bankDetails = getValueByPath(member, "bankDetails");
+
+    if (!bankDetails || !Array.isArray(bankDetails) || bankDetails.length === 0) {
+        return [];
+    }
+
+    const tableData = bankDetails.map((bank, index) => {
+        return [
+            index + 1, // Serial number
+            bank.accountHolderName || "—",
+            bank.bankName || "—",
+            bank.branch || "—",
+            bank.accountNumber || "—",
+            bank.ifscCode || "—"
+        ];
+    });
+
+    return tableData;
 };
 
 // Update the isMissing function to handle the virtual field
@@ -393,8 +424,6 @@ export const getFieldsByCategory = (member, category, viewType = "all") => {
             !["nomineeDetails.memberShipNo", "nomineeDetails.introduceBy"].includes(key)
         );
 
-
-
         return nomineeFields.filter(key => {
             const value = getValueByPath(member, key);
             if (viewType === "all") return true;
@@ -402,6 +431,11 @@ export const getFieldsByCategory = (member, category, viewType = "all") => {
             if (viewType === "missing") return isMissing(value);
             return true;
         });
+    }
+
+    // Special handling for bank details - return empty array, handled separately
+    if (category === "bankDetails") {
+        return [];
     }
 
     if (category === "all") {
@@ -581,16 +615,62 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
 
     // Function to add category section (updated version with introduction section)
     const addCategorySection = (doc, categoryKey, categoryName, fields, startY) => {
-
-
-        if (fields.length === 0 && categoryKey !== "introductionDetails") return startY;
+        // Allow bankDetails, familyDetails, and introductionDetails even if fields array is empty
+        if (fields.length === 0 &&
+            categoryKey !== "introductionDetails" &&
+            categoryKey !== "bankDetails" &&
+            categoryKey !== "familyDetails") {
+            return startY;
+        }
 
         // Add category header
-        doc.setFontSize(16); // Font size बड़ा किया (14 से 16)
+        doc.setFontSize(16);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(0, 0, 0);
         doc.text(categoryName, 14, startY);
 
+        // Handle bank details with table
+        if (categoryKey === "bankDetails") {
+            const bankTableData = getBankDetailsTableData(member);
+
+            if (bankTableData.length > 0) {
+                autoTable(doc, {
+                    startY: startY + 5,
+                    head: [["S. No", "Account Holder", "Bank Name", "Branch", "Account Number", "IFSC Code"]],
+                    body: bankTableData,
+                    styles: {
+                        fontSize: 11,
+                        cellPadding: 4,
+                        textColor: [0, 0, 0],
+                        fontStyle: 'normal',
+                        lineHeight: 1.3
+                    },
+                    headStyles: {
+                        fillColor: [25, 118, 210],
+                        textColor: 255,
+                        fontSize: 12,
+                        fontStyle: 'bold'
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 15 },
+                        1: { cellWidth: 40 },
+                        2: { cellWidth: 35 },
+                        3: { cellWidth: 30 },
+                        4: { cellWidth: 40 },
+                        5: { cellWidth: 35 }
+                    },
+                    theme: 'grid',
+                });
+                return doc.lastAutoTable.finalY + 10;
+            } else {
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'normal');
+                doc.text("No bank details available", 14, startY + 10);
+                return startY + 15;
+            }
+        }
+
+        // Handle family details
         if (categoryKey === "familyDetails") {
             const familyTableData = getFamilyMembersTableData(member);
 
@@ -600,16 +680,16 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                     head: [["S. No", "Member's Name", "Membership Number", "Relation With Member"]],
                     body: familyTableData,
                     styles: {
-                        fontSize: 11, // Font size बड़ा किया (9 से 11)
-                        cellPadding: 4, // Padding बड़ा किया (3 से 4)
+                        fontSize: 11,
+                        cellPadding: 4,
                         textColor: [0, 0, 0],
                         fontStyle: 'normal',
-                        lineHeight: 1.3 // Line height बढ़ाया
+                        lineHeight: 1.3
                     },
                     headStyles: {
                         fillColor: [25, 118, 210],
                         textColor: 255,
-                        fontSize: 12, // Header font size बड़ा किया (10 से 12)
+                        fontSize: 12,
                         fontStyle: 'bold'
                     },
                     bodyStyles: {
@@ -649,7 +729,7 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                     head: [["S. No", "Particulars", "Details"]],
                     body: introData,
                     styles: {
-                        fontSize: 11, // Font size बड़ा किया
+                        fontSize: 11,
                         cellPadding: 4,
                         textColor: [0, 0, 0],
                         lineHeight: 1.3
@@ -657,7 +737,7 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                     headStyles: {
                         fillColor: [25, 118, 210],
                         textColor: 255,
-                        fontSize: 12, // Header font size बड़ा किया
+                        fontSize: 12,
                         fontStyle: "bold"
                     },
                     columnStyles: {
@@ -713,24 +793,24 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
             body: body,
 
             styles: {
-                fontSize: 11, // Font size बड़ा किया (9 से 11)
-                cellPadding: 4, // Padding बड़ा किया (3 से 4)
+                fontSize: 11,
+                cellPadding: 4,
                 textColor: [0, 0, 0],
-                lineHeight: 1.3, // Line height बढ़ाया
-                overflow: 'linebreak' // Multi-line support
+                lineHeight: 1.3,
+                overflow: 'linebreak'
             },
 
             headStyles: {
                 fillColor: [25, 118, 210],
                 textColor: 255,
-                fontSize: 12, // Header font size बड़ा किया (10 से 12)
+                fontSize: 12,
                 fontStyle: "bold"
             },
 
             columnStyles: {
                 0: { cellWidth: 25, fontStyle: "bold", cellPadding: 4 },
                 1: { cellWidth: 60, fontStyle: "bold", cellPadding: 4 },
-                2: { cellWidth: "auto", cellPadding: 4, minCellHeight: 15 } // Minimum height for cells
+                2: { cellWidth: "auto", cellPadding: 4, minCellHeight: 15 }
             },
 
             theme: "grid",
@@ -741,7 +821,7 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
 
     // Add society name at top center
     doc.setTextColor(0, 0, 0);
-    doc.setFontSize(20); // Font size बड़ा किया (18 से 20)
+    doc.setFontSize(20);
     doc.setFont(undefined, 'bold');
     doc.text("CA Co-Operative Thrift & Credit Society LTD", doc.internal.pageSize.width / 2, 15, { align: 'center' });
     doc.setFont(undefined, 'normal');
@@ -782,11 +862,11 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
             doc.setLineWidth(0.5);
             doc.rect(photoX, photoY, photoWidth, photoHeight);
 
-            // ⭐ Add Status Below Photo
-            const status = member?.status || "Active"; // Use dynamic status
+            // Add Status Below Photo
+            const status = member?.status || "Active";
             doc.setFontSize(11);
             doc.setFont(undefined, "bold");
-            doc.setTextColor(0, 0, 0); // green color
+            doc.setTextColor(0, 0, 0);
             doc.text(
                 `Status: ${status}`,
                 photoX + photoWidth / 2,
@@ -799,19 +879,18 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
         }
     }
 
-
     // Add member information on the left side (same line as photo)
     const infoStartX = 14;
     const infoStartY = startY;
 
-    doc.setFontSize(18); // Font size बड़ा किया (16 से 18)
+    doc.setFontSize(18);
     doc.setFont(undefined, 'bold');
     doc.text(`Member Name - ${memberName}`, infoStartX, infoStartY);
 
-    doc.setFontSize(12); // Font size बड़ा किया (10 से 12)
+    doc.setFontSize(12);
     doc.setFont(undefined, 'normal');
-    doc.text(`Membership Number: ${membershipNumber}`, infoStartX, infoStartY + 8); // Spacing adjust किया
-    doc.text(`Generated: ${new Date().toLocaleString()}`, infoStartX, infoStartY + 24); // Spacing adjust किया
+    doc.text(`Membership Number: ${membershipNumber}`, infoStartX, infoStartY + 8);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, infoStartX, infoStartY + 24);
 
     // Adjust startY for the content (below both photo and text)
     let currentY = startY + 35;
@@ -823,7 +902,13 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
         for (const categoryKey of categories) {
             const categoryFields = getFieldsByCategory(member, categoryKey, viewType);
 
-            if (categoryFields.length > 0 || categoryKey === "introductionDetails") {
+            // Show category if it has fields OR it's one of the special categories that might have tables
+            const shouldShowCategory = categoryFields.length > 0 ||
+                categoryKey === "introductionDetails" ||
+                categoryKey === "bankDetails" ||
+                categoryKey === "familyDetails";
+
+            if (shouldShowCategory) {
                 // Check if we need a new page
                 if (currentY > doc.internal.pageSize.height - 50) {
                     doc.addPage();
@@ -879,8 +964,8 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                 body: body,
 
                 styles: {
-                    fontSize: 11, // Font size बड़ा किया (9 से 11)
-                    cellPadding: 4, // Padding बड़ा किया (3 से 4)
+                    fontSize: 11,
+                    cellPadding: 4,
                     textColor: [0, 0, 0],
                     lineHeight: 1.3,
                     overflow: 'linebreak'
@@ -889,7 +974,7 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                 headStyles: {
                     fillColor: [25, 118, 210],
                     textColor: 255,
-                    fontSize: 12, // Header font size बड़ा किया (10 से 12)
+                    fontSize: 12,
                     fontStyle: "bold"
                 },
 
@@ -903,6 +988,15 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
             });
 
             currentY = doc.lastAutoTable.finalY + 10;
+        } else if (category === "bankDetails" || category === "familyDetails" || category === "introductionDetails") {
+            // Handle special categories that use table format
+            currentY = addCategorySection(
+                doc,
+                category,
+                CATEGORY_MAP[category],
+                [],
+                currentY
+            );
         }
     }
 

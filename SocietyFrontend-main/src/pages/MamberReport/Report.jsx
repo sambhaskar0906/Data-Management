@@ -402,7 +402,8 @@ const MissingMembersTable = () => {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [memberToDelete, setMemberToDelete] = useState(null);
     const [tabValue, setTabValue] = useState(0);
-    const [showAdvancedFilters, setShowAdvancedFilters] = useState(true);
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const [showFieldGroups, setShowFieldGroups] = useState(false);
 
     useEffect(() => { dispatch(fetchAllMembers()); }, [dispatch]);
 
@@ -454,12 +455,24 @@ const MissingMembersTable = () => {
 
     return (
         <Box sx={{ p: 3 }}>
-            <Typography variant="h5" sx={{ mb: 2, color: "primary.main", fontWeight: "bold" }}>
-                Field Status Overview
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Total Members: {members.length} | Select a field and apply filters to check status
-            </Typography>
+            <Box
+                sx={{
+                    mb: 3,
+                    p: 2.5,
+                    borderRadius: 2,
+                    bgcolor: "#FFFFFF",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                    borderLeft: "5px solid #1A237E",
+                }}
+            >
+                <Typography variant="h5" sx={{ fontWeight: 800, color: "#1A237E" }}>
+                    Member Field Status Overview
+                </Typography>
+
+                <Typography variant="body2" sx={{ color: "#555", mt: 0.3 }}>
+                    Analyse Missing / Available fields across all members
+                </Typography>
+            </Box>
 
             <DeleteConfirmationDialog
                 open={deleteDialogOpen}
@@ -649,60 +662,129 @@ const MissingMembersTable = () => {
                         <Form>
                             <Stack spacing={2} sx={{ mb: 3 }}>
                                 {/* Main Search and Actions */}
-                                <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
-                                    <TextField size="small" placeholder="Search by name, membership, phone, email, qualification..."
-                                        value={values.search} onChange={(e) => setFieldValue("search", e.target.value)}
-                                        InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-                                        sx={{ width: 400 }} />
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        gap: 2,
+                                        flexWrap: "wrap",
+                                        alignItems: "center",
+                                        mb: 2,
+                                        p: 2,
+                                        bgcolor: "#FFFFFF",
+                                        borderRadius: 2,
+                                        boxShadow: "0 3px 10px rgba(0,0,0,0.05)",
+                                        justifyContent: "space-between"
+                                    }}
+                                >
+                                    <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
+                                        <TextField
+                                            size="small"
+                                            placeholder="Search members..."
+                                            value={values.search}
+                                            onChange={(e) => setFieldValue("search", e.target.value)}
+                                            InputProps={{
+                                                startAdornment: (
+                                                    <InputAdornment position="start">
+                                                        <SearchIcon color="primary" />
+                                                    </InputAdornment>
+                                                ),
+                                            }}
+                                            sx={{
+                                                width: { xs: "100%", md: 350 },
+                                                bgcolor: "#fff",
+                                            }}
+                                        />
 
-                                    <Button variant="contained" startIcon={<PictureAsPdfIcon />}
-                                        onClick={() => generatePDF(filteredMembers, values.selectedField, values.viewType)}
-                                        disabled={!filteredMembers.length}>
-                                        Download PDF
-                                    </Button>
+                                        <Button
+                                            variant="contained"
+                                            startIcon={<PictureAsPdfIcon />}
+                                            onClick={() => generatePDF(filteredMembers, values.selectedField, values.viewType)}
+                                            sx={{
+                                                bgcolor: "#1A237E",
+                                                "&:hover": { bgcolor: "#161F64" },
+                                            }}
+                                        >
+                                            Download PDF
+                                        </Button>
 
-                                    <Button variant="outlined" onClick={() => dispatch(fetchAllMembers())} disabled={loading}>
-                                        Refresh
-                                    </Button>
+                                        <Button variant="outlined" onClick={() => dispatch(fetchAllMembers())}>
+                                            Refresh
+                                        </Button>
+                                    </Box>
 
-                                    <FormControlLabel control={<Checkbox checked={showAdvancedFilters}
-                                        onChange={(e) => setShowAdvancedFilters(e.target.checked)} />}
-                                        label="Show Advanced Filters" />
+                                    {/* 🔥 Both checkboxes perfectly aligned in one line */}
+                                    <Box sx={{ display: "flex", gap: 2 }}>
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={showAdvancedFilters}
+                                                    onChange={(e) => setShowAdvancedFilters(e.target.checked)}
+                                                    sx={{
+                                                        color: "#1A237E",
+                                                        "&.Mui-checked": { color: "#1A237E" },
+                                                    }}
+                                                />
+                                            }
+                                            label="Show Advanced Filters"
+                                        />
+
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={showFieldGroups}
+                                                    onChange={(e) => setShowFieldGroups(e.target.checked)}
+                                                    sx={{
+                                                        color: "#1A237E",
+                                                        "&.Mui-checked": { color: "#1A237E" },
+                                                    }}
+                                                />
+                                            }
+                                            label="Show Field Groups"
+                                        />
+                                    </Box>
                                 </Box>
+
 
                                 {/* Advanced Filters */}
                                 {showAdvancedFilters && (
                                     <AdvancedFilters values={values} setFieldValue={setFieldValue} filters={filters} />
                                 )}
 
-                                {/* Field Selection Tabs */}
-                                <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                                    <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
-                                        {Object.entries(FIELD_GROUPS).map(([key, { label }], idx) => (
-                                            <Tab key={key} label={label} />
-                                        ))}
-                                    </Tabs>
-                                </Box>
-
-                                {/* Field Buttons */}
-                                {Object.entries(FIELD_GROUPS).map(([key, { fields }], idx) => (
-                                    <TabPanel key={key} value={tabValue} index={idx}>
-                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                            {fields.map(fieldKey => (
-                                                <Chip key={fieldKey} label={ALL_FIELDS[fieldKey]}
-                                                    onClick={() => {
-                                                        setFieldValue("selectedField", fieldKey);
-                                                        if (fieldKey !== "personalDetails.civilScore") {
-                                                            setFieldValue("civilScoreFilter", "all");
-                                                        }
-                                                    }}
-                                                    color={values.selectedField === fieldKey ? "primary" : "default"}
-                                                    variant={values.selectedField === fieldKey ? "filled" : "outlined"}
-                                                    clickable />
-                                            ))}
+                                {showFieldGroups && (
+                                    <>
+                                        {/* Field Selection Tabs */}
+                                        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                                            <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
+                                                {Object.entries(FIELD_GROUPS).map(([key, { label }]) => (
+                                                    <Tab key={key} label={label} />
+                                                ))}
+                                            </Tabs>
                                         </Box>
-                                    </TabPanel>
-                                ))}
+
+                                        {/* Field Buttons */}
+                                        {Object.entries(FIELD_GROUPS).map(([key, { fields }], idx) => (
+                                            <TabPanel key={key} value={tabValue} index={idx}>
+                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                                    {fields.map((fieldKey) => (
+                                                        <Chip
+                                                            key={fieldKey}
+                                                            label={ALL_FIELDS[fieldKey]}
+                                                            onClick={() => {
+                                                                setFieldValue("selectedField", fieldKey);
+                                                                if (fieldKey !== "personalDetails.civilScore") {
+                                                                    setFieldValue("civilScoreFilter", "all");
+                                                                }
+                                                            }}
+                                                            color={values.selectedField === fieldKey ? "primary" : "default"}
+                                                            variant={values.selectedField === fieldKey ? "filled" : "outlined"}
+                                                            clickable
+                                                        />
+                                                    ))}
+                                                </Box>
+                                            </TabPanel>
+                                        ))}
+                                    </>
+                                )}
 
                                 {/* Summary Statistics */}
                                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>

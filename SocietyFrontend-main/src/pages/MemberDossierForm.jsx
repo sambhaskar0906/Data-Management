@@ -293,11 +293,18 @@ const MemberDossierForm = () => {
          PERSONAL DETAILS
       ----------------------------------------- */
       Object.entries(values.personalInformation || {}).forEach(([key, value]) => {
+
+        // Convert Yes/No of minor to boolean
+        if (key === "minor") {
+          const boolValue = value === "Yes" ? true : false;
+          formDataToSend.append(`personalDetails[minor]`, boolValue);
+          return;
+        }
+
         if (value !== "" && value !== null && value !== undefined) {
           formDataToSend.append(`personalDetails[${key}]`, value);
         }
       });
-
       /* -----------------------------------------
          ADDRESS DETAILS
       ----------------------------------------- */
@@ -481,7 +488,7 @@ const MemberDossierForm = () => {
       (values.bankDetails || []).forEach((bank, index) => {
         Object.entries(bank || {}).forEach(([key, value]) => {
           if (value !== null && value !== undefined && value !== "") {
-            formDataToSend.append(`bankDetails[${key}]`, value.toString());
+            formDataToSend.append(`bankDetails[${index}][${key}]`, value.toString());
           }
         });
       });
@@ -754,4 +761,4 @@ const MemberDossierForm = () => {
   );
 };
 
-export default MemberDossierForm;
+export default MemberDossierForm;   

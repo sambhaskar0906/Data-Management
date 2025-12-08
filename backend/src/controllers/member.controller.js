@@ -86,7 +86,7 @@ export const createMember = async (req, res) => {
     const referenceDetails = safeParse(req.body.referenceDetails, []);
     const guaranteeDetails = safeParse(req.body.guaranteeDetails, {});
     const professionalDetails = safeParse(req.body.professionalDetails, {});
-    const bankDetails = safeParse(req.body.bankDetails, {});
+    const bankDetails = safeParse(req.body.bankDetails, []);
     const documents = safeParse(req.body.documents, {});
     const nomineeDetails = safeParse(req.body.nomineeDetails, {});
     const financialDetails = safeParse(req.body.financialDetails, {});
@@ -227,9 +227,27 @@ export const updateMember = async (req, res) => {
       financialDetails: safeParse(req.body.financialDetails, {}),
     };
 
+    // Deep-merge instead of override
+    const deepMerge = (target, source) => {
+      for (const key in source) {
+        if (
+          source[key] &&
+          typeof source[key] === "object" &&
+          !Array.isArray(source[key])
+        ) {
+          target[key] = target[key] || {};
+          deepMerge(target[key], source[key]);
+        } else if (source[key] !== undefined && source[key] !== null) {
+          target[key] = source[key];
+        }
+      }
+    };
+
+    deepMerge(member, incoming);
+
+
     const uploadedFiles = await mapReqFilesToCloudinary(req);
 
-    Object.assign(member, incoming); // soft merge
 
     // Merge file uploads
     Object.assign(member.addressDetails, {
@@ -280,6 +298,7 @@ export const updateMember = async (req, res) => {
   }
 };
 
+
 // ---------------------------------------------------------
 // OTHER CONTROLLERS REMAIN SAME
 // ---------------------------------------------------------
@@ -294,8 +313,6 @@ export const getMemberById = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
-
-
 
 
 

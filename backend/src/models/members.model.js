@@ -185,13 +185,17 @@ const memberSchema = new mongoose.Schema(
     },
 
     // ===== BANK DETAILS =====
-    bankDetails: {
-      accountHolderName: { type: String },
-      bankName: { type: String },
-      branch: { type: String },
-      accountNumber: { type: String },
-      ifscCode: { type: String },
-    },
+    bankDetails: [
+      {
+        _id: false,
+        accountHolderName: { type: String },
+        bankName: { type: String },
+        branch: { type: String },
+        accountNumber: { type: String },
+        ifscCode: { type: String },
+      }
+    ],
+
 
     // ===== GUARANTEE DETAILS =====
     guaranteeDetails: {

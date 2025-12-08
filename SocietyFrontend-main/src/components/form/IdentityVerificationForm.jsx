@@ -459,4 +459,4 @@ const IdentityVerificationForm = ({ formData, handleChange }) => {
   );
 };
 
-export default IdentityVerificationForm;
+export default IdentityVerificationForm;  
