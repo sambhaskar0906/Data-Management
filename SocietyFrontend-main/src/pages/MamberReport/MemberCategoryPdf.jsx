@@ -16,7 +16,7 @@ export const FIELD_MAP = {
     "personalDetails.religion": "Religion",
     "personalDetails.caste": "Category",
     "personalDetails.maritalStatus": "Marital Status",
-
+    "personalDetails.nameOfSpouse": "Spouse's Name",
     "personalDetails.phoneNo1": "Primary Number",
     "personalDetails.phoneNo2": "Secondary Number",
     "personalDetails.whatsapp": "WhatsApp Number",
@@ -25,7 +25,7 @@ export const FIELD_MAP = {
     "personalDetails.emailId1": "Primary Email",
     "personalDetails.emailId2": "Secondary Email",
     "personalDetails.emailId3": "Optional Email",
-    "personalDetails.nameOfSpouse": "Spouse's Name",
+    "personalDetails.resignationDate": "Resignation Date",
 
     // Address
     "addressDetails.currentResidentalAddress": "Current Address",

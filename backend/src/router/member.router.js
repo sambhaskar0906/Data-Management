@@ -1,5 +1,7 @@
 import express from "express";
 import multer from "multer";
+import path from "path";
+
 import {
   createMember,
   getMemberById,
@@ -13,25 +15,31 @@ import {
 
 const router = express.Router();
 
-// Updated: Use diskStorage as per your requirement
+// Get the absolute path for uploads folder
+const __dirname = path.resolve();
+
+// Storage configuration with absolute path
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, './uploads/') // Make sure this directory exists
+    // IMPORTANT: Works on VPS + Local
+    cb(null, path.join(__dirname, "uploads"));
   },
   filename: function (req, file, cb) {
-    // Add timestamp to avoid filename conflicts
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  }
+    const uniqueSuffix =
+      Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + "-" + file.originalname);
+  },
 });
 
+// Multer configuration
 const upload = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  }
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
 });
 
+// List of file fields
 const fileFields = [
   { name: "addressDetails[permanentAddressBillPhoto]", maxCount: 1 },
   { name: "addressDetails[currentResidentalBillPhoto]", maxCount: 1 },
@@ -46,6 +54,8 @@ const fileFields = [
   { name: "voterIdPhoto", maxCount: 1 },
   { name: "passportNoPhoto", maxCount: 1 },
   { name: "signedPhoto", maxCount: 1 },
+
+  // Service Documents
   { name: "professionalDetails[serviceDetails][bankStatement]", maxCount: 1 },
   { name: "professionalDetails[serviceDetails][idCard]", maxCount: 1 },
   { name: "professionalDetails[serviceDetails][montlySlip]", maxCount: 1 },
@@ -54,8 +64,7 @@ const fileFields = [
   { name: "professionalDetails[businessDetails][gstCertificate]", maxCount: 1 },
 ];
 
-
-
+// ROUTES
 router.post("/", upload.fields(fileFields), createMember);
 router.get("/", getAllMembers);
 router.post("/add-guarantor", addGuarantor);
@@ -64,6 +73,5 @@ router.get("/:id", getMemberById);
 router.put("/:id", upload.fields(fileFields), updateMember);
 router.delete("/:id", deleteMember);
 router.get("/check/missing-fields", getMissingFieldsForMember);
-
 
 export default router;

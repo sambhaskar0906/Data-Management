@@ -47,7 +47,7 @@ const memberSchema = new mongoose.Schema(
       landlineNo: { type: String },
       landlineOffice: { type: String },
       civilScore: { type: String },
-
+      resignationDate: { type: String },
     },
 
     // ===== ADDRESS DETAILS =====

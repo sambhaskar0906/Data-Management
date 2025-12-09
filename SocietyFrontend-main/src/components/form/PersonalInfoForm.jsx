@@ -56,7 +56,9 @@ const PersonalInfoForm = ({ formData, handleChange }) => {
       handleChange("personalInformation", field, value);
     }
   };
-
+  const formattedDate = personalInfo.resignationDate
+    ? new Date(personalInfo.resignationDate).toISOString().split('T')[0]
+    : "";
   // Validation functions
   const validateField = (fieldName, value) => {
     let error = "";
@@ -678,7 +680,7 @@ const PersonalInfoForm = ({ formData, handleChange }) => {
           <Grid size={{ xs: 12, md: 3 }}>
             <Box sx={{ position: 'relative' }}>
               <StyledTextField
-                label="Civil Score"
+                label="Cibil Score"
                 name="cibilScore"
                 type="number"
                 value={creditInfo.cibilScore || ""}
@@ -709,6 +711,21 @@ const PersonalInfoForm = ({ formData, handleChange }) => {
               />
             </Box>
           </Grid>
+
+          <Grid size={{ xs: 12, md: 3 }}>
+            <StyledTextField
+              label="Resignation Date"
+              type="date"
+              name="resignationDate"
+              InputLabelProps={{ shrink: true }}
+              value={formattedDate}  // Use the formattedDate variable here
+              onChange={(e) => handleFieldChange("resignationDate", e.target.value)}
+              error={!!errors.resignationDate}
+              helperText={errors.resignationDate || ""}
+              sx={textFieldStyles}
+            />
+          </Grid>
+
 
           {/* Gender */}
           <Grid size={{ xs: 12, md: 3 }}>

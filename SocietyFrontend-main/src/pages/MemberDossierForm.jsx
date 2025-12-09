@@ -68,6 +68,7 @@ const MemberDossierForm = () => {
       emailId3: "",
       landlineNo: "",
       landlineOffice: "",
+      resignationDate: "",
 
     },
 
