@@ -16,6 +16,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import { Link, useLocation } from "react-router-dom";
 import PeopleIcon from "@mui/icons-material/People";
 import RealEstateAgentIcon from "@mui/icons-material/RealEstateAgent";
+import SummarizeIcon from '@mui/icons-material/Summarize';
 
 const Sidebar = () => {
     const location = useLocation();
@@ -28,6 +29,7 @@ const Sidebar = () => {
         // { label: "Surety Report", route: "/surety-report", icon: <AssessmentIcon /> },
         { label: "Greeting", route: "/greeting", icon: <EventSeatIcon /> },
         { label: "Notice", route: "/notice", icon: <AssessmentIcon /> },
+        { label: "Summary", route: "/summary", icon: <SummarizeIcon /> },
     ];
 
     return (

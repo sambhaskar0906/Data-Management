@@ -54,7 +54,7 @@ const memberSchema = new mongoose.Schema(
     addressDetails: {
       residenceType: {
         type: String,
-        enum: ['Owned', 'Rented', 'Company Provided', 'Other'],
+        enum: ['Owned', 'Owned By Family', 'Rented', 'Company Provided', 'Other'],
       },
       permanentAddress: {
         flatHouseNo: { type: String },
@@ -123,8 +123,6 @@ const memberSchema = new mongoose.Schema(
       aadhaarNo: { type: String },
       voterId: { type: String },
       passportNo: { type: String },
-
-
       // PHOTOS
       panNoPhoto: { type: String },
       rationCardPhoto: { type: String },

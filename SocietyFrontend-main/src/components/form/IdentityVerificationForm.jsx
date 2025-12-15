@@ -20,6 +20,7 @@ import SectionHeader from "../../layout/SectionHeader";
 const IdentityVerificationForm = ({ formData, handleChange }) => {
   const identityProofs = formData.identityProofs;
   const theme = useTheme();
+  const [errors, setErrors] = React.useState({});
 
   // Handle changes for identity proof fields
   const handleIdentityFieldChange = (field, value) => {
@@ -35,6 +36,51 @@ const IdentityVerificationForm = ({ formData, handleChange }) => {
       handleIdentityFieldChange(previewField, preview);
     }
   };
+
+  const validators = {
+    aadhaarCardNumber: {
+      regex: /^[2-9]\d{11}$/,
+      message: "Enter valid 12-digit Aadhaar number"
+    },
+    panNumber: {
+      regex: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
+      message: "Enter valid PAN number (e.g., ABCDE1234F)"
+    },
+    voterIdNumber: {
+      regex: /^[A-Z]{3}[0-9]{7}$/,
+      message: "Enter valid Voter ID (3 letters + 7 digits)"
+    },
+    passportNumber: {
+      regex: /^[A-PR-WYa-pr-wy][1-9]\d{6}$/,
+      message: "Enter valid Passport number"
+    },
+    drivingLicenseNumber: {
+      regex: /^[A-Z]{2}[0-9]{13}$/,
+      message: "Enter valid DL (StateCode + 13 digits)"
+    },
+    rationCardNumber: {
+      regex: /^[A-Z0-9]{8,12}$/,
+      message: "Enter valid Ration Card number"
+    }
+  };
+
+  const validateField = (field, value) => {
+    const rule = validators[field];
+
+    if (!rule) return; // no validation rule → skip
+
+    if (!value.trim()) {
+      setErrors((prev) => ({ ...prev, [field]: rule.message }));
+      return;
+    }
+
+    if (!rule.regex.test(value.trim())) {
+      setErrors((prev) => ({ ...prev, [field]: rule.message }));
+    } else {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
 
   // 🔹 Helper component for file + preview (FULL IMAGE DISPLAY)
   const UploadBox = ({ label, fileField, previewField, height = 140 }) => (
@@ -199,37 +245,29 @@ const IdentityVerificationForm = ({ formData, handleChange }) => {
             Aadhaar Card
           </Typography>
           <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <StyledTextField
                 label="Aadhaar Number"
                 name="aadhaarCardNumber"
                 value={identityProofs.aadhaarCardNumber || ""}
-                onChange={(e) => handleIdentityFieldChange('aadhaarCardNumber', e.target.value)}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    backgroundColor: alpha(theme.palette.background.paper, 0.8),
-                    transition: 'all 0.2s ease-in-out',
-                    height: '56px',
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.background.paper, 0.9),
-                    },
-                    '&.Mui-focused': {
-                      backgroundColor: theme.palette.background.paper,
-                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-                    }
-                  }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  handleIdentityFieldChange('aadhaarCardNumber', value);
+                  validateField('aadhaarCardNumber', value);
                 }}
+                error={Boolean(errors.aadhaarCardNumber)}
+                helperText={errors.aadhaarCardNumber}
               />
+
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <UploadBox
                 label="Upload Aadhaar Front Photo"
                 fileField="aadhaarFrontPhoto"
                 previewField="aadhaarFrontPreview"
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <UploadBox
                 label="Upload Aadhaar Back Photo"
                 fileField="aadhaarBackPhoto"
@@ -245,30 +283,21 @@ const IdentityVerificationForm = ({ formData, handleChange }) => {
             PAN Card
           </Typography>
           <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <StyledTextField
                 label="PAN Number"
                 name="panNumber"
                 value={identityProofs.panNumber || ""}
-                onChange={(e) => handleIdentityFieldChange('panNumber', e.target.value)}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    backgroundColor: alpha(theme.palette.background.paper, 0.8),
-                    transition: 'all 0.2s ease-in-out',
-                    height: '56px',
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.background.paper, 0.9),
-                    },
-                    '&.Mui-focused': {
-                      backgroundColor: theme.palette.background.paper,
-                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-                    }
-                  }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  handleIdentityFieldChange('panNumber', value);
+                  validateField('panNumber', value);
                 }}
+                error={Boolean(errors.panNumber)}
+                helperText={errors.panNumber}
               />
             </Grid>
-            <Grid item xs={12} sm={8}>
+            <Grid size={{ xs: 12, md: 8 }}>
               <UploadBox
                 label="Upload PAN Card Photo"
                 fileField="panCardPhoto"
@@ -284,37 +313,28 @@ const IdentityVerificationForm = ({ formData, handleChange }) => {
             Voter ID Card
           </Typography>
           <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <StyledTextField
                 label="Voter ID Number"
                 name="voterIdNumber"
                 value={identityProofs.voterIdNumber || ""}
-                onChange={(e) => handleIdentityFieldChange('voterIdNumber', e.target.value)}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    backgroundColor: alpha(theme.palette.background.paper, 0.8),
-                    transition: 'all 0.2s ease-in-out',
-                    height: '56px',
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.background.paper, 0.9),
-                    },
-                    '&.Mui-focused': {
-                      backgroundColor: theme.palette.background.paper,
-                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-                    }
-                  }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  handleIdentityFieldChange('voterIdNumber', value);
+                  validateField('voterIdNumber', value);
                 }}
+                error={Boolean(errors.voterIdNumber)}
+                helperText={errors.voterIdNumber}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <UploadBox
                 label="Upload Voter ID Front Photo"
                 fileField="voterFrontPhoto"
                 previewField="voterFrontPreview"
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <UploadBox
                 label="Upload Voter ID Back Photo"
                 fileField="voterBackPhoto"
@@ -330,30 +350,21 @@ const IdentityVerificationForm = ({ formData, handleChange }) => {
             Passport
           </Typography>
           <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <StyledTextField
                 label="Passport Number"
                 name="passportNumber"
                 value={identityProofs.passportNumber || ""}
-                onChange={(e) => handleIdentityFieldChange('passportNumber', e.target.value)}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    backgroundColor: alpha(theme.palette.background.paper, 0.8),
-                    transition: 'all 0.2s ease-in-out',
-                    height: '56px',
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.background.paper, 0.9),
-                    },
-                    '&.Mui-focused': {
-                      backgroundColor: theme.palette.background.paper,
-                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-                    }
-                  }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  handleIdentityFieldChange('passportNumber', value);
+                  validateField('passportNumber', value);
                 }}
+                error={Boolean(errors.passportNumber)}
+                helperText={errors.passportNumber}
               />
             </Grid>
-            <Grid item xs={12} sm={8}>
+            <Grid size={{ xs: 12, md: 8 }}>
               <UploadBox
                 label="Upload Passport Photo"
                 fileField="passportPhoto"
@@ -369,37 +380,28 @@ const IdentityVerificationForm = ({ formData, handleChange }) => {
             Driving License
           </Typography>
           <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <StyledTextField
                 label="Driving License Number"
                 name="drivingLicenseNumber"
                 value={identityProofs.drivingLicenseNumber || ""}
-                onChange={(e) => handleIdentityFieldChange('drivingLicenseNumber', e.target.value)}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    backgroundColor: alpha(theme.palette.background.paper, 0.8),
-                    transition: 'all 0.2s ease-in-out',
-                    height: '56px',
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.background.paper, 0.9),
-                    },
-                    '&.Mui-focused': {
-                      backgroundColor: theme.palette.background.paper,
-                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-                    }
-                  }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  handleIdentityFieldChange('drivingLicenseNumber', value);
+                  validateField('drivingLicenseNumber', value);
                 }}
+                error={Boolean(errors.drivingLicenseNumber)}
+                helperText={errors.drivingLicenseNumber}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <UploadBox
                 label="Upload DL Front Photo"
                 fileField="drivingFrontPhoto"
                 previewField="drivingFrontPreview"
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <UploadBox
                 label="Upload DL Back Photo"
                 fileField="drivingBackPhoto"
@@ -415,37 +417,28 @@ const IdentityVerificationForm = ({ formData, handleChange }) => {
             Ration Card
           </Typography>
           <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <StyledTextField
                 label="Ration Card Number"
                 name="rationCardNumber"
                 value={identityProofs.rationCardNumber || ""}
-                onChange={(e) => handleIdentityFieldChange('rationCardNumber', e.target.value)}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    backgroundColor: alpha(theme.palette.background.paper, 0.8),
-                    transition: 'all 0.2s ease-in-out',
-                    height: '56px',
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.background.paper, 0.9),
-                    },
-                    '&.Mui-focused': {
-                      backgroundColor: theme.palette.background.paper,
-                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-                    }
-                  }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  handleIdentityFieldChange('rationCardNumber', value);
+                  validateField('rationCardNumber', value);
                 }}
+                error={Boolean(errors.rationCardNumber)}
+                helperText={errors.rationCardNumber}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <UploadBox
                 label="Upload Ration Front Photo"
                 fileField="rationFrontPhoto"
                 previewField="rationFrontPreview"
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <UploadBox
                 label="Upload Ration Back Photo"
                 fileField="rationBackPhoto"

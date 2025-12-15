@@ -59,6 +59,7 @@ import {
 // ------------------ Helper map & util functions ------------------
 // (Assume your existing helpers remain; they are kept as-is)
 export const FIELD_MAP = {
+    // -------- PERSONAL DETAILS --------
     "personalDetails.nameOfMember": "Member Name",
     "personalDetails.membershipNumber": "Membership No",
     "personalDetails.nameOfFather": "Father's Name",
@@ -66,52 +67,77 @@ export const FIELD_MAP = {
     "personalDetails.dateOfBirth": "Date of Birth",
     "personalDetails.ageInYears": "Age (Years)",
     "personalDetails.membershipDate": "Membership Date",
-    "personalDetails.amountInCredit": "Amount In Credit",
     "personalDetails.gender": "Gender",
     "personalDetails.maritalStatus": "Marital Status",
     "personalDetails.religion": "Religion",
-    "personalDetails.caste": "Caste",
-    "personalDetails.phoneNo1": "Phone No",
-    "personalDetails.alternatePhoneNo": "Alternate Phone",
-    "personalDetails.emailId1": "Email",
-    "addressDetails.permanentAddress.flatHouseNo": "Permanent - Flat/House No",
-    "addressDetails.permanentAddress.areaStreetSector": "Permanent - Area/Street/Sector",
-    "addressDetails.permanentAddress.locality": "Permanent - Locality",
-    "addressDetails.permanentAddress.landmark": "Permanent - Landmark",
-    "addressDetails.permanentAddress.city": "Permanent - City",
-    "addressDetails.permanentAddress.country": "Permanent - Country",
-    "addressDetails.permanentAddress.state": "Permanent - State",
-    "addressDetails.permanentAddress.pincode": "Permanent - Pincode",
+    "personalDetails.caste": "Category",
+    "personalDetails.phoneNo1": "Primary Number",
+    "personalDetails.phoneNo2": "Secondary Number",
+    "personalDetails.whatsapp": "Whatsapp Number",
+    "personalDetails.emailId1": "Primary Email",
+    "personalDetails.emailId2": "Secondary Email",
+    "personalDetails.emailId3": "Optional Email",
+    "personalDetails.landlineNo": "Landline No.",
+    "personalDetails.landlineOffice": "Landline No Office",
+    "personalDetails.resignationDate": "Resignation Date",
+    "creditDetails.cibilScore": "CIBIL Score",
+
+    // -------- ADDRESS DETAILS --------
+    "addressDetails.permanentAddress": "Permanent Address",
+    "addressDetails.currentResidentalAddress": "Current Address",
+    "addressDetails.residenceType": "Residence Type",
     "addressDetails.permanentAddressBillPhoto": "Permanent - Bill Photo",
-    "addressDetails.currentResidentalAddress.flatHouseNo": "Current - Flat/House No",
-    "addressDetails.currentResidentalAddress.areaStreetSector": "Current - Area/Street/Sector",
-    "addressDetails.currentResidentalAddress.locality": "Current - Locality",
-    "addressDetails.currentResidentalAddress.landmark": "Current - Landmark",
-    "addressDetails.currentResidentalAddress.city": "Current - City",
-    "addressDetails.currentResidentalAddress.country": "Current - Country",
-    "addressDetails.currentResidentalAddress.state": "Current - State",
-    "addressDetails.currentResidentalAddress.pincode": "Current - Pincode",
     "addressDetails.currentResidentalBillPhoto": "Current - Bill Photo",
     "addressDetails.previousCurrentAddress": "Previous Addresses",
+
+    // -------- DOCUMENTS --------
     "documents.passportSize": "Passport Size Photo",
-    "documents.panNo": "PAN No",
-    "documents.rationCard": "Ration Card",
-    "documents.drivingLicense": "Driving License",
-    "documents.aadhaarNo": "Aadhaar No",
-    "documents.voterId": "Voter ID",
-    "documents.passportNo": "Passport No",
+    "documents.panNo": "PAN Number",
     "documents.panNoPhoto": "PAN Photo",
-    "documents.rationCardPhoto": "Ration Card Photo",
-    "documents.drivingLicensePhoto": "DL Photo",
+    "documents.aadhaarNo": "Aadhaar Number",
     "documents.aadhaarNoPhoto": "Aadhaar Photo",
+    "documents.drivingLicense": "Driving License Number",
+    "documents.drivingLicensePhoto": "DL Photo",
+    "documents.voterId": "Voter ID Number",
     "documents.voterIdPhoto": "Voter ID Photo",
+    "documents.rationCard": "Ration Card Number",
+    "documents.rationCardPhoto": "Ration Card Photo",
+    "documents.passportNo": "Passport Number",
     "documents.passportNoPhoto": "Passport Photo",
+    "documents.signedPhoto": "Signed Photo",
+
+    // -------- PROFESSIONAL DETAILS --------
     "professionalDetails.qualification": "Qualification",
     "professionalDetails.occupation": "Occupation",
-    "familyDetails.familyMembersMemberOfSociety": "Family Members in Society",
-    "familyDetails.familyMember": "Family Member Names",
-    "familyDetails.familyMemberNo": "Family Member Phones",
+    "professionalDetails.serviceDetails.fullNameOfCompany": "Name of Company",
+    "professionalDetails.serviceDetails.addressOfCompany": "Address of Company",
+    "professionalDetails.serviceDetails.designation": "Designation",
+    "professionalDetails.serviceDetails.department": "Department",
+    "professionalDetails.serviceDetails.employeeCode": "Employee Code",
+    "professionalDetails.serviceDetails.officeNo": "Office No.",
+    "professionalDetails.serviceDetails.dateOfJoining": "dateOfJoining",
+    "professionalDetails.serviceDetails.dateOfRetirement": "Date of Retirement",
+    "professionalDetails.serviceDetails.monthlyIncome": "Monthly Income",
+    "professionalDetails.serviceDetails.idCard": "Id Card",
+    "professionalDetails.serviceDetails.monthlySlip": "monthlySlip",
+    "professionalDetails.serviceDetails.bankStatement": "bankStatement",
+
+    // -------- NOMINEE DETAILS (FIXED!) --------
+    "nomineeDetails.nomineeName": "Nominee Name",
+    "nomineeDetails.relationWithApplicant": "Relation with Applicant",
+    "nomineeDetails.nomineeMobileNo": "Nominee Mobile Number",
+    "nomineeDetails.introduceBy": "Introduced By",
+    "nomineeDetails.memberShipNo": "Membership Number",
+
+    // -------- FINANCIAL DETAILS --------
+    "financialDetails.shareCapital": "Share Capital",
+    "financialDetails.optionalDeposit": "Optional Deposit",
+    "financialDetails.compulsory": "Compulsory Deposit",
+
+    // -------- BANK DETAILS --------
+    "bankDetails": "Bank Details",
 };
+
 
 export const getValueByPath = (obj, path) => {
     if (!path) return undefined;
@@ -151,31 +177,55 @@ export const isMissing = (value) => {
 export const formatValueForUI = (value) => {
     if (isMissing(value)) return <span style={{ color: 'red', fontWeight: 700 }}>Missing</span>;
 
-    if (typeof value === 'string' && (value.startsWith('http') || value.startsWith('https'))) {
+    // Date formatter
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+        const date = new Date(value);
+        return `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`;
+    }
+
+    // Address formatter
+    if (typeof value === "object" && value.flatHouseNo && value.city) {
+        const { flatHouseNo, areaStreetSector, locality, landmark, city, state, pincode } = value;
+        return [flatHouseNo, areaStreetSector, locality, landmark, city, state, pincode]
+            .filter(Boolean)
+            .join(", ");
+    }
+
+    // Image
+    if (typeof value === "string" && (value.startsWith("http") || value.startsWith("https"))) {
         return (
             <div>
-                <img src={value} alt="doc" style={{ maxWidth: 120, maxHeight: 120, borderRadius: 4, border: '1px solid #ddd' }} />
+                <img src={value} alt="doc" style={{ maxWidth: 120, maxHeight: 120, borderRadius: 4 }} />
                 <div style={{ marginTop: 6 }}>
-                    <a href={value} target="_blank" rel="noreferrer" style={{ color: '#1976d2' }}>View Full Image</a>
+                    <a href={value} target="_blank" rel="noreferrer">View Full Image</a>
                 </div>
             </div>
         );
     }
 
+    // Array
     if (Array.isArray(value)) {
-        if (value.length > 0 && typeof value[0] === 'object') {
-            return value.map((v, idx) => <div key={idx} style={{ marginBottom: 6 }}>{Object.entries(v).map(([k, vv]) => <div key={k}><strong>{k}:</strong> {String(vv)}</div>)}</div>);
+        return value.join(", ");
+    }
+
+    // OBJECT FIX — prevents showing unwanted fields
+    if (typeof value === "object") {
+
+        // If it's serviceDetails → show only monthlyIncome
+        if (value.monthlyIncome !== undefined) {
+            return value.monthlyIncome;
         }
-        return value.join(', ');
+
+        // Otherwise do not show object keys
+        return "";
     }
 
-    if (typeof value === 'object') {
-        return Object.entries(value).map(([k, v]) => <div key={k}><strong>{k}:</strong> {String(v)}</div>);
-    }
+    // Boolean
+    if (typeof value === "boolean") return value ? "Yes" : "No";
 
-    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     return String(value);
 };
+
 
 export const getTitleForMember = (member) => {
     if (!member) return "";

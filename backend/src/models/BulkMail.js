@@ -22,13 +22,8 @@ const bulkMailSchema = new mongoose.Schema({
         trim: true
     },
     uploadedPhoto: {
-        public_id: {
-            type: String,
-            required: true
-        },
-        url: {
-            type: String,
-        }
+        public_id: { type: String },
+        url: { type: String }
     },
     recipients: [{
         memberId: {
@@ -91,8 +86,7 @@ const bulkMailSchema = new mongoose.Schema({
     completedAt: Date,
     sentBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+        ref: 'User'
     }
 }, {
     timestamps: true

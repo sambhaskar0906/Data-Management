@@ -788,7 +788,7 @@ const PersonalInfoForm = ({ formData, handleChange }) => {
           {/* Caste */}
           <Grid size={{ xs: 12, md: 3 }}>
             <ComboBox
-              label="Caste"
+              label="Category"
               fieldName="caste"
               value={personalInfo.caste}
               options={["General", "OBC", "SC", "ST"]}

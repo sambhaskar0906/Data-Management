@@ -21,7 +21,7 @@ import LoanView from '../pages/Loan/LoanView.jsx';
 import LoanCreationWizard from '../pages/Loan/LoanCreationWizard.jsx';
 import ExpPdf from '../pages/Exp/ExpPdf.jsx';
 import SuretyReport from '../pages/SuretyReport/SuretyReport.jsx';
-
+import SummaryPage from '../pages/Summary/Summary.jsx';
 
 const MainRoutes = () => {
   return (
@@ -46,6 +46,7 @@ const MainRoutes = () => {
         <Route path="/notice" element={<NoticePage />} />
         <Route path="/exppdf/:membershipNumber" element={<ExpPdf />} />
         <Route path="/surety-report" element={<SuretyReport />} />
+        <Route path="/summary" element={<SummaryPage />} />
       </Route>
     </Routes>
   )

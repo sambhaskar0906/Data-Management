@@ -14,9 +14,12 @@ import {
     Line
 } from "recharts";
 
-import RealEstateAgentIcon from '@mui/icons-material/RealEstateAgent';
+import RealEstateAgentIcon from "@mui/icons-material/RealEstateAgent";
 import PeopleIcon from "@mui/icons-material/People";
-import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import GroupsIcon from "@mui/icons-material/Groups";
+import PendingActionsIcon from "@mui/icons-material/PendingActions";
+import CurrencyRupeeIcon from "@mui/icons-material/CurrencyRupee";
 import WorkHistoryIcon from "@mui/icons-material/WorkHistory";
 
 // ------------------ SAMPLE DATA ------------------
@@ -65,38 +68,39 @@ const Dashboard = () => (
                 <StatCard
                     label="Total Members"
                     value="20"
-                    icon={<PeopleIcon />}
-                    color="#E3F2FD"
+                    icon={<PeopleIcon sx={{ color: "#1A237E", fontSize: 40 }} />} // Dark blue icon
+                    color="#E3F2FD" // Light background
                 />
             </Grid>
 
             <Grid size={{ xs: 12, md: 3 }}>
                 <StatCard
-                    label="Total Loans"
-                    value="59"
-                    icon={<RealEstateAgentIcon />}
-                    color="#FFF3E0"
+                    label="Members Joined in Last 30 Days"
+                    value="15"
+                    icon={<PersonAddIcon sx={{ color: "#388E3C", fontSize: 40 }} />} // Dark green icon
+                    color="#C8E6C9" // Light green background
                 />
             </Grid>
 
             <Grid size={{ xs: 12, md: 3 }}>
                 <StatCard
-                    label="Total Loan Amount"
-                    value="₹5,60,000"
-                    icon={<CurrencyRupeeIcon />}
-                    color="#FFEBEE"
+                    label="Active Members"
+                    value="18"
+                    icon={<GroupsIcon sx={{ color: "#F57C00", fontSize: 40 }} />} // Orange icon
+                    color="#FFF3E0" // Light orange background
                 />
             </Grid>
 
             <Grid size={{ xs: 12, md: 3 }}>
                 <StatCard
-                    label="Pending Loans"
-                    value="12"
-                    icon={<WorkHistoryIcon />}
-                    color="#E8F5E9"
+                    label="Inactive Member"
+                    value="3"
+                    icon={<PendingActionsIcon sx={{ color: "#D32F2F", fontSize: 40 }} />} // Red icon
+                    color="#FFEBEE" // Light red background
                 />
             </Grid>
         </Grid>
+
 
         {/* ---------------- CHART SECTION 1 ---------------- */}
         <Box
@@ -138,7 +142,7 @@ const Dashboard = () => (
         </Box>
 
         {/* ---------------- CHART SECTION 2 ---------------- */}
-        <Box
+        {/* <Box
             mt={4}
             component={Paper}
             elevation={0}
@@ -179,7 +183,7 @@ const Dashboard = () => (
                     />
                 </LineChart>
             </ResponsiveContainer>
-        </Box>
+        </Box> */}
 
     </Box>
 );

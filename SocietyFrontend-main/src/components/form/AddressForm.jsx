@@ -320,7 +320,7 @@ const AddressForm = ({ formData, handleChange, handleNestedChange }) => {
           >
             {values.proofDocument
               ? `Uploaded: ${values.proofDocument.name}`
-              : "Upload Address Proof Document"}
+              : "Upload Utility Bills"}
             <input
               type="file"
               hidden
@@ -432,6 +432,7 @@ const AddressForm = ({ formData, handleChange, handleNestedChange }) => {
               >
                 <MenuItem value="">Select Residence Type</MenuItem>
                 <MenuItem value="Owned">Owned</MenuItem>
+                <MenuItem value="Owned">Owned By Family</MenuItem>
                 <MenuItem value="Rented">Rented</MenuItem>
                 <MenuItem value="Company Provided">Company Provided</MenuItem>
               </StyledTextField>
