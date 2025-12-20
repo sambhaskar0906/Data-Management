@@ -53,6 +53,7 @@ const FILE_FIELD_KEYS = {
   voterIdPhoto: "voterIdPhoto",
   passportNoPhoto: "passportNoPhoto",
   signedPhoto: "signedPhoto",
+  oldMembershipPdf: "documents[oldMembershipPdf]",
   bankStatement: "professionalDetails[serviceDetails][bankStatement]",
   idCard: "professionalDetails[serviceDetails][idCard]",
   monthlySlip: "professionalDetails[serviceDetails][montlySlip]",
@@ -70,6 +71,7 @@ const mapReqFilesToCloudinary = async (req) => {
 
   return out;
 };
+
 
 // ---------------------------------------------------------
 // CREATE MEMBER
@@ -129,7 +131,8 @@ export const createMember = async (req, res) => {
           uploadedFiles.passportNoPhoto || documents.passportNoPhoto || "",
         signedPhoto:
           uploadedFiles.signedPhoto || documents.signedPhoto || "",
-
+        oldMembershipPdf:
+          uploadedFiles.oldMembershipPdf || documents.oldMembershipPdf || "",
 
       },
 
@@ -285,6 +288,11 @@ export const updateMember = async (req, res) => {
         uploadedFiles.gstCertificate;
     }
 
+    if (uploadedFiles.oldMembershipPdf) {
+      member.documents = member.documents || {};
+      member.documents.oldMembershipPdf = uploadedFiles.oldMembershipPdf;
+    }
+
     await member.save();
 
     return res.status(200).json({
@@ -392,9 +400,9 @@ export const getMissingFieldsForMember = async (req, res) => {
         maritalStatus: "",
         religion: "",
         caste: "",
-        phoneNo: "",
+        phoneNo1: "",
         alternatePhoneNo: "",
-        emailId: "",
+        emailId1: "",
       },
       addressDetails: {
         permanentAddress: {
@@ -697,5 +705,104 @@ export const getGuarantorRelationsByMember = async (req, res) => {
   } catch (error) {
     console.error("❌ getGuarantorRelationsByMember error:", error);
     return res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+};
+
+
+
+
+
+export const getMemberYearSummary = async (req, res) => {
+  try {
+    const startYear = 1992;
+    const currentYear = new Date().getFullYear();
+
+    const allMembers = await Member.find();
+
+    let memberYearStats = [];
+
+    let professionalSummaryAllYears = {};
+    let professionalSummaryYearwise = [];
+
+    let casteSummaryAllYears = {};
+    let casteSummaryYearwise = [];
+
+    let openingBalance = 0; // 🔹 Opening for 1992
+
+    for (let year = startYear; year <= currentYear; year++) {
+
+      // Members joined that year
+      const joinedMembers = allMembers.filter(m => {
+        const d = m.personalDetails?.membershipDate;
+        return d && new Date(d).getFullYear() === year;
+      });
+
+      // Members resigned that year
+      const resignedMembers = allMembers.filter(m => {
+        const d = m.personalDetails?.resignationDate;
+        return d && new Date(d).getFullYear() === year;
+      });
+
+      const joined = joinedMembers.length;
+      const resigned = resignedMembers.length;
+
+      const balance = openingBalance + joined - resigned;
+
+      // ✅ Push year summary
+      memberYearStats.push({
+        year,
+        opening: openingBalance,
+        joined,
+        resigned,
+        balance
+      });
+
+      // 🔁 Next year opening = this year balance
+      openingBalance = balance;
+
+      /* =======================
+         YEARWISE PROFESSIONAL
+      ======================== */
+      let profYearObj = { year };
+      joinedMembers.forEach(m => {
+        const occ = m.professionalDetails?.qualification || "Unknown";
+
+        profYearObj[occ] = (profYearObj[occ] || 0) + 1;
+        professionalSummaryAllYears[occ] =
+          (professionalSummaryAllYears[occ] || 0) + 1;
+      });
+      professionalSummaryYearwise.push(profYearObj);
+
+      /* =======================
+         YEARWISE CASTE
+      ======================== */
+      let casteYearObj = { year };
+      joinedMembers.forEach(m => {
+        const caste = m.personalDetails?.caste || "Unknown";
+
+        casteYearObj[caste] = (casteYearObj[caste] || 0) + 1;
+        casteSummaryAllYears[caste] =
+          (casteSummaryAllYears[caste] || 0) + 1;
+      });
+      casteSummaryYearwise.push(casteYearObj);
+    }
+
+    return res.status(200).json({
+      success: true,
+
+      memberYearStats, // 👈 opening, joined, resigned, balance
+
+      professionalSummaryAllYears,
+      professionalSummaryYearwise,
+
+      casteSummaryAllYears,
+      casteSummaryYearwise
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };

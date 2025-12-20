@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     Table,
     TableHead,
@@ -16,8 +16,22 @@ import {
     Collapse,
     Button,
     Menu,
-    MenuItem
+    MenuItem,
+    Divider,
+    CircularProgress
 } from "@mui/material";
+
+import {
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    IconButton,
+    TablePagination
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchMemberYearSummary } from "../../features/member/memberSlice";
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -25,12 +39,38 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 export default function ThreeSummaryTables() {
+    const dispatch = useDispatch();
+
+    const {
+        memberYearStats,
+        professionalSummaryYearwise
+    } = useSelector((state) => state.members.memberYearSummary);
+
+    const loading = useSelector((state) => state.members.loading);
+
     const [openTable, setOpenTable] = useState(null);
     const [anchorEl, setAnchorEl] = useState(null);
     const [currentTable, setCurrentTable] = useState(null);
+
+    const [selectedYear, setSelectedYear] = useState(null);
+    const [yearDetails, setYearDetails] = useState(null);
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+
     const openMenu = Boolean(anchorEl);
 
-    const toggleTable = (name) => setOpenTable(openTable === name ? null : name);
+    /* ============================
+       FETCH SUMMARY ON LOAD
+    ============================ */
+    useEffect(() => {
+        dispatch(fetchMemberYearSummary());
+    }, [dispatch]);
+
+    const toggleTable = (key) => {
+        setOpenTable(openTable === key ? null : key);
+        setSelectedYear(null);
+        setYearDetails(null);
+    };
 
     const handleMenuClick = (event, tableKey) => {
         setAnchorEl(event.currentTarget);
@@ -39,138 +79,256 @@ export default function ThreeSummaryTables() {
 
     const handleMenuClose = () => setAnchorEl(null);
 
-    // PDF Export
+    /* ============================
+       YEAR CLICK → DETAIL
+    ============================ */
+    const handleYearClick = (year) => {
+        const detail = professionalSummaryYearwise.find(
+            (item) => item.year === year
+        );
+        setSelectedYear(year);
+        setYearDetails(detail || null);
+    };
+
+    /* ============================
+       EXPORT FUNCTIONS
+    ============================ */
     const downloadPDF = (title, rows) => {
         const doc = new jsPDF();
-        doc.setFontSize(18);
-        doc.setTextColor("#0d47a1");
-        doc.setFont(undefined, "bold");
         doc.text(title, 14, 20);
 
-        const tableColumn = ["Year", "Opening", "Joined", "Resign", "Balance"];
-        const tableRows = rows.map((r) => [r.year, r.opening, r.joined, r.resign, r.balance]);
-
         autoTable(doc, {
-            head: [tableColumn],
-            body: tableRows,
-            startY: 30,
-            headStyles: { fillColor: [13, 71, 161], textColor: 255, fontStyle: "bold" },
-            bodyStyles: { fillColor: [232, 240, 254], textColor: 0 },
-            alternateRowStyles: { fillColor: [212, 225, 247] },
-            theme: "grid",
+            head: [["Year", "Opening", "Joined", "Resigned", "Balance"]],
+            body: rows.map((r) => [
+                r.year,
+                r.opening,
+                r.joined,
+                r.resigned,
+                r.balance
+            ]),
+            startY: 30
         });
 
         doc.save(`${title}.pdf`);
         handleMenuClose();
     };
 
-    // Excel Export
     const downloadExcel = (title, rows) => {
         const worksheet = XLSX.utils.json_to_sheet(rows);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, title);
-        const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-        const data = new Blob([excelBuffer], { type: "application/octet-stream" });
-        saveAs(data, `${title}.xlsx`);
+        const excelBuffer = XLSX.write(workbook, {
+            bookType: "xlsx",
+            type: "array"
+        });
+
+        saveAs(new Blob([excelBuffer]), `${title}.xlsx`);
         handleMenuClose();
     };
 
-    const dataProfession = [
-        { year: 2020, opening: 100, joined: 20, resign: 5, balance: 115 },
-        { year: 2021, opening: 115, joined: 30, resign: 8, balance: 137 },
-        { year: 2022, opening: 137, joined: 25, resign: 4, balance: 158 }
-    ];
-    const dataCaste = [
-        { year: 2020, opening: 80, joined: 10, resign: 2, balance: 88 },
-        { year: 2021, opening: 88, joined: 18, resign: 4, balance: 102 },
-        { year: 2022, opening: 102, joined: 22, resign: 3, balance: 121 }
-    ];
-    const dataMember = [
-        { year: 2020, opening: 200, joined: 40, resign: 10, balance: 230 },
-        { year: 2021, opening: 230, joined: 35, resign: 6, balance: 259 },
-        { year: 2022, opening: 259, joined: 28, resign: 5, balance: 282 }
-    ];
+    const downloadYearDetailPDF = () => {
+        if (!selectedYear || !yearDetails) return;
 
-    const renderTable = (title, rows, key) => (
-        <Box>
-            {/* Single Download Button */}
-            <Button
-                variant="contained"
-                sx={{ mt: 2, mb: 2, backgroundColor: "#0d47a1", "&:hover": { backgroundColor: "#08306b" } }}
-                onClick={(e) => handleMenuClick(e, key)}
-            >
-                Download
-            </Button>
+        const doc = new jsPDF();
+        doc.text(`Profession Details - ${selectedYear}`, 14, 20);
 
-            <Menu anchorEl={anchorEl} open={openMenu && currentTable === key} onClose={handleMenuClose}>
-                <MenuItem onClick={() => downloadPDF(title, rows)}>Download PDF</MenuItem>
-                <MenuItem onClick={() => downloadExcel(title, rows)}>Download Excel</MenuItem>
-            </Menu>
+        autoTable(doc, {
+            head: [["Profession", "Count"]],
+            body: Object.entries(yearDetails)
+                .filter(([key]) => key !== "year")
+                .map(([profession, count]) => [profession, count]),
+            startY: 30
+        });
 
-            <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: 3 }}>
-                <Table>
-                    <TableHead sx={{ backgroundColor: "#0d47a1" }}>
-                        <TableRow>
-                            <TableCell sx={{ fontWeight: "bold", color: "#fff" }}>Year</TableCell>
-                            <TableCell sx={{ fontWeight: "bold", color: "#fff" }}>Opening</TableCell>
-                            <TableCell sx={{ fontWeight: "bold", color: "#fff" }}>Member Joined</TableCell>
-                            <TableCell sx={{ fontWeight: "bold", color: "#fff" }}>Member Resign</TableCell>
-                            <TableCell sx={{ fontWeight: "bold", color: "#fff" }}>Balance</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {rows.map((row, index) => (
-                            <TableRow key={index} hover sx={{ backgroundColor: index % 2 === 0 ? "#e8f0fe" : "#d0e1fd" }}>
-                                <TableCell>{row.year}</TableCell>
-                                <TableCell>{row.opening}</TableCell>
-                                <TableCell>{row.joined}</TableCell>
-                                <TableCell>{row.resign}</TableCell>
-                                <TableCell>{row.balance}</TableCell>
+        doc.save(`Profession_Details_${selectedYear}.pdf`);
+    };
+
+
+    /* ============================
+       TABLE RENDER
+    ============================ */
+    const renderTable = (title, rows, key) => {
+        const paginatedRows = rows.slice(
+            page * rowsPerPage,
+            page * rowsPerPage + rowsPerPage
+        );
+        return (
+            <Box mt={3}>
+                <Button
+                    variant="contained"
+                    sx={{ mb: 2 }}
+                    onClick={(e) => handleMenuClick(e, key)}
+                >
+                    Download
+                </Button>
+
+                <Menu
+                    anchorEl={anchorEl}
+                    open={openMenu && currentTable === key}
+                    onClose={handleMenuClose}
+                >
+                    <MenuItem onClick={() => downloadPDF(title, rows)}>
+                        Download PDF
+                    </MenuItem>
+                    <MenuItem onClick={() => downloadExcel(title, rows)}>
+                        Download Excel
+                    </MenuItem>
+                </Menu>
+
+                <TableContainer component={Paper}>
+                    <Table>
+                        <TableHead sx={{ backgroundColor: "#1a237e" }}>
+                            <TableRow>
+                                <TableCell sx={{ color: "#fff" }}>Year</TableCell>
+                                <TableCell sx={{ color: "#fff" }}>Opening</TableCell>
+                                <TableCell sx={{ color: "#fff" }}>Joined</TableCell>
+                                <TableCell sx={{ color: "#fff" }}>Resigned</TableCell>
+                                <TableCell sx={{ color: "#fff" }}>Balance</TableCell>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-        </Box>
-    );
+                        </TableHead>
 
-    const cards = [
-        { key: "profession", title: "Profession Summary", data: dataProfession },
-        { key: "caste", title: "Caste Summary", data: dataCaste },
-        { key: "member", title: "Member Summary", data: dataMember }
-    ];
+                        <TableBody>
+                            {paginatedRows.map((row) => (
+                                <TableRow key={row.year} hover>
+                                    <TableCell
+                                        sx={{
+                                            cursor: "pointer",
+                                            fontWeight: "bold",
+                                            color: "#0d47a1"
+                                        }}
+                                        onClick={() => handleYearClick(row.year)}
+                                    >
+                                        {row.year}
+                                    </TableCell>
+                                    <TableCell>{row.opening}</TableCell>
+                                    <TableCell>{row.joined}</TableCell>
+                                    <TableCell>{row.resigned}</TableCell>
+                                    <TableCell>{row.balance}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                    <TablePagination
+                        component="div"
+                        count={rows.length}
+                        page={page}
+                        onPageChange={(e, newPage) => setPage(newPage)}
+                        rowsPerPage={rowsPerPage}
+                        onRowsPerPageChange={(e) => {
+                            setRowsPerPage(parseInt(e.target.value, 10));
+                            setPage(0);
+                        }}
+                        rowsPerPageOptions={[5, 10, 25]}
+                    />
+                </TableContainer>
+
+                {/* ============================
+               YEAR DETAIL TABLE
+            ============================ */}
+                <Dialog
+                    open={Boolean(selectedYear && yearDetails)}
+                    onClose={() => setSelectedYear(null)}
+                    maxWidth="sm"
+                    fullWidth
+                >
+                    <DialogTitle
+                        sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            backgroundColor: "#1a237e",
+                            color: "#fff"
+                        }}
+                    >
+                        Profession Details – {selectedYear}
+                        <IconButton onClick={() => setSelectedYear(null)} sx={{ color: "#fff" }}>
+                            <CloseIcon />
+                        </IconButton>
+                    </DialogTitle>
+
+                    <DialogContent sx={{ mt: 2 }}>
+                        <TableContainer component={Paper}>
+                            <Table>
+                                <TableHead sx={{ backgroundColor: "#3949ab" }}>
+                                    <TableRow>
+                                        <TableCell sx={{ color: "#fff" }}>
+                                            Profession
+                                        </TableCell>
+                                        <TableCell sx={{ color: "#fff" }}>
+                                            Count
+                                        </TableCell>
+                                    </TableRow>
+                                </TableHead>
+
+                                <TableBody>
+                                    {Object.entries(yearDetails || {})
+                                        .filter(([key]) => key !== "year")
+                                        .map(([profession, count]) => (
+                                            <TableRow key={profession} hover>
+                                                <TableCell>{profession}</TableCell>
+                                                <TableCell>{count}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </DialogContent>
+
+                    <DialogActions sx={{ p: 2, justifyContent: "space-between" }}>
+                        <Button
+                            variant="outlined"
+                            onClick={downloadYearDetailPDF}
+                        >
+                            Download PDF
+                        </Button>
+
+                        <Button
+                            variant="contained"
+                            onClick={() => setSelectedYear(null)}
+                        >
+                            Close
+                        </Button>
+                    </DialogActions>
+                </Dialog>
+            </Box>
+        )
+    };
+
+    /* ============================
+       UI
+    ============================ */
+    if (loading) {
+        return (
+            <Box display="flex" justifyContent="center" mt={5}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
     return (
         <Box p={2}>
             <Grid container spacing={3}>
-                {cards.map((card) => (
-                    <Grid item xs={12} md={4} key={card.key}>
-                        <Card
-                            sx={{
-                                borderRadius: 3,
-                                boxShadow: 3,
-                                transition: "0.3s",
-                                border: openTable === card.key ? "2px solid #0d47a1" : "2px solid transparent",
-                                backgroundColor: openTable === card.key ? "#0d47a1" : "#1a237e",
-                                color: "#fff",
-                                "&:hover": { boxShadow: 6 }
-                            }}
-                        >
-                            <CardActionArea onClick={() => toggleTable(card.key)}>
-                                <CardContent sx={{ textAlign: "center", p: 3 }}>
-                                    <Typography variant="h6" fontWeight="bold">{card.title}</Typography>
-                                </CardContent>
-                            </CardActionArea>
-                        </Card>
-                    </Grid>
-                ))}
+                <Grid item xs={12} md={4}>
+                    <Card sx={{ backgroundColor: "#1a237e", color: "#fff" }}>
+                        <CardActionArea onClick={() => toggleTable("profession")}>
+                            <CardContent sx={{ textAlign: "center" }}>
+                                <Typography variant="h6" fontWeight="bold">
+                                    Profession Summary
+                                </Typography>
+                            </CardContent>
+                        </CardActionArea>
+                    </Card>
+                </Grid>
             </Grid>
 
-            {cards.map((card) => (
-                <Collapse in={openTable === card.key} key={card.key} timeout={400}>
-                    {openTable === card.key && renderTable(card.title, card.data, card.key)}
-                </Collapse>
-            ))}
+            <Collapse in={openTable === "profession"}>
+                {openTable === "profession" &&
+                    renderTable(
+                        "Profession Summary",
+                        memberYearStats,
+                        "profession"
+                    )}
+            </Collapse>
         </Box>
     );
 }

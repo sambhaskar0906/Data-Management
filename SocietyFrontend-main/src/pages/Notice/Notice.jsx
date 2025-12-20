@@ -28,6 +28,11 @@ import {
     resetNoticeState,
 } from "../../features/notice/noticeSlice";
 import { fetchAllMembers } from "../../features/member/memberSlice";
+import {
+    sendBulkWhatsAppNotice,
+    resetWhatsAppState,
+} from "../../features/whatsappNotice/whatsappNoticeSlice";
+
 
 const NoticePage = () => {
     const dispatch = useDispatch();
@@ -36,6 +41,13 @@ const NoticePage = () => {
     const { loading: noticeLoading, success, error, message } = useSelector(
         (state) => state.notice
     );
+    const {
+        loading: whatsappLoading,
+        success: whatsappSuccess,
+        error: whatsappError,
+        result: whatsappResult,
+    } = useSelector((state) => state.whatsappNotice);
+
 
     const [snackOpen, setSnackOpen] = useState(false);
 
@@ -57,22 +69,26 @@ const NoticePage = () => {
             files: [],
         },
         onSubmit: async (values) => {
-            const memberIds = values.selectedMembers.map((m) => m._id);
-            const attachment = values.files[0] || null;
+            const formData = new FormData();
 
-            const result = await dispatch(
-                sendNoticeToMembers({
-                    memberIds,
-                    subject: "Society Notice",
-                    message: values.note,
-                    attachment,
-                })
+            formData.append(
+                "memberIds",
+                JSON.stringify(values.selectedMembers.map((m) => m._id))
             );
+            formData.append("subject", "Society Notice");
+            formData.append("message", values.note);
+
+            if (values.files[0]) {
+                formData.append("file", values.files[0]);
+            }
+
+            const result = await dispatch(sendNoticeToMembers(formData));
 
             if (sendNoticeToMembers.fulfilled.match(result)) {
                 formik.resetForm();
             }
-        },
+        }
+
     });
 
     /* 🔹 File upload validation */
@@ -95,6 +111,34 @@ const NoticePage = () => {
         formik.setFieldValue("files", validFiles);
     };
 
+    const handleSendWhatsApp = async () => {
+        if (!formik.values.note) {
+            alert("Please enter a message");
+            return;
+        }
+
+        if (formik.values.selectedMembers.length === 0) {
+            alert("Please select at least one member");
+            return;
+        }
+
+        const payload = {
+            message: formik.values.note,
+            memberIds: formik.values.selectedMembers.map((m) => m._id),
+        };
+
+        console.log("WhatsApp Payload:", payload); // 👈 debug (optional)
+
+        const result = await dispatch(sendBulkWhatsAppNotice(payload));
+
+        if (sendBulkWhatsAppNotice.fulfilled.match(result)) {
+            setSnackOpen(true);
+            formik.resetForm();
+        }
+    };
+
+
+
     /* 🔹 Filter members efficiently */
     const availableMembers = useMemo(() => {
         return members.filter(
@@ -106,6 +150,7 @@ const NoticePage = () => {
     const handleSnackClose = () => {
         setSnackOpen(false);
         dispatch(resetNoticeState());
+        dispatch(resetWhatsAppState());
     };
 
     return (
@@ -200,10 +245,10 @@ const NoticePage = () => {
                                                 ({member.personalDetails?.membershipNumber})
                                             </Typography>
                                             <Typography variant="body2">
-                                                📞 {member.personalDetails?.phoneNo || "N/A"}
+                                                📞 {member.personalDetails?.phoneNo1 || "N/A"}
                                             </Typography>
                                             <Typography variant="body2">
-                                                ✉️ {member.personalDetails?.emailId || "N/A"}
+                                                ✉️ {member.personalDetails?.emailId1 || "N/A"}
                                             </Typography>
                                         </Card>
                                     ))}
@@ -290,18 +335,26 @@ const NoticePage = () => {
                                 </span>
                             </Tooltip>
 
-                            {/* Quick WhatsApp Share */}
                             <Button
-                                variant="outlined"
+                                variant="contained"
                                 color="success"
-                                startIcon={<WhatsAppIcon />}
-                                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                                    formik.values.note || "Notice"
-                                )}`}
-                                target="_blank"
+                                startIcon={
+                                    whatsappLoading ? (
+                                        <CircularProgress size={20} color="inherit" />
+                                    ) : (
+                                        <WhatsAppIcon />
+                                    )
+                                }
+                                disabled={
+                                    whatsappLoading ||
+                                    !formik.values.note ||
+                                    formik.values.selectedMembers.length === 0
+                                }
+                                onClick={handleSendWhatsApp}
                             >
-                                WhatsApp
+                                Send WhatsApp
                             </Button>
+
                         </Box>
                     </form>
                 )}
@@ -311,14 +364,6 @@ const NoticePage = () => {
                     open={snackOpen}
                     autoHideDuration={3000}
                     onClose={handleSnackClose}
-                    message={
-                        success
-                            ? message || "Notice sent successfully!"
-                            : error || "Failed to send notice"
-                    }
-                    ContentProps={{
-                        sx: { backgroundColor: success ? "green" : "red" },
-                    }}
                 />
             </CardContent>
         </Card>

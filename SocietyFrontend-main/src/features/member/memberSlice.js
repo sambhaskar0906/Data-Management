@@ -127,6 +127,20 @@ export const updateMemberStatus = createAsyncThunk(
     }
 );
 
+/* ===========================================================
+   ✅ FETCH MEMBER YEAR SUMMARY
+   =========================================================== */
+export const fetchMemberYearSummary = createAsyncThunk(
+    "members/fetchMemberYearSummary",
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await axios.get("/members/summary");
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.response?.data || error.message);
+        }
+    }
+);
 
 /* ===========================================================
    ✅ SLICE SETUP
@@ -144,6 +158,16 @@ const memberSlice = createSlice({
             myGuarantors: [],
             forWhomIAmGuarantor: [],
         },
+        memberYearSummary: {
+            memberYearStats: [],
+
+            professionalSummaryAllYears: {},
+            professionalSummaryYearwise: [],
+
+            casteSummaryAllYears: {},
+            casteSummaryYearwise: [],
+        },
+
 
         successMessage: null,
         // Operation-specific loading flags
@@ -356,6 +380,34 @@ const memberSlice = createSlice({
                 state.operationLoading.update = false;
                 state.error = action.payload;
             })
+            /* ======================== FETCH MEMBER YEAR SUMMARY ======================== */
+            .addCase(fetchMemberYearSummary.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(fetchMemberYearSummary.fulfilled, (state, action) => {
+                state.loading = false;
+
+                state.memberYearSummary.memberYearStats =
+                    action.payload.memberYearStats || [];
+
+                state.memberYearSummary.professionalSummaryAllYears =
+                    action.payload.professionalSummaryAllYears || {};
+
+                state.memberYearSummary.professionalSummaryYearwise =
+                    action.payload.professionalSummaryYearwise || [];
+
+                state.memberYearSummary.casteSummaryAllYears =
+                    action.payload.casteSummaryAllYears || {};
+
+                state.memberYearSummary.casteSummaryYearwise =
+                    action.payload.casteSummaryYearwise || [];
+            })
+            .addCase(fetchMemberYearSummary.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            });
+
 
     },
 });

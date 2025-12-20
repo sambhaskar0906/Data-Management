@@ -24,7 +24,11 @@ export const sendNoticeToMembers = async (req, res) => {
 
         // ✅ Fetch members
         const members = await Member.find({ _id: { $in: memberIds } });
-        const emailList = members.map((m) => m.personalDetails?.emailId).filter(Boolean);
+        const emailList = members
+            .map((m) => m.personalDetails?.emailId1)
+            .filter(
+                (email) => email && email.includes("@")
+            );
 
         if (emailList.length === 0)
             return res.status(404).json({

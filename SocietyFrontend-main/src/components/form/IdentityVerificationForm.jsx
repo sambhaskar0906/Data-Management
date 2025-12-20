@@ -133,6 +133,42 @@ const IdentityVerificationForm = ({ formData, handleChange }) => {
     </Box>
   );
 
+  // 🔹 PDF Upload Box (NO IMAGE PREVIEW)
+  const PdfUploadBox = ({ label, fileField }) => (
+    <Box sx={{ textAlign: "center" }}>
+      <Button
+        variant="outlined"
+        component="label"
+        startIcon={<UploadIcon />}
+        fullWidth
+        sx={{
+          mt: 1,
+          borderRadius: 2,
+          border: `2px dashed ${theme.palette.primary.main}`,
+          backgroundColor: alpha(theme.palette.primary.main, 0.04),
+          "&:hover": {
+            backgroundColor: alpha(theme.palette.primary.main, 0.08),
+            border: `2px dashed ${theme.palette.primary.dark}`,
+          },
+        }}
+      >
+        {identityProofs[fileField]
+          ? `Uploaded: ${identityProofs[fileField].name}`
+          : label}
+
+        <input
+          type="file"
+          accept="application/pdf"
+          hidden
+          onChange={(e) =>
+            handleIdentityFieldChange(fileField, e.target.files[0])
+          }
+        />
+      </Button>
+    </Box>
+  );
+
+
   return (
     <Card sx={{
       borderRadius: 4,
@@ -189,6 +225,44 @@ const IdentityVerificationForm = ({ formData, handleChange }) => {
             }
           }}
         />
+
+        {/* 🔹 Old Membership PDF */}
+        <Box sx={{ mb: 4 }}>
+          <Typography
+            variant="h6"
+            sx={{ mb: 2, color: theme.palette.primary.main, fontWeight: 600 }}
+          >
+            Old Membership PDF
+          </Typography>
+
+          <Button
+            variant="outlined"
+            component="label"
+            startIcon={<UploadIcon />}
+            fullWidth
+            sx={{
+              borderRadius: 2,
+              border: `2px dashed ${theme.palette.primary.main}`,
+            }}
+          >
+            {identityProofs.oldMembershipPdf
+              ? `Uploaded: ${identityProofs.oldMembershipPdf.name}`
+              : "Upload Old Membership PDF"}
+
+            <input
+              type="file"
+              accept="application/pdf"
+              hidden
+              onChange={(e) =>
+                handleIdentityFieldChange(
+                  "oldMembershipPdf",
+                  e.target.files[0]
+                )
+              }
+            />
+          </Button>
+        </Box>
+
 
         {/* 🔹 Passport Size Photo & Signature Section */}
         <Grid container spacing={4} sx={{ mt: 2 }} alignItems="center">

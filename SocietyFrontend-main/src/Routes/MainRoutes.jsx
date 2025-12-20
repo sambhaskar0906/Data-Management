@@ -22,6 +22,7 @@ import LoanCreationWizard from '../pages/Loan/LoanCreationWizard.jsx';
 import ExpPdf from '../pages/Exp/ExpPdf.jsx';
 import SuretyReport from '../pages/SuretyReport/SuretyReport.jsx';
 import SummaryPage from '../pages/Summary/Summary.jsx';
+import ProtectedRoute from "../Routes/ProtectedRoute.jsx";
 
 const MainRoutes = () => {
   return (

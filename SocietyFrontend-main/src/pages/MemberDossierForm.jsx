@@ -146,6 +146,7 @@ const MemberDossierForm = () => {
       passportPhoto: null,
       passportPreview: "",
       signedPhoto: "",
+      oldMembershipPdf: null,
     },
 
     professionalDetails: {
@@ -153,6 +154,7 @@ const MemberDossierForm = () => {
       occupation: "",
       qualificationRemark: "",
       degreeNumber: "",
+      serviceType: "",
       familyMemberMemberOfSociety: false,
       familyMembers: [
         {
@@ -398,6 +400,13 @@ const MemberDossierForm = () => {
         }
       });
 
+      // 🔥 OLD MEMBERSHIP PDF
+      formDataToSend.append(
+        "documents[oldMembershipPdf]",
+        values.identityProofs.oldMembershipPdf
+      );
+
+
       /* -----------------------------------------
          PROFESSIONAL DETAILS
       ----------------------------------------- */
@@ -417,12 +426,12 @@ const MemberDossierForm = () => {
       /* ------ SERVICE (Govt / Pvt) ------- */
       if (pro.inCaseOfServiceGovt) {
         formDataToSend.append("professionalDetails[inCaseOfService]", true);
-        formDataToSend.append("professionalDetails[serviceType]", "Govt");
+        formDataToSend.append("professionalDetails[serviceType]", "GOVERNMENT");
       }
 
       if (pro.inCaseOfPrivate) {
         formDataToSend.append("professionalDetails[inCaseOfService]", true);
-        formDataToSend.append("professionalDetails[serviceType]", "Pvt");
+        formDataToSend.append("professionalDetails[serviceType]", "PRIVATE");
       }
 
       /* ------ SERVICE DETAILS ------- */

@@ -5,7 +5,7 @@ import {
     Paper, Typography, Box, TextField, InputAdornment, Button,
     MenuItem, Select, FormControl, InputLabel, Stack, Dialog,
     DialogTitle, DialogContent, DialogActions, IconButton,
-    CircularProgress, Alert, Chip, Tabs, Tab, Checkbox, FormControlLabel
+    CircularProgress, Alert, Chip, Tabs, Tab, Checkbox, FormControlLabel, Tooltip
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
@@ -23,17 +23,63 @@ import ExportButtons from "../MamberReport/ExportButtons";
 // Utility Functions
 const getValueByPath = (obj, path) => {
     if (!path) return undefined;
+
+    if (path === "addressDetails.currentResidentalAddress") {
+        const address = path.split(".").reduce((cur, p) => cur?.[p], obj);
+        if (!address) return undefined;
+        return formatAddress(address);
+    } else if (path === "addressDetails.permanentAddress") {
+        const address = path.split(".").reduce((cur, p) => cur?.[p], obj);
+        if (!address) return undefined;
+        return formatAddress(address);
+    } else if (path === "addressDetails.previousCurrentAddress") {
+        const prevAddresses = path.split(".").reduce((cur, p) => cur?.[p], obj);
+        if (!prevAddresses || !Array.isArray(prevAddresses) || prevAddresses.length === 0) {
+            return undefined;
+        }
+        // Return the most recent previous address or all formatted
+        return prevAddresses.map(addr => formatAddress(addr)).join("; ");
+    }
+
     return path.split(".").reduce((cur, p) => cur?.[p], obj);
+};
+
+const formatAddress = (address) => {
+    if (!address) return "";
+
+    // Handle both object and string addresses
+    if (typeof address === 'string') return address;
+
+    if (typeof address === 'object') {
+        const parts = [
+            address.flatHouseNo,
+            address.areaStreetSector,
+            address.locality,
+            address.landmark,
+            address.city,
+            address.state,
+            address.country,
+            address.pincode
+        ].filter(Boolean);
+
+        return parts.join(", ");
+    }
+
+    return "";
 };
 
 const isMissing = (value) => {
     if (value === undefined || value === null) return true;
     if (typeof value === "string") return value.trim() === "";
     if (Array.isArray(value)) return value.length === 0;
-    if (typeof value === "object") return Object.values(value).every(val =>
-        val === undefined || val === null || val === "" ||
-        (typeof val === 'object' && Object.keys(val).length === 0)
-    );
+    if (typeof value === "object") {
+        // For address objects, check if all fields are empty
+        if (value.flatHouseNo || value.areaStreetSector || value.locality ||
+            value.landmark || value.city || value.state || value.country || value.pincode) {
+            return false;
+        }
+        return true;
+    }
     return false;
 };
 
@@ -59,6 +105,16 @@ const extractAge = (ageString) => {
     return match ? parseInt(match[1]) : 0;
 };
 
+// ✅ Date range helper
+const isDateInRange = (dateStr, from, to) => {
+    if (!dateStr) return false;
+    const date = new Date(dateStr);
+    if (from && date < new Date(from)) return false;
+    if (to && date > new Date(to)) return false;
+    return true;
+};
+
+
 // Field Definitions based on your model
 const ALL_FIELDS = {
     // Personal Details
@@ -81,7 +137,7 @@ const ALL_FIELDS = {
     "personalDetails.gender": "Gender",
     "personalDetails.maritalStatus": "Marital Status",
     "personalDetails.religion": "Religion",
-    "personalDetails.caste": "Caste",
+    "personalDetails.caste": "Category",
     "personalDetails.phoneNo1": "Phone No 1",
     "personalDetails.phoneNo2": "Phone No 2",
     "personalDetails.whatsappNumber": "WhatsApp Number",
@@ -94,22 +150,9 @@ const ALL_FIELDS = {
 
     // Address Details
     "addressDetails.residenceType": "Residence Type",
-    "addressDetails.permanentAddress.flatHouseNo": "Permanent House No",
-    "addressDetails.permanentAddress.areaStreetSector": "Permanent Area",
-    "addressDetails.permanentAddress.locality": "Permanent Locality",
-    "addressDetails.permanentAddress.landmark": "Permanent Landmark",
-    "addressDetails.permanentAddress.city": "Permanent City",
-    "addressDetails.permanentAddress.country": "Permanent Country",
-    "addressDetails.permanentAddress.state": "Permanent State",
-    "addressDetails.permanentAddress.pincode": "Permanent Pincode",
-    "addressDetails.currentResidentalAddress.flatHouseNo": "Current House No",
-    "addressDetails.currentResidentalAddress.areaStreetSector": "Current Area",
-    "addressDetails.currentResidentalAddress.locality": "Current Locality",
-    "addressDetails.currentResidentalAddress.landmark": "Current Landmark",
-    "addressDetails.currentResidentalAddress.city": "Current City",
-    "addressDetails.currentResidentalAddress.country": "Current Country",
-    "addressDetails.currentResidentalAddress.state": "Current State",
-    "addressDetails.currentResidentalAddress.pincode": "Current Pincode",
+    "addressDetails.currentResidentalAddress": "Current Address",
+    "addressDetails.permanentAddress": "Permanent Address",
+    "addressDetails.previousCurrentAddress": "Previous Addresses",
 
     // Documents
     "documents.passportSize": "Passport Photo",
@@ -179,21 +222,43 @@ const FIELD_GROUPS = Object.entries({
     guarantee: "Guarantee",
     loan: "Loan",
     nominee: "Nominee"
-}).reduce((acc, [key, label]) => ({
-    ...acc,
-    [key]: {
-        label,
-        fields: Object.keys(ALL_FIELDS).filter(f => f.startsWith(key === "personal" ? "personalDetails" :
-            key === "address" ? "addressDetails" :
+}).reduce((acc, [key, label]) => {
+    let fields = [];
+
+    if (key === "address") {
+        // Address-specific grouping
+        fields = [
+            "addressDetails.residenceType",
+            "addressDetails.currentResidentalAddress",
+            "addressDetails.permanentAddress",
+            "addressDetails.previousCurrentAddress"
+        ];
+    } else if (key === "personal") {
+        // Personal details fields (filter out address-related ones)
+        fields = Object.keys(ALL_FIELDS).filter(f =>
+            f.startsWith("personalDetails") &&
+            !f.includes("address") // Exclude any personal address fields if they exist
+        );
+    } else {
+        // Other groups remain as before
+        fields = Object.keys(ALL_FIELDS).filter(f => f.startsWith(
+            key === "personal" ? "personalDetails" :
                 key === "documents" ? "documents" :
                     key === "professional" ? "professionalDetails" :
                         key === "family" ? "familyDetails" :
                             key === "bank" ? "bankDetails" :
                                 key === "reference" ? "referenceDetails" :
                                     key === "guarantee" ? "guaranteeDetails" :
-                                        key === "nominee" ? "nomineeDetails" : key))
+                                        key === "nominee" ? "nomineeDetails" : key
+        ));
     }
-}), {});
+
+    return {
+        ...acc,
+        [key]: { label, fields }
+    };
+}, {});
+
 
 const CIVIL_SCORE_FILTERS = {
     "all": "All Civil Scores",
@@ -263,28 +328,6 @@ const AdvancedFilters = ({ values, setFieldValue, filters }) => (
                 </Select>
             </FormControl>
 
-            {/* Category Filter */}
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-                <InputLabel>Category</InputLabel>
-                <Select value={values.categoryFilter} label="Category"
-                    onChange={(e) => setFieldValue("categoryFilter", e.target.value)}>
-                    {filters.categoryOptions.map(opt => (
-                        <MenuItem key={opt} value={opt}>{opt === "all" ? "All Categories" : FIELD_GROUPS[opt]?.label || opt}</MenuItem>
-                    ))}
-                </Select>
-            </FormControl>
-
-            {/* View Type */}
-            <FormControl size="small" sx={{ minWidth: 140 }}>
-                <InputLabel>View Type</InputLabel>
-                <Select value={values.viewType} label="View Type"
-                    onChange={(e) => setFieldValue("viewType", e.target.value)}>
-                    <MenuItem value="all">All Members</MenuItem>
-                    <MenuItem value="missing">Missing Only</MenuItem>
-                    <MenuItem value="available">Available Only</MenuItem>
-                </Select>
-            </FormControl>
-
             {/* Gender Filter */}
             <FormControl size="small" sx={{ minWidth: 120 }}>
                 <InputLabel>Gender</InputLabel>
@@ -339,13 +382,50 @@ const AdvancedFilters = ({ values, setFieldValue, filters }) => (
                 />
             </Box>
 
+            <TextField
+                size="small"
+                label="Joining Date From"
+                type="date"
+                value={values.joiningFrom}
+                onChange={(e) => setFieldValue("joiningFrom", e.target.value)}
+                InputLabelProps={{ shrink: true }}
+            />
+
+            <TextField
+                size="small"
+                label="Joining Date To"
+                type="date"
+                value={values.joiningTo}
+                onChange={(e) => setFieldValue("joiningTo", e.target.value)}
+                InputLabelProps={{ shrink: true }}
+            />
+
+            <TextField
+                size="small"
+                label="Retirement Date From"
+                type="date"
+                value={values.retirementFrom}
+                onChange={(e) => setFieldValue("retirementFrom", e.target.value)}
+                InputLabelProps={{ shrink: true }}
+            />
+
+            <TextField
+                size="small"
+                label="Retirement Date To"
+                type="date"
+                value={values.retirementTo}
+                onChange={(e) => setFieldValue("retirementTo", e.target.value)}
+                InputLabelProps={{ shrink: true }}
+            />
+
+
             {/* Caste Filter */}
             <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Caste</InputLabel>
-                <Select value={values.casteFilter} label="Caste"
+                <InputLabel>Category</InputLabel>
+                <Select value={values.casteFilter} label="Category"
                     onChange={(e) => setFieldValue("casteFilter", e.target.value)}>
                     {filters.casteOptions.map(opt => (
-                        <MenuItem key={opt} value={opt}>{opt === "all" ? "All Castes" : opt}</MenuItem>
+                        <MenuItem key={opt} value={opt}>{opt === "all" ? "All Category" : opt}</MenuItem>
                     ))}
                 </Select>
             </FormControl>
@@ -361,6 +441,10 @@ const AdvancedFilters = ({ values, setFieldValue, filters }) => (
                 setFieldValue("casteFilter", "all");
                 setFieldValue("minAge", "");
                 setFieldValue("maxAge", "");
+                setFieldValue("joiningFrom", "");
+                setFieldValue("joiningTo", "");
+                setFieldValue("retirementFrom", "");
+                setFieldValue("retirementTo", "");
                 setFieldValue("viewType", "all");
                 setFieldValue("civilScoreFilter", "all");
             }}>
@@ -384,9 +468,13 @@ const AdvancedFilters = ({ values, setFieldValue, filters }) => (
                         {values.categoryFilter !== "all" && <span style={{ marginLeft: 8 }}><strong>Category:</strong> {FIELD_GROUPS[values.categoryFilter]?.label}</span>}
                         {values.genderFilter !== "all" && <span style={{ marginLeft: 8 }}><strong>Gender:</strong> {values.genderFilter}</span>}
                         {values.maritalFilter !== "all" && <span style={{ marginLeft: 8 }}><strong>Marital Status:</strong> {values.maritalFilter}</span>}
-                        {values.casteFilter !== "all" && <span style={{ marginLeft: 8 }}><strong>Caste:</strong> {values.casteFilter}</span>}
+                        {values.casteFilter !== "all" && <span style={{ marginLeft: 8 }}><strong>Category:</strong> {values.casteFilter}</span>}
                         {values.minAge && <span style={{ marginLeft: 8 }}><strong>Min Age:</strong> {values.minAge}</span>}
                         {values.maxAge && <span style={{ marginLeft: 8 }}><strong>Max Age:</strong> {values.maxAge}</span>}
+                        {values.joiningFrom && <span><strong>Joining From:</strong> {values.joiningFrom}</span>}
+                        {values.joiningTo && <span><strong>Joining To:</strong> {values.joiningTo}</span>}
+                        {values.retirementFrom && <span><strong>Retirement From:</strong> {values.retirementFrom}</span>}
+                        {values.retirementTo && <span><strong>Retirement To:</strong> {values.retirementTo}</span>}
                         {values.viewType !== "all" && <span style={{ marginLeft: 8 }}><strong>View Type:</strong> {values.viewType}</span>}
                         {values.selectedField === "personalDetails.civilScore" && values.civilScoreFilter !== "all" &&
                             <span style={{ marginLeft: 8 }}><strong>Civil Score:</strong> {CIVIL_SCORE_FILTERS[values.civilScoreFilter]}</span>}
@@ -408,6 +496,14 @@ const getActiveFilterColumns = (values) => {
 
     // Age adds Age column
     if (values.minAge !== "" || values.maxAge !== "") cols.push("personalDetails.ageInYears");
+
+    // 🔥 JOINING DATE
+    if (values.joiningFrom || values.joiningTo)
+        cols.push("professionalDetails.serviceDetails.dateOfJoining");
+
+    // 🔥 RETIREMENT DATE
+    if (values.retirementFrom || values.retirementTo)
+        cols.push("professionalDetails.serviceDetails.dateOfRetirement");
 
     // Category → All fields under that category
     if (values.categoryFilter !== "all") {
@@ -529,7 +625,11 @@ const MissingMembersTable = () => {
                 maritalFilter: "all",
                 casteFilter: "all",
                 minAge: "",
-                maxAge: ""
+                maxAge: "",
+                joiningFrom: "",
+                joiningTo: "",
+                retirementFrom: "",
+                retirementTo: ""
             }} onSubmit={() => { }}>
                 {({ values, setFieldValue }) => {
                     // Derived filter options
@@ -570,10 +670,39 @@ const MissingMembersTable = () => {
                                     "addressDetails.currentResidentalAddress.city",
                                 ];
 
+
                                 return searchable.some(path => {
                                     const v = getValueByPath(m, path);
                                     return v?.toString()?.toLowerCase()?.includes(searchTerm);
                                 });
+                            });
+                        }
+
+                        if (values.joiningFrom || values.joiningTo) {
+                            result = result.filter(m => {
+                                const joiningDate = getValueByPath(
+                                    m,
+                                    "professionalDetails.serviceDetails.dateOfJoining"
+                                );
+                                return isDateInRange(
+                                    joiningDate,
+                                    values.joiningFrom,
+                                    values.joiningTo
+                                );
+                            });
+                        }
+
+                        if (values.retirementFrom || values.retirementTo) {
+                            result = result.filter(m => {
+                                const retirementDate = getValueByPath(
+                                    m,
+                                    "professionalDetails.serviceDetails.dateOfRetirement"
+                                );
+                                return isDateInRange(
+                                    retirementDate,
+                                    values.retirementFrom,
+                                    values.retirementTo
+                                );
                             });
                         }
 
@@ -801,27 +930,39 @@ const MissingMembersTable = () => {
                                         {Object.entries(FIELD_GROUPS).map(([key, { fields }], idx) => (
                                             <TabPanel key={key} value={tabValue} index={idx}>
                                                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                                    {fields.map((fieldKey) => (
-                                                        <Chip
-                                                            key={fieldKey}
-                                                            label={ALL_FIELDS[fieldKey]}
-                                                            onClick={() => {
-                                                                setSelectedColumns((prev) =>
-                                                                    prev.includes(fieldKey)
-                                                                        ? prev.filter((col) => col !== fieldKey)
-                                                                        : [...prev, fieldKey]
-                                                                );
+                                                    {fields.map((fieldKey) => {
+                                                        // For address fields, show a special chip with info icon
+                                                        const isAddressField = fieldKey.includes("currentResidentalAddress") ||
+                                                            fieldKey.includes("permanentAddress") ||
+                                                            fieldKey.includes("previousCurrentAddress");
 
-                                                                setFieldValue("selectedField", fieldKey);
-                                                                if (fieldKey !== "personalDetails.civilScore") {
-                                                                    setFieldValue("civilScoreFilter", "all");
-                                                                }
-                                                            }}
-                                                            color={selectedColumns.includes(fieldKey) ? "primary" : "default"}
-                                                            variant={selectedColumns.includes(fieldKey) ? "filled" : "outlined"}
-                                                            clickable
-                                                        />
-                                                    ))}
+                                                        return (
+                                                            <Chip
+                                                                key={fieldKey}
+                                                                label={ALL_FIELDS[fieldKey]}
+                                                                onClick={() => {
+                                                                    setSelectedColumns((prev) =>
+                                                                        prev.includes(fieldKey)
+                                                                            ? prev.filter((col) => col !== fieldKey)
+                                                                            : [...prev, fieldKey]
+                                                                    );
+
+                                                                    setFieldValue("selectedField", fieldKey);
+                                                                    if (fieldKey !== "personalDetails.civilScore") {
+                                                                        setFieldValue("civilScoreFilter", "all");
+                                                                    }
+                                                                }}
+                                                                color={selectedColumns.includes(fieldKey) ? "primary" : "default"}
+                                                                variant={selectedColumns.includes(fieldKey) ? "filled" : "outlined"}
+                                                                clickable
+                                                                sx={{
+                                                                    ...(isAddressField && {
+                                                                        backgroundColor: selectedColumns.includes(fieldKey)
+                                                                    })
+                                                                }}
+                                                            />
+                                                        );
+                                                    })}
                                                 </Box>
                                             </TabPanel>
                                         ))}
@@ -932,7 +1073,7 @@ const MissingMembersTable = () => {
                                                                 cursor: "pointer",
                                                                 bgcolor: isFieldMissing ? "#ffebee" : "inherit",
                                                                 "&:hover": {
-                                                                    bgcolor: isFieldMissing ? "#ffcdd2" : "#f5f5f5",
+                                                                    bgcolor: isFieldMissing ? "#ffcdd2" : "#fffff",
                                                                     transition: "0.2s",
                                                                 },
                                                             }}
@@ -953,11 +1094,44 @@ const MissingMembersTable = () => {
                                                             ))}
 
                                                             {/* 🔥 SHOW SELECTED FIELD VALUES */}
-                                                            {selectedColumns.map((fieldKey) => (
-                                                                <TableCell key={"val-" + fieldKey}>
-                                                                    {getValueByPath(m, fieldKey) || "—"}
-                                                                </TableCell>
-                                                            ))}
+                                                            {selectedColumns.map((fieldKey) => {
+                                                                const value = getValueByPath(m, fieldKey);
+                                                                const isMissingField = isMissing(value);
+
+                                                                return (
+                                                                    <TableCell
+                                                                        key={"val-" + fieldKey}
+                                                                    >
+                                                                        {isMissingField ? (
+                                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                                                <Typography variant="caption" color="error">MISSING</Typography>
+                                                                            </Box>
+                                                                        ) : (
+                                                                            <Box>
+                                                                                {fieldKey.includes("currentResidentalAddress") ||
+                                                                                    fieldKey.includes("permanentAddress") ||
+                                                                                    fieldKey.includes("previousCurrentAddress") ? (
+                                                                                    <Tooltip title={value} arrow>
+                                                                                        <Typography
+                                                                                            variant="body2"
+                                                                                            sx={{
+                                                                                                maxWidth: '200px',
+                                                                                                overflow: 'hidden',
+                                                                                                textOverflow: 'ellipsis',
+                                                                                                whiteSpace: 'nowrap'
+                                                                                            }}
+                                                                                        >
+                                                                                            {value}
+                                                                                        </Typography>
+                                                                                    </Tooltip>
+                                                                                ) : (
+                                                                                    value || "—"
+                                                                                )}
+                                                                            </Box>
+                                                                        )}
+                                                                    </TableCell>
+                                                                );
+                                                            })}
 
 
                                                             <TableCell>

@@ -253,13 +253,40 @@ const ProfessionalForm = ({ formData, handleChange }) => {
     handleChange("professionalDetails", field, value);
 
     // Clear error when field is being edited
-    if (field === "qualificationRemark" || field === "degreeNumber") {
+    if (field === "qualificationRemark" || field === "degreeNumber" || field === "occupation") {
       clearError(field);
 
       // Validate field if it has value
       if (value) {
         validateField(field, value);
       }
+    }
+
+    // Handle service type selection logic
+    if (field === "inCaseOfServiceGovt" && value === true) {
+      // When selecting Government Service
+      handleChange("professionalDetails", "inCaseOfPrivate", false);
+      handleChange("professionalDetails", "inCaseOfBusiness", false);
+      handleChange("professionalDetails", "serviceType", "GOVERNMENT");
+      handleChange("professionalDetails", "inCaseOfService", true);
+    } else if (field === "inCaseOfPrivate" && value === true) {
+      // When selecting Private Service
+      handleChange("professionalDetails", "inCaseOfServiceGovt", false);
+      handleChange("professionalDetails", "inCaseOfBusiness", false);
+      handleChange("professionalDetails", "serviceType", "PRIVATE");
+      handleChange("professionalDetails", "inCaseOfService", true);
+    } else if (field === "inCaseOfBusiness" && value === true) {
+      // When selecting Business
+      handleChange("professionalDetails", "inCaseOfServiceGovt", false);
+      handleChange("professionalDetails", "inCaseOfPrivate", false);
+      handleChange("professionalDetails", "serviceType", "BUSINESS");
+      handleChange("professionalDetails", "inCaseOfService", false);
+    } else if (field === "inCaseOfServiceGovt" && value === false &&
+      field === "inCaseOfPrivate" && professionalDetails.inCaseOfPrivate === false &&
+      field === "inCaseOfBusiness" && professionalDetails.inCaseOfBusiness === false) {
+      // When all are false, reset serviceType
+      handleChange("professionalDetails", "serviceType", "");
+      handleChange("professionalDetails", "inCaseOfService", false);
     }
   };
 
@@ -509,13 +536,33 @@ const ProfessionalForm = ({ formData, handleChange }) => {
                   }}
                 />
               </Box>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1, color: theme.palette.primary.main }}>
+                  Occupation
+                </Typography>
+                <StyledTextField
+                  fullWidth
+                  label="Occupation"
+                  value={professionalDetails.occupation || ""}
+                  onChange={(e) => handleInputChange(e, "occupation")}
+                  onBlur={(e) => validateField("", e.target.value)}
+                  error={!!getError("occupation")}
+                  helperText={getError("occupation")}
+                  sx={textFieldStyles("occupation")}
+                  placeholder="e.g., CA"
+                  inputProps={{
+                    maxLength: 20,
+                    style: { textTransform: 'uppercase' }
+                  }}
+                />
+              </Box>
             </Grid>
           </Grid>
 
           {/* ================= OCCUPATION TYPE SELECTION ================= */}
           <Box sx={{ mt: 3, mb: 4 }}>
             <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main, fontWeight: 600 }}>
-              Occupation Type *
+              Service Type *
             </Typography>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 4 }}>
@@ -525,11 +572,6 @@ const ProfessionalForm = ({ formData, handleChange }) => {
                       checked={professionalDetails.inCaseOfServiceGovt || false}
                       onChange={(e) => {
                         handleProfessionalFieldChange("inCaseOfServiceGovt", e.target.checked);
-                        if (e.target.checked) {
-                          handleProfessionalFieldChange("inCaseOfPrivate", false);
-                          handleProfessionalFieldChange("inCaseOfBusiness", false);
-                          handleProfessionalFieldChange("occupation", "GOVERNMENT_SERVICE");
-                        }
                       }}
                       sx={{
                         color: theme.palette.primary.main,
@@ -550,11 +592,6 @@ const ProfessionalForm = ({ formData, handleChange }) => {
                       checked={professionalDetails.inCaseOfPrivate || false}
                       onChange={(e) => {
                         handleProfessionalFieldChange("inCaseOfPrivate", e.target.checked);
-                        if (e.target.checked) {
-                          handleProfessionalFieldChange("inCaseOfServiceGovt", false);
-                          handleProfessionalFieldChange("inCaseOfBusiness", false);
-                          handleProfessionalFieldChange("occupation", "PRIVATE_SERVICE");
-                        }
                       }}
                       sx={{
                         color: theme.palette.primary.main,
@@ -575,11 +612,6 @@ const ProfessionalForm = ({ formData, handleChange }) => {
                       checked={professionalDetails.inCaseOfBusiness || false}
                       onChange={(e) => {
                         handleProfessionalFieldChange("inCaseOfBusiness", e.target.checked);
-                        if (e.target.checked) {
-                          handleProfessionalFieldChange("inCaseOfServiceGovt", false);
-                          handleProfessionalFieldChange("inCaseOfPrivate", false);
-                          handleProfessionalFieldChange("occupation", "BUSINESS");
-                        }
                       }}
                       sx={{
                         color: theme.palette.primary.main,
@@ -597,7 +629,7 @@ const ProfessionalForm = ({ formData, handleChange }) => {
             {!professionalDetails.inCaseOfServiceGovt && !professionalDetails.inCaseOfPrivate && !professionalDetails.inCaseOfBusiness &&
               Object.keys(errors).length > 0 && (
                 <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
-                  Please select an occupation type
+                  Please select an Service type
                 </Typography>
               )}
           </Box>

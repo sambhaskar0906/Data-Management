@@ -5,10 +5,6 @@ import Header from "../components/Header";
 import { Outlet, Navigate } from "react-router-dom";
 
 const DashboardLayout = () => {
-  const isAuth = localStorage.getItem("auth");
-  if (!isAuth) {
-    return <Navigate to="/login" replace />;
-  }
 
   return (
     <Box sx={{ display: "flex", bgcolor: "#f4f6f8" }}>

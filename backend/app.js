@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 
+
 // Resolve __dirname in ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -16,6 +17,9 @@ const allowedOrigins = [
     "https://santocreation.co",
     "https://www.santocreation.co",
     "http://localhost:5173",
+    "https://new-data-management.vercel.app",
+    "https://cacooperative.org",
+    "https://www.cacooperative.org"
 ];
 
 // ✅ CORS Setup
@@ -57,17 +61,22 @@ app.use(cookieParser());
 import memberRouter from "./src/router/member.router.js";
 import bulkMailRouter from "./src/router/bulkMail.router.js";
 import noticeRouter from "./src/router/notice.router.js";
+import authRoutes from "./src/router/auth.router.js";
 import loanRouter from "./src/router/loan.router.js";
+import whatsappNoticeRoute from "./src/router/whatsappNotice.route.js";
 
 // ✅ API Routes
 app.use("/api/v1/members", memberRouter);
 app.use("/api/v1/bulk", bulkMailRouter);
 app.use("/api/v1/notice", noticeRouter);
+app.use("/api/v1", authRoutes);
 app.use("/api/v1/loans", loanRouter);
+app.use("/api/v1/notice", whatsappNoticeRoute);
+
 
 // ✅ Default Route
 app.get("/", (req, res) => {
-    res.send("🚀 Santo Creation API is running successfully!");
+    res.send("Hello Ca-cooperative Society! Your API is live 🚀");
 });
 
 // ✅ Export app

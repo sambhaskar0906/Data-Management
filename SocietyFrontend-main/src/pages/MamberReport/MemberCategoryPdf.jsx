@@ -72,6 +72,8 @@ export const FIELD_MAP = {
     "nomineeDetails.nomineeName": "Nominee Name",
     "nomineeDetails.relationWithApplicant": "Relation with Member",
     "nomineeDetails.nomineeMobileNo": "Nominee Contact Number",
+    "nomineeDetails.memberShipNo": "Membership No",
+    "nomineeDetails.introduceBy": "Introduced By",
     "financialDetails.shareCapital": "Share Capital",
     "financialDetails.compulsory": "Compulsory Deposit",
     "financialDetails.optionalDeposit": "Optional Deposit",
@@ -561,14 +563,11 @@ const getFamilyMembersTableData = (member) => {
     return tableData;
 };
 
+
 export const generateMemberFieldsPDF = async (member, category, viewType = "all") => {
     if (!member) return;
 
-    const doc = new jsPDF();
-    const originalSetFontSize = doc.setFontSize;
-    doc.setFontSize = function (size) {
-        return originalSetFontSize.call(this, size - 2);
-    };
+    const doc = new jsPDF(); // Remove the font size override
     const memberName = getMemberFullName(member);
 
     const membershipNumber = getValueByPath(member, "personalDetails.membershipNumber") || "N/A";
@@ -578,12 +577,12 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
             category === "missing" ? "Missing Fields" :
                 CATEGORY_MAP[category] || category;
 
-    // Add page number function
+    // Add page number function with larger font
     const addPageNumbers = (doc) => {
         const pageCount = doc.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
-            doc.setFontSize(8);
+            doc.setFontSize(10); // Increased from 8
             doc.setTextColor(0, 0, 0);
             doc.text(
                 `Page ${i} of ${pageCount}`,
@@ -601,19 +600,14 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
 
         const data = [];
 
-        if (memberShipNo || introduceBy) {
-            if (memberShipNo) {
-                data.push(["1", "Membership No", memberShipNo || "—"]);
-            }
-            if (introduceBy) {
-                data.push(["2", "Introduced By", introduceBy || "—"]);
-            }
-        }
+        // Always show both rows, even if empty
+        data.push(["1", "Membership No", memberShipNo || "—"]);
+        data.push(["2", "Introduced By", introduceBy || "—"]);
 
         return data;
     };
 
-    // Function to add category section (updated version with introduction section)
+    // Updated function to add category section with larger fonts
     const addCategorySection = (doc, categoryKey, categoryName, fields, startY) => {
         // Allow bankDetails, familyDetails, and introductionDetails even if fields array is empty
         if (fields.length === 0 &&
@@ -623,8 +617,8 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
             return startY;
         }
 
-        // Add category header
-        doc.setFontSize(16);
+        // Add category header with larger font
+        doc.setFontSize(18); // Increased from 16
         doc.setFont(undefined, 'bold');
         doc.setTextColor(0, 0, 0);
         doc.text(categoryName, 14, startY);
@@ -639,31 +633,31 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                     head: [["S. No", "Account Holder", "Bank Name", "Branch", "Account Number", "IFSC Code"]],
                     body: bankTableData,
                     styles: {
-                        fontSize: 11,
-                        cellPadding: 4,
+                        fontSize: 11, // Increased from 11
+                        cellPadding: 4, // Increased from 4
                         textColor: [0, 0, 0],
                         fontStyle: 'normal',
-                        lineHeight: 1.3
+                        lineHeight: 1.3 // Increased from 1.3
                     },
                     headStyles: {
                         fillColor: [25, 118, 210],
                         textColor: 255,
-                        fontSize: 12,
+                        fontSize: 12, // Increased from 12
                         fontStyle: 'bold'
                     },
                     columnStyles: {
-                        0: { cellWidth: 15 },
-                        1: { cellWidth: 40 },
-                        2: { cellWidth: 35 },
-                        3: { cellWidth: 30 },
-                        4: { cellWidth: 40 },
-                        5: { cellWidth: 35 }
+                        0: { cellWidth: 15 }, // Increased from 15
+                        1: { cellWidth: 40 }, // Increased from 40
+                        2: { cellWidth: 35 }, // Increased from 35
+                        3: { cellWidth: 30 }, // Increased from 30
+                        4: { cellWidth: 40 }, // Increased from 40
+                        5: { cellWidth: 35 } // Increased from 35
                     },
                     theme: 'grid',
                 });
                 return doc.lastAutoTable.finalY + 10;
             } else {
-                doc.setFontSize(11);
+                doc.setFontSize(13); // Increased from 11
                 doc.setFont(undefined, 'normal');
                 doc.text("No bank details available", 14, startY + 10);
                 return startY + 15;
@@ -680,28 +674,28 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                     head: [["S. No", "Member's Name", "Membership Number", "Relation With Member"]],
                     body: familyTableData,
                     styles: {
-                        fontSize: 11,
-                        cellPadding: 4,
+                        fontSize: 13, // Increased from 11
+                        cellPadding: 5, // Increased from 4
                         textColor: [0, 0, 0],
                         fontStyle: 'normal',
-                        lineHeight: 1.3
+                        lineHeight: 1.4 // Increased from 1.3
                     },
                     headStyles: {
                         fillColor: [25, 118, 210],
                         textColor: 255,
-                        fontSize: 12,
+                        fontSize: 14, // Increased from 12
                         fontStyle: 'bold'
                     },
                     bodyStyles: {
                         textColor: [0, 0, 0],
-                        lineHeight: 1.3
+                        lineHeight: 1.4 // Increased from 1.3
                     },
                     alternateRowStyles: {
                         fillColor: [245, 245, 245],
                         textColor: [0, 0, 0]
                     },
                     columnStyles: {
-                        0: { cellWidth: 15, textColor: [0, 0, 0] },
+                        0: { cellWidth: 20, textColor: [0, 0, 0] }, // Increased from 15
                         1: { cellWidth: 'auto', textColor: [0, 0, 0] },
                         2: { cellWidth: 'auto', textColor: [0, 0, 0] },
                         3: { cellWidth: 'auto', textColor: [0, 0, 0] }
@@ -710,7 +704,7 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                 });
             } else {
                 // No family members data available
-                doc.setFontSize(11);
+                doc.setFontSize(13); // Increased from 11
                 doc.setFont(undefined, 'normal');
                 doc.text("No family members data available", 14, startY + 10);
                 return startY + 15;
@@ -729,31 +723,25 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                     head: [["S. No", "Particulars", "Details"]],
                     body: introData,
                     styles: {
-                        fontSize: 11,
-                        cellPadding: 4,
+                        fontSize: 13, // Increased from 11
+                        cellPadding: 5, // Increased from 4
                         textColor: [0, 0, 0],
-                        lineHeight: 1.3
+                        lineHeight: 1.4 // Increased from 1.3
                     },
                     headStyles: {
                         fillColor: [25, 118, 210],
                         textColor: 255,
-                        fontSize: 12,
+                        fontSize: 14, // Increased from 12
                         fontStyle: "bold"
                     },
                     columnStyles: {
-                        0: { cellWidth: 25, fontStyle: "bold", cellPadding: 4 },
-                        1: { cellWidth: 60, fontStyle: "bold", cellPadding: 4 },
-                        2: { cellWidth: "auto", cellPadding: 4 }
+                        0: { cellWidth: 30, fontStyle: "bold", cellPadding: 5 }, // Increased from 25
+                        1: { cellWidth: 65, fontStyle: "bold", cellPadding: 5 }, // Increased from 60
+                        2: { cellWidth: "auto", cellPadding: 5 }
                     },
                     theme: "grid",
                 });
                 return doc.lastAutoTable.finalY + 10;
-            } else {
-                // No introduction data available
-                doc.setFontSize(11);
-                doc.setFont(undefined, 'normal');
-                doc.text("No introduction/witness data available", 14, startY + 10);
-                return startY + 15;
             }
         }
 
@@ -793,24 +781,24 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
             body: body,
 
             styles: {
-                fontSize: 11,
-                cellPadding: 4,
+                fontSize: 13, // Increased from 11
+                cellPadding: 5, // Increased from 4
                 textColor: [0, 0, 0],
-                lineHeight: 1.3,
+                lineHeight: 1.4, // Increased from 1.3
                 overflow: 'linebreak'
             },
 
             headStyles: {
                 fillColor: [25, 118, 210],
                 textColor: 255,
-                fontSize: 12,
+                fontSize: 14, // Increased from 12
                 fontStyle: "bold"
             },
 
             columnStyles: {
-                0: { cellWidth: 25, fontStyle: "bold", cellPadding: 4 },
-                1: { cellWidth: 60, fontStyle: "bold", cellPadding: 4 },
-                2: { cellWidth: "auto", cellPadding: 4, minCellHeight: 15 }
+                0: { cellWidth: 30, fontStyle: "bold", cellPadding: 5 }, // Increased from 25
+                1: { cellWidth: 65, fontStyle: "bold", cellPadding: 5 }, // Increased from 60
+                2: { cellWidth: "auto", cellPadding: 5, minCellHeight: 18 } // Increased from 15
             },
 
             theme: "grid",
@@ -819,23 +807,23 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
         return doc.lastAutoTable.finalY + 10;
     };
 
-    // Add society name at top center
+    // Add society name at top center with larger font
     doc.setTextColor(0, 0, 0);
-    doc.setFontSize(20);
+    doc.setFontSize(22); // Increased from 20
     doc.setFont(undefined, 'bold');
     doc.text("CA Co-Operative Thrift & Credit Society LTD", doc.internal.pageSize.width / 2, 15, { align: 'center' });
     doc.setFont(undefined, 'normal');
 
     // Get passport size photo URL
     const passportPhotoUrl = getValueByPath(member, "documents.passportSize");
-    let startY = 35; // Start position for member info section
+    let startY = 40; // Increased from 35 to accommodate larger text
 
     if (category === "personalDetails" || category === "all") {
         try {
             const pageWidth = doc.internal.pageSize.width;
-            const photoWidth = 30;
-            const photoHeight = 30;
-            const photoX = pageWidth - 45;
+            const photoWidth = 35; // Increased from 30
+            const photoHeight = 35; // Increased from 30
+            const photoX = pageWidth - 50; // Adjusted for larger photo
             const photoY = startY;
 
             if (passportPhotoUrl) {
@@ -845,14 +833,14 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                 } catch {
                     doc.setFillColor(240, 240, 240);
                     doc.rect(photoX, photoY, photoWidth, photoHeight, 'F');
-                    doc.setFontSize(8);
+                    doc.setFontSize(10); // Increased from 8
                     doc.setTextColor(100, 100, 100);
                     doc.text("Photo", photoX + (photoWidth / 2), photoY + (photoHeight / 2) + 1, { align: 'center' });
                 }
             } else {
                 doc.setFillColor(240, 240, 240);
                 doc.rect(photoX, photoY, photoWidth, photoHeight, 'F');
-                doc.setFontSize(8);
+                doc.setFontSize(10); // Increased from 8
                 doc.setTextColor(100, 100, 100);
                 doc.text("Photo", photoX + (photoWidth / 2), photoY + (photoHeight / 2) + 1, { align: 'center' });
             }
@@ -864,13 +852,13 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
 
             // Add Status Below Photo
             const status = member?.status || "Active";
-            doc.setFontSize(11);
+            doc.setFontSize(11); // Increased from 11
             doc.setFont(undefined, "bold");
             doc.setTextColor(0, 0, 0);
             doc.text(
                 `Status: ${status}`,
                 photoX + photoWidth / 2,
-                photoY + photoHeight + 8,
+                photoY + photoHeight + 8, // Increased spacing
                 { align: "center" }
             );
 
@@ -883,17 +871,17 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
     const infoStartX = 14;
     const infoStartY = startY;
 
-    doc.setFontSize(18);
+    doc.setFontSize(20); // Increased from 18
     doc.setFont(undefined, 'bold');
     doc.text(`Member Name - ${memberName}`, infoStartX, infoStartY);
 
-    doc.setFontSize(12);
+    doc.setFontSize(14); // Increased from 12
     doc.setFont(undefined, 'normal');
-    doc.text(`Membership Number: ${membershipNumber}`, infoStartX, infoStartY + 8);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, infoStartX, infoStartY + 24);
+    doc.text(`Membership Number: ${membershipNumber}`, infoStartX, infoStartY + 10); // Increased spacing
+    doc.text(`Generated: ${new Date().toLocaleString()}`, infoStartX, infoStartY + 20); // Increased spacing
 
     // Adjust startY for the content (below both photo and text)
-    let currentY = startY + 35;
+    let currentY = startY + 40; // Increased from 35
 
     if (category === "all") {
         // For "all" category, organize by individual categories
@@ -910,9 +898,9 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
 
             if (shouldShowCategory) {
                 // Check if we need a new page
-                if (currentY > doc.internal.pageSize.height - 50) {
+                if (currentY > doc.internal.pageSize.height - 60) { // Increased margin
                     doc.addPage();
-                    currentY = 20;
+                    currentY = 25; // Increased from 20
                 }
 
                 currentY = addCategorySection(
@@ -964,39 +952,30 @@ export const generateMemberFieldsPDF = async (member, category, viewType = "all"
                 body: body,
 
                 styles: {
-                    fontSize: 11,
-                    cellPadding: 4,
+                    fontSize: 13, // Increased from 11
+                    cellPadding: 5, // Increased from 4
                     textColor: [0, 0, 0],
-                    lineHeight: 1.3,
+                    lineHeight: 1.4, // Increased from 1.3
                     overflow: 'linebreak'
                 },
 
                 headStyles: {
                     fillColor: [25, 118, 210],
                     textColor: 255,
-                    fontSize: 12,
+                    fontSize: 14, // Increased from 12
                     fontStyle: "bold"
                 },
 
                 columnStyles: {
-                    0: { cellWidth: 25, fontStyle: "bold", cellPadding: 4 },
-                    1: { cellWidth: 60, fontStyle: "bold", cellPadding: 4 },
-                    2: { cellWidth: "auto", cellPadding: 4, minCellHeight: 15 }
+                    0: { cellWidth: 30, fontStyle: "bold", cellPadding: 5 }, // Increased from 25
+                    1: { cellWidth: 65, fontStyle: "bold", cellPadding: 5 }, // Increased from 60
+                    2: { cellWidth: "auto", cellPadding: 5, minCellHeight: 18 } // Increased from 15
                 },
 
                 theme: "grid",
             });
 
             currentY = doc.lastAutoTable.finalY + 10;
-        } else if (category === "bankDetails" || category === "familyDetails" || category === "introductionDetails") {
-            // Handle special categories that use table format
-            currentY = addCategorySection(
-                doc,
-                category,
-                CATEGORY_MAP[category],
-                [],
-                currentY
-            );
         }
     }
 

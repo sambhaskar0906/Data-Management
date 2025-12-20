@@ -76,7 +76,8 @@ const SECTION_GROUPS = {
         "documents.rationCardPhoto",
         "documents.passportNo",
         "documents.passportNoPhoto",
-        "documents.signedPhoto"
+        "documents.signedPhoto",
+        "documents.oldMembershipPdf",
     ],
 
     "Professional Details": [
@@ -234,6 +235,11 @@ const FieldCard = ({ label, value, keyPath }) => {
 const MemberView = ({ member, open, onClose, onDelete, loading }) => {
     const [activeView, setActiveView] = useState("all");
 
+    const openPdfViaGoogle = (url) => {
+        const googleViewer = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+        window.open(googleViewer, "_blank");
+    };
+
     if (!member) return null;
 
     return (
@@ -358,6 +364,55 @@ const MemberView = ({ member, open, onClose, onDelete, loading }) => {
                                                             ))
                                                         ) : (
                                                             <Typography color="error">No bank details found.</Typography>
+                                                        )}
+                                                    </CardContent>
+                                                </Card>
+                                            </Grid>
+                                        );
+                                    }
+
+                                    // ⭐ SPECIAL CASE: OLD MEMBERSHIP PDF
+                                    if (key === "documents.oldMembershipPdf") {
+                                        const pdfUrl = value;
+                                        console.log("PDF URL:", pdfUrl);
+
+                                        return (
+                                            <Grid size={{ xs: 12, md: 4 }} key={key}>
+                                                <Card
+                                                    sx={{
+                                                        borderRadius: 3,
+                                                        boxShadow: 2,
+                                                        borderLeft: `6px solid ${pdfUrl ? "#2e7d32" : "#d32f2f"}`,
+                                                        background: pdfUrl ? "#f4fff4" : "#fff6f6",
+                                                    }}
+                                                >
+                                                    <CardContent>
+                                                        <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+                                                            {pdfUrl ? (
+                                                                <CheckCircleOutlineIcon color="success" />
+                                                            ) : (
+                                                                <ErrorOutlineIcon color="error" />
+                                                            )}
+
+                                                            <Typography
+                                                                variant="subtitle1"
+                                                                fontWeight="600"
+                                                                color={pdfUrl ? "success.main" : "error"}
+                                                            >
+                                                                Old Membership PDF
+                                                            </Typography>
+                                                        </Box>
+
+                                                        {pdfUrl ? (
+                                                            <Button
+                                                                variant="outlined"
+                                                                fullWidth
+                                                                onClick={() => openPdfViaGoogle(pdfUrl)}
+                                                            >
+                                                                View PDF
+                                                            </Button>
+                                                        ) : (
+                                                            <Typography color="error">Missing</Typography>
                                                         )}
                                                     </CardContent>
                                                 </Card>

@@ -1,6 +1,6 @@
+import { app } from "./app.js"
 import dotenv from "dotenv";
 import connectDB from "./src/db/index.js"
-import { app } from "./app.js"
 dotenv.config({
     path: './.env'
 })
@@ -9,7 +9,7 @@ dotenv.config({
 app.get("/", (req, res) => {
     res.status(200).json({
         success: true,
-        message: "Hello Santo Creation! Your API is live 🚀"
+        message: "Hello Ca-cooperative Socity! Your API is live 🚀"
     });
 });
 

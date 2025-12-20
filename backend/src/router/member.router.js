@@ -11,6 +11,8 @@ import {
   getMissingFieldsForMember,
   addGuarantor,
   getGuarantorRelationsByMember,
+  getMemberYearSummary,
+
 } from "../controllers/member.controller.js";
 
 const router = express.Router();
@@ -54,6 +56,7 @@ const fileFields = [
   { name: "voterIdPhoto", maxCount: 1 },
   { name: "passportNoPhoto", maxCount: 1 },
   { name: "signedPhoto", maxCount: 1 },
+  { name: "documents[oldMembershipPdf]", maxCount: 1 },
 
   // Service Documents
   { name: "professionalDetails[serviceDetails][bankStatement]", maxCount: 1 },
@@ -69,6 +72,7 @@ router.post("/", upload.fields(fileFields), createMember);
 router.get("/", getAllMembers);
 router.post("/add-guarantor", addGuarantor);
 router.get("/guarantor-relations", getGuarantorRelationsByMember);
+router.get("/summary", getMemberYearSummary);
 router.get("/:id", getMemberById);
 router.put("/:id", upload.fields(fileFields), updateMember);
 router.delete("/:id", deleteMember);

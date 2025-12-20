@@ -105,6 +105,7 @@ export const FIELD_MAP = {
     "documents.passportNo": "Passport Number",
     "documents.passportNoPhoto": "Passport Photo",
     "documents.signedPhoto": "Signed Photo",
+    "documents.oldMembershipPdf": "Old Membership PDF",
 
     // -------- PROFESSIONAL DETAILS --------
     "professionalDetails.qualification": "Qualification",
